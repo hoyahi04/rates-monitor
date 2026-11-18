@@ -1,0 +1,62 @@
+[
+  {
+    "reference": "notion-file-block://410d4ed0-8987-80ef-8993-cde174754fe2/99b2c7f5-4ba4-45ab-a1ca-c07dd21186cb?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=rates-monitor-research-proposal.html",
+    "file": "attachments/rates-monitor-research-proposal.html",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://410d4ed0-8987-80c8-a985-fdb17e0cb002/e97d71c9-8890-4770-8b3c-28df1dc4caaa?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=261105_%EA%B8%80%EB%A1%9C%EB%B2%8C_%EC%B1%84%EA%B6%8C%EC%8B%9C%EC%9E%A5_%EC%A3%BC%EC%9A%94_%EC%9D%B4%EC%8A%88_%EB%B0%8F_%EC%A0%84%EB%A7%9D_%ED%95%98%EB%82%98%EC%A6%9D%EA%B6%8C_%ED%97%88%EC%84%B1%EC%9A%B0.pdf",
+    "file": "attachments/261105_글로벌_채권시장_주요_이슈_및_전망_하나증권_허성우.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://410d4ed0-8987-80bc-92d5-c583984edf54/efb090dc-74ca-4e66-a288-acee4ee76a75?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=20261029_-_FI_Portfolio_Construction.pdf",
+    "file": "attachments/20261029_-_FI_Portfolio_Construction.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-80e0-afe3-eff9a7fd2c5c/a639970e-6bec-4d64-888f-53162083033b?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=feds200533.csv",
+    "file": "attachments/feds200533.csv",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-8033-882d-c9385da2d89f/25116160-a259-467c-a7b4-7a82ddf277c6?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=06_Assessment_of_Dealer_Capacity.pdf",
+    "file": "attachments/06_Assessment_of_Dealer_Capacity.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-80d4-a7d3-f8788587811e/60b2d9f5-f414-4b85-aa1e-4ddd83da5c94?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=05_Repo_Markets_Fed_Balance_Sheet.pdf",
+    "file": "attachments/05_Repo_Markets_Fed_Balance_Sheet.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-8023-8360-d58598409d9c/063aa82c-1d98-404f-b1f1-678d92b855ce?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=04_Treasury_Demand_Supply_Yield_Impacts.pdf",
+    "file": "attachments/04_Treasury_Demand_Supply_Yield_Impacts.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-8009-a0f2-c553a7cafeac/8a94dba3-0998-40b7-8253-09a51953a103?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=03_Treasury_Tantrum_2023.pdf",
+    "file": "attachments/03_Treasury_Tantrum_2023.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-8063-95b4-fcfcc5f8b44d/43ad980c-c0c1-4307-bf4f-75776fdd52d3?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=02_Bond_Yield_Responses_Macro_News.pdf",
+    "file": "attachments/02_Bond_Yield_Responses_Macro_News.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  },
+  {
+    "reference": "notion-file-block://41cd4ed0-8987-80dc-96bf-ef46dc3ae85a/93e2391f-cfee-48b2-b97e-033af87cc874?space_id=888d4ed0-8987-8126-a8e9-0003281a963b&name=01_Current_Perceptions_Monetary_Policy.pdf",
+    "file": "attachments/01_Current_Perceptions_Monetary_Policy.pdf",
+    "status": "not_downloaded",
+    "error": "Proxy CONNECT 403: attachment host is not in environment network allowlist"
+  }
+]
