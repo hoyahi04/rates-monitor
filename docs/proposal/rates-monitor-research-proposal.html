@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor — 연구계획서</title>
+<style>
+:root{--ink:#182b3a;--muted:#62717d;--line:#dce3e7;--accent:#147b79;--soft:#eef6f5}*{box-sizing:border-box}body{margin:0;background:#edf0f2;color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.7;word-break:keep-all}main{max-width:1020px;margin:48px auto;background:#fff;padding:60px 64px;box-shadow:0 12px 48px #182b3a0b}header{border-top:5px solid var(--ink);padding-top:25px;margin-bottom:28px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent)}h1{font-size:36px;line-height:1.3;letter-spacing:-1.4px;margin:10px 0 12px}h1 span{font-size:23px;font-weight:400;color:var(--muted)}.subtitle{font-size:14px;color:var(--muted);margin:0}h2{font-size:19px;letter-spacing:-.5px;margin:32px 0 14px;display:flex;gap:12px;align-items:baseline}h2 b{font-size:12px;color:var(--accent);letter-spacing:.05em}p{margin:8px 0}.intro{display:grid;grid-template-columns:76px 1fr;gap:12px 16px;padding:22px 0;border-bottom:1px solid var(--line)}.intro strong{font-size:13px;color:var(--accent)}.intro p{margin:0}table{border-collapse:collapse;width:100%;font-size:12px;line-height:1.6}th{text-align:left;background:var(--ink);color:#fff;padding:11px 12px;font-weight:500}td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}td:first-child{color:var(--accent);font-weight:700;white-space:nowrap}td:nth-child(2){font-weight:650;width:31%}td:last-child{width:17%;color:var(--muted)}tbody tr:last-child{background:var(--soft)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{border:1px solid var(--line);padding:18px 20px;break-inside:avoid}.card.focus{border-color:var(--accent);background:var(--soft)}.card h3{font-size:14px;line-height:1.5;margin:0 0 9px}.num{font-size:11px;color:var(--accent);display:block;letter-spacing:.08em;margin-bottom:4px}ul{margin:0;padding-left:16px;font-size:12px;line-height:1.85}li::marker{color:#90a7ab}.note{font-size:11px;color:var(--muted);line-height:1.65;margin-top:9px}.calendar{background:var(--soft);padding:21px 24px;border-left:3px solid var(--accent);font-size:13px}.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tags span{background:#fff;border:1px solid #cddfdd;padding:3px 9px;font-size:11px;color:#225e5c}.example{font-size:12px;color:#426563;margin-top:10px}.workflow{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line)}.step{padding:18px 15px;border-right:1px solid var(--line)}.step:last-child{border:0}.step strong{font-size:12px;display:block;min-height:40px;line-height:1.5}.step em{font-style:normal;color:var(--accent);font-size:11px;font-weight:700}.step p{font-size:12px;line-height:1.6;margin-bottom:0}.closing{margin-top:18px;font-size:13px}.data-note{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}@media(max-width:720px){main{margin:0;padding:30px 22px}h1{font-size:29px}h1 span{display:block;font-size:20px;margin-top:6px}.grid,.workflow{grid-template-columns:1fr}.step{border-right:0;border-bottom:1px solid var(--line)}.step strong{min-height:0}.intro{grid-template-columns:1fr;gap:5px}.intro p+strong{margin-top:8px}.table-wrap{overflow:auto}table{min-width:650px}}@media print{@page{size:A4;margin:14mm}body{background:white;font-size:11px}main{padding:0;margin:0;max-width:none;box-shadow:none}header{margin-bottom:15px}h1{font-size:28px}h2{margin-top:22px;break-after:avoid}.card{padding:12px 14px}.grid{gap:10px}table{font-size:10px}td,th{padding:7px 9px}.calendar,.workflow{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.event-table{margin-top:16px;min-width:0}.event-table th{background:#dcebea;color:#225e5c}.event-table td:first-child{font-weight:500;white-space:normal;color:var(--ink)}.event-table td:last-child{width:35%;color:var(--accent);font-weight:600}.event-table tbody tr:last-child{background:transparent}.process-intro{font-size:13px;margin-bottom:14px}.intro{grid-template-columns:92px 1fr}@media(max-width:720px){.intro{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">RESEARCH PROPOSAL · U.S. TREASURY</div>
+<h1>Rates Monitor <span>— 연구계획서</span></h1>
+<p class="subtitle">U.S. Treasury Market Analytics &amp; Dynamic Curve Positioning</p>
+</header>
+<div class="intro">
+<strong>프로젝트 개요</strong><p>미국 국채시장의 금리·통화정책·경매·수급을 모니터링하고, 상대가치 분석을 바탕으로 Curve Positioning 전략을 수립한 뒤 성과와 위험을 평가하는 통합 대시보드를 구축한다. 7개 메인 탭과 공통 Market Event Calendar로 구성하며, 연구의 중심은 Tab 6이다.</p>
+<strong>연구동기</strong><p>Western Asset Management 자료에서 Macro Views → Relative Value → Portfolio Positioning → Attribution &amp; Risk Management로 이어지는 채권 운용 프로세스를 확인하고, 이를 직접 구현하고자 하였다. 금리 변동의 원인 해석, 수익률곡선의 상대적 저평가 구간 탐색, 포지션 결정, 성과 평가를 하나의 흐름으로 연결한다. 분석 대상은 공개 데이터 접근성을 고려하여 미국 국채시장으로 한정한다.</p>
+</div>
+<section>
+<h2><b>01</b> 대시보드 구성</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>탭</th><th>이름</th><th>핵심 기능</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Yield Curve Monitor</td><td>국채금리·수익률곡선·커브 스프레드</td><td>시장 모니터링</td></tr>
+<tr><td>2</td><td>Yield Decomposition</td><td>실질금리·BEI·기대 단기금리·기간 프리미엄</td><td>금리 변동 원인 분석</td></tr>
+<tr><td>3</td><td>Treasury Auction Monitor</td><td>경매 결과·입찰 수요·투자자별 낙찰 비중</td><td>경매 분석</td></tr>
+<tr><td>4</td><td>Treasury Supply &amp; Fed Balance Sheet</td><td>국채 발행·SOMA·TGA·딜러 포지션</td><td>국채 수급 분석</td></tr>
+<tr><td>5</td><td>Monetary Policy &amp; Money Market</td><td>FOMC·정책금리 기대·SOFR·단기자금시장</td><td>통화정책 분석</td></tr>
+<tr><td>6</td><td>Curve Positioning &amp; Relative Value</td><td>Fair Value·Z-score·커브 전략</td><td>핵심 투자전략</td></tr>
+<tr><td>7</td><td>Portfolio &amp; Risk Analytics</td><td>DV01·KRD·성과 기여도·성과 및 위험지표</td><td>전략 성과·위험 평가</td></tr>
+<tr><td>공통</td><td>Market Event Calendar</td><td>FOMC·물가·고용·국채 경매 및 발행 일정</td><td>이벤트 모니터링</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2><b>02</b> 탭별 분석 범위</h2>
+<div class="grid">
+<article class="card"><h3><span class="num">TAB 01</span>Yield Curve Monitor</h3><ul>
+<li>3M·2Y·5Y·10Y·20Y·30Y Treasury Yield</li>
+<li>현재 및 1주·1개월·1년 전 수익률곡선 비교</li>
+<li>만기별 일간·주간 금리 변화(bp)</li>
+<li>2s10s·5s30s·3m10y·2s5s10s Butterfly</li>
+<li>Steepening/Flattening 및 과거 백분위</li>
+</ul></article>
+<article class="card"><h3><span class="num">TAB 02</span>Yield Decomposition</h3><ul>
+<li>10Y Nominal Yield = TIPS Real Yield + BEI</li>
+<li>ACM 기반 기대 단기금리 + Term Premium</li>
+<li>각 분해 요소의 금리 변동 기여도</li>
+<li>일별·주별 변동 Waterfall Chart</li>
+</ul><p class="note">두 분해는 별도로 표시한다. BEI는 순수 기대인플레이션과 다르며, ACM은 모형 기반 추정치다.</p></article>
+<article class="card"><h3><span class="num">TAB 03</span>Treasury Auction Monitor</h3><ul>
+<li>2Y·5Y·7Y·10Y·20Y·30Y 경매 결과</li>
+<li>Bid-to-Cover·High Yield 및 투자자별 낙찰 비중<br>(Indirect·Direct·Primary Dealer)</li>
+<li>최근 12회 추세 및 과거 평균 비교</li>
+<li>Auction Tail·입찰 전후 금리 변화(자료 확보 시)</li>
+<li>New Issue/Reopening 구분</li>
+</ul></article>
+<article class="card"><h3><span class="num">TAB 04</span>Treasury Supply &amp; Fed Balance Sheet</h3><ul>
+<li>국채 발행잔액·만기별 순발행·Quarterly Refunding</li>
+<li>Fed SOMA 국채 보유잔액·매입·만기상환</li>
+<li>Treasury General Account(TGA)</li>
+<li>Primary Dealer Treasury Positions</li>
+<li>은행 지급준비금 및 유동성 여건</li>
+</ul></article>
+<article class="card"><h3><span class="num">TAB 05</span>Monetary Policy &amp; Money Market</h3><ul>
+<li>Fed Funds Target Range·EFFR·IORB</li>
+<li>SOFR·SOFR–IORB Spread·ON RRP·Reserve Balances</li>
+<li>FOMC 일정 및 정책금리 변경 이력</li>
+<li>시장 내재 정책금리 경로(적합한 데이터 확보 시)</li>
+<li>단기자금시장 스트레스 지표</li>
+</ul></article>
+<article class="card focus"><h3><span class="num">TAB 06 · 핵심 연구</span>Curve Positioning &amp; Relative Value</h3><ul>
+<li>2s10s·5s30s·Butterfly Fair Value Model</li>
+<li>Actual vs Fair Value·Residual·Z-score</li>
+<li>Strategic/Tactical Duration Views</li>
+<li>Steepener/Flattener·Bullet/Barbell/Butterfly 전략</li>
+<li>DV01·KRD 중립 제약 및 Position Sizing</li>
+<li>경매·공급 요인을 활용한 매매 신호 검증</li>
+</ul></article>
+<article class="card"><h3><span class="num">TAB 07</span>Portfolio &amp; Risk Analytics</h3><ul>
+<li>만기별 Duration·DV01·Key Rate Duration</li>
+<li>일별·누적 P&amp;L 및 Benchmark 비교</li>
+<li>Carry·Roll-down·Yield Curve P&amp;L Attribution</li>
+<li>Sharpe·Information Ratio·Tracking Error·MDD·VaR</li>
+<li>Risk Budget·Rebalancing 및 전략별 백테스트 비교</li>
+</ul></article>
+</div>
+</section>
+<section>
+<h2><b>03</b> 공통 기능 — Market Event Calendar</h2>
+<div class="calendar">
+<div class="tags"><span>FOMC</span><span>CPI / PCE</span><span>NFP</span><span>Treasury Auction</span><span>Quarterly Refunding</span></div>
+<p>별도 탭 없이 모든 화면의 오른쪽 패널 또는 상단 달력 아이콘으로 제공한다. 이벤트별 발표 예정 시각(ET·KST), 발표값·예상치·이전치와 발표 직후 금리 변화를 데이터 확보 빈도에 맞춰 표시한다.</p>
+<p>이벤트 유형에서 관련 분석 화면으로 연결하고, 날짜 선택 시 해당 탭의 차트를 동일 날짜로 이동시킨다.</p>
+<table class="event-table" aria-label="이벤트별 연계 탭">
+<thead><tr><th>이벤트</th><th>연계 탭</th></tr></thead>
+<tbody>
+<tr><td>FOMC · 정책금리 결정 및 기자회견</td><td>Tab 5 → Tab 1·2</td></tr>
+<tr><td>CPI / PCE</td><td>Tab 2 → Tab 1</td></tr>
+<tr><td>NFP</td><td>Tab 5 → Tab 1</td></tr>
+<tr><td>Treasury Auction</td><td>Tab 3 → Tab 1</td></tr>
+<tr><td>Quarterly Refunding</td><td>Tab 4 → Tab 2</td></tr>
+</tbody></table>
+</div>
+</section>
+<section>
+<h2><b>04</b> Western Asset 운용 프로세스와의 연계</h2>
+<p class="process-intro">Tabs 1–5는 거시환경 분석을 지원하고, Tab 6은 상대가치 분석과 포지션 구성을 담당한다. Tab 7에서는 전략의 성과와 위험을 평가한다.</p>
+<div class="workflow">
+<div class="step"><strong>01 · Macro Views</strong><em>Tabs 1–5</em><p>시장 환경과 금리 변동 요인 분석</p></div>
+<div class="step"><strong>02 · Relative Value</strong><em>Tab 6</em><p>커브 적정가치와 상대적 저평가 판단</p></div>
+<div class="step"><strong>03 · Portfolio Positioning</strong><em>Tab 6</em><p>전략 선택, 만기별 익스포저 및 포지션 규모 결정</p></div>
+<div class="step"><strong>04 · Attribution &amp;<br>Risk Management</strong><em>Tab 7</em><p>성과 기여도, 위험예산 및 리밸런싱</p></div>
+</div>
+<p class="closing">Tab 6을 중심으로 각 탭의 시장 분석과 전략 검증을 연결하며, Market Event Calendar는 운용 프로세스 전반에서 이벤트 발생 시점과 시장 반응을 함께 확인하는 공통 기능으로 활용한다.</p>
+<p class="data-note"><strong>데이터 운영 원칙</strong>　Bloomberg 접근 종료 이후에도 운영할 수 있도록 공식 공개 데이터를 기본으로 활용한다. WI 금리와 선물 내재 정책금리 등 확보가 제한적인 지표는 선택적 확장 기능으로 분리한다.</p>
+</section>
+</main>
+</body>
+</html>
