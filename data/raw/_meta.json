@@ -1,0 +1,282 @@
+{
+  "bei_10y": {
+    "fetched_at": "2026-11-21T06:53:12+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 2.15,
+    "rows": 2973,
+    "source": "fred",
+    "ticker": "T10YIE"
+  },
+  "bei_5y": {
+    "fetched_at": "2026-11-21T06:53:12+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 2.18,
+    "rows": 2973,
+    "source": "fred",
+    "ticker": "T5YIE"
+  },
+  "bei_5y5y": {
+    "fetched_at": "2026-11-21T06:53:13+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 2.12,
+    "rows": 2973,
+    "source": "fred",
+    "ticker": "T5YIFR"
+  },
+  "claims": {
+    "fetched_at": "2026-11-21T06:53:11+00:00",
+    "last_date": "2026-11-14",
+    "last_value": 203000.0,
+    "rows": 620,
+    "source": "fred",
+    "ticker": "ICSA"
+  },
+  "core_cpi": {
+    "fetched_at": "2026-11-21T06:53:11+00:00",
+    "last_date": "2026-10-01",
+    "last_value": 339.9,
+    "rows": 141,
+    "source": "fred",
+    "ticker": "CPILFESL"
+  },
+  "core_pce": {
+    "fetched_at": "2026-11-21T06:53:11+00:00",
+    "last_date": "2026-09-01",
+    "last_value": 130.902,
+    "rows": 141,
+    "source": "fred",
+    "ticker": "PCEPILFE"
+  },
+  "cpi": {
+    "fetched_at": "2026-11-21T06:53:11+00:00",
+    "last_date": "2026-10-01",
+    "last_value": 337.476,
+    "rows": 141,
+    "source": "fred",
+    "ticker": "CPIAUCSL"
+  },
+  "effr": {
+    "fetched_at": "2026-11-21T06:53:09+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 3.88,
+    "rows": 2985,
+    "source": "fred",
+    "ticker": "EFFR"
+  },
+  "ff_lower": {
+    "fetched_at": "2026-11-21T06:53:09+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 3.75,
+    "rows": 4342,
+    "source": "fred",
+    "ticker": "DFEDTARL"
+  },
+  "ff_upper": {
+    "fetched_at": "2026-11-21T06:53:08+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 4.0,
+    "rows": 4342,
+    "source": "fred",
+    "ticker": "DFEDTARU"
+  },
+  "hy_oas": {
+    "fetched_at": "2026-11-21T06:53:16+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 3.52,
+    "rows": 786,
+    "source": "fred",
+    "ticker": "BAMLH0A0HYM2"
+  },
+  "ig_oas": {
+    "fetched_at": "2026-11-21T06:53:15+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 0.94,
+    "rows": 785,
+    "source": "fred",
+    "ticker": "BAMLC0A0CM"
+  },
+  "iorb": {
+    "fetched_at": "2026-11-21T06:53:10+00:00",
+    "last_date": "2026-11-23",
+    "last_value": 3.9,
+    "rows": 1944,
+    "source": "fred",
+    "ticker": "IORB"
+  },
+  "nfp": {
+    "fetched_at": "2026-11-21T06:53:10+00:00",
+    "last_date": "2026-10-01",
+    "last_value": 159293.0,
+    "rows": 142,
+    "source": "fred",
+    "ticker": "PAYEMS"
+  },
+  "on_rrp": {
+    "fetched_at": "2026-11-21T06:53:15+00:00",
+    "last_date": "2026-11-20",
+    "last_value": 0.401,
+    "rows": 2963,
+    "source": "fred",
+    "ticker": "RRPONTSYD"
+  },
+  "reserves": {
+    "fetched_at": "2026-11-21T06:53:14+00:00",
+    "last_date": "2026-11-18",
+    "last_value": 2979656.0,
+    "rows": 620,
+    "source": "fred",
+    "ticker": "WRESBAL"
+  },
+  "sofr": {
+    "fetched_at": "2026-11-21T06:53:10+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 3.91,
+    "rows": 2156,
+    "source": "fred",
+    "ticker": "SOFR"
+  },
+  "soma_ust": {
+    "fetched_at": "2026-11-21T06:53:14+00:00",
+    "last_date": "2026-11-18",
+    "last_value": 4587132.0,
+    "rows": 620,
+    "source": "fred",
+    "ticker": "TREAST"
+  },
+  "tga": {
+    "fetched_at": "2026-11-21T06:53:15+00:00",
+    "last_date": "2026-11-18",
+    "last_value": 916613.0,
+    "rows": 620,
+    "source": "fred",
+    "ticker": "WTREGEN"
+  },
+  "tips_10y": {
+    "fetched_at": "2026-11-21T06:53:13+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 2.88,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DFII10"
+  },
+  "tips_5y": {
+    "fetched_at": "2026-11-21T06:53:13+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 2.64,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DFII5"
+  },
+  "tp_kw_10y": {
+    "fetched_at": "2026-11-21T06:53:14+00:00",
+    "last_date": "2026-11-13",
+    "last_value": 0.9864,
+    "rows": 2968,
+    "source": "fred",
+    "ticker": "THREEFYTP10"
+  },
+  "unrate": {
+    "fetched_at": "2026-11-21T06:53:10+00:00",
+    "last_date": "2026-10-01",
+    "last_value": 4.1,
+    "rows": 141,
+    "source": "fred",
+    "ticker": "UNRATE"
+  },
+  "ust_10y": {
+    "fetched_at": "2026-11-21T06:53:07+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 5.04,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS10"
+  },
+  "ust_1m": {
+    "fetched_at": "2026-11-21T06:53:04+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.2,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS1MO"
+  },
+  "ust_1y": {
+    "fetched_at": "2026-11-21T06:53:05+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.62,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS1"
+  },
+  "ust_20y": {
+    "fetched_at": "2026-11-21T06:53:08+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 5.43,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS20"
+  },
+  "ust_2y": {
+    "fetched_at": "2026-11-21T06:53:05+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.76,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS2"
+  },
+  "ust_30y": {
+    "fetched_at": "2026-11-21T06:53:08+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 5.4,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS30"
+  },
+  "ust_3m": {
+    "fetched_at": "2026-11-21T06:53:04+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.34,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS3MO"
+  },
+  "ust_3y": {
+    "fetched_at": "2026-11-21T06:53:06+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.81,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS3"
+  },
+  "ust_5y": {
+    "fetched_at": "2026-11-21T06:53:06+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.86,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS5"
+  },
+  "ust_6m": {
+    "fetched_at": "2026-11-21T06:53:04+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.42,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS6MO"
+  },
+  "ust_7y": {
+    "fetched_at": "2026-11-21T06:53:07+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 4.94,
+    "rows": 2972,
+    "source": "fred",
+    "ticker": "DGS7"
+  },
+  "vix": {
+    "fetched_at": "2026-11-21T06:53:16+00:00",
+    "last_date": "2026-11-19",
+    "last_value": 28.44,
+    "rows": 3022,
+    "source": "fred",
+    "ticker": "VIXCLS"
+  }
+}
