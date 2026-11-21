@@ -1,0 +1,81 @@
+# 대시보드에서 쓰는 지표 목록. 지표를 추가할 때는 이 파일에 한 항목만 추가하면 된다.
+#
+# 필드
+#   id        : 앱 코드에서 부르는 이름. 소문자와 밑줄만 쓴다.
+#   name      : 화면에 표시할 이름
+#   source    : fred | manual | nyfed | treasury
+#               fred    → src/fetch.py가 자동 수집해 data/raw/fred/<id>.csv로 저장
+#               manual  → 담당자가 data/manual/<id>.csv(date,value)를 직접 갱신
+#               nyfed, treasury → 수집기 미구현(다음 단계). 지금은 건너뛴다.
+#   ticker    : 원천의 시리즈 코드 (FRED 시리즈 ID 등)
+#   section   : 화면 섹션
+#               curve         수익률곡선
+#               policy        정책 경로
+#               growth        성장·고용
+#               inflation     인플레이션
+#               supply_tp     수급·기간 프리미엄
+#               liquidity_vol 유동성·변동성
+#   unit      : pct(%) | bp | index | thousands | usd_mn | usd_bn
+#   freq      : d(일) | w(주) | m(월) | q(분기)
+#   strategies: 이 지표를 판단 근거로 쓰는 전략. 팀에서 전략 이름을 확정하면 고친다.
+#               belly_ow  벨리(5~7년) 비중 확대
+#               curve     2s10s·5s30s 커브 전략
+#               duration  포트폴리오 듀레이션 방향
+#   note      : 선택. 해석 메모
+
+defaults:
+  start: "2015-01-01"   # 수집 시작일. 길게 잡을수록 z-score 기간이 늘고 저장소가 커진다.
+
+indicators:
+  # ── 수익률곡선 (미 재무부 고시 CMT, %) ─────────────────────────────
+  - {id: ust_1m,  name: "1개월",  source: fred, ticker: DGS1MO, section: curve, unit: pct, freq: d, strategies: [curve]}
+  - {id: ust_3m,  name: "3개월",  source: fred, ticker: DGS3MO, section: curve, unit: pct, freq: d, strategies: [curve, duration]}
+  - {id: ust_6m,  name: "6개월",  source: fred, ticker: DGS6MO, section: curve, unit: pct, freq: d, strategies: [curve]}
+  - {id: ust_1y,  name: "1년",    source: fred, ticker: DGS1,   section: curve, unit: pct, freq: d, strategies: [curve]}
+  - {id: ust_2y,  name: "2년",    source: fred, ticker: DGS2,   section: curve, unit: pct, freq: d, strategies: [curve, belly_ow]}
+  - {id: ust_3y,  name: "3년",    source: fred, ticker: DGS3,   section: curve, unit: pct, freq: d, strategies: [curve, belly_ow]}
+  - {id: ust_5y,  name: "5년",    source: fred, ticker: DGS5,   section: curve, unit: pct, freq: d, strategies: [curve, belly_ow]}
+  - {id: ust_7y,  name: "7년",    source: fred, ticker: DGS7,   section: curve, unit: pct, freq: d, strategies: [curve, belly_ow]}
+  - {id: ust_10y, name: "10년",   source: fred, ticker: DGS10,  section: curve, unit: pct, freq: d, strategies: [curve, belly_ow, duration]}
+  - {id: ust_20y, name: "20년",   source: fred, ticker: DGS20,  section: curve, unit: pct, freq: d, strategies: [curve]}
+  - {id: ust_30y, name: "30년",   source: fred, ticker: DGS30,  section: curve, unit: pct, freq: d, strategies: [curve, belly_ow]}
+
+  # ── 정책 경로 ────────────────────────────────────────────────────
+  - {id: ff_upper, name: "정책금리 상단", source: fred, ticker: DFEDTARU, section: policy, unit: pct, freq: d, strategies: [duration, belly_ow]}
+  - {id: ff_lower, name: "정책금리 하단", source: fred, ticker: DFEDTARL, section: policy, unit: pct, freq: d, strategies: [duration, belly_ow]}
+  - {id: effr,     name: "EFFR",          source: fred, ticker: EFFR,     section: policy, unit: pct, freq: d, strategies: [duration]}
+  - {id: sofr,     name: "SOFR",          source: fred, ticker: SOFR,     section: policy, unit: pct, freq: d, strategies: [duration]}
+  - {id: iorb,     name: "IORB",          source: fred, ticker: IORB,     section: policy, unit: pct, freq: d, strategies: [duration], note: "SOFR−IORB가 양(+)으로 커지면 지준 부족 신호"}
+  - {id: dot_plot, name: "FOMC 점도표 중간값", source: manual, section: policy, unit: pct, freq: q, strategies: [belly_ow, duration], note: "분기 SEP 발표 때 연말 중간값을 기록"}
+  - {id: cut_prob, name: "다음 FOMC 인하 확률", source: manual, section: policy, unit: pct, freq: d, strategies: [belly_ow], note: "CME FedWatch 화면 값을 기록 (0~100)"}
+
+  # ── 성장·고용 ────────────────────────────────────────────────────
+  - {id: nfp,     name: "비농업 고용(수준)", source: fred, ticker: PAYEMS, section: growth, unit: thousands, freq: m, strategies: [duration, belly_ow], note: "월간 증감은 calc 단계에서 차분"}
+  - {id: unrate,  name: "실업률",            source: fred, ticker: UNRATE, section: growth, unit: pct, freq: m, strategies: [duration, belly_ow]}
+  - {id: claims,  name: "신규 실업수당 청구", source: fred, ticker: ICSA,   section: growth, unit: index, freq: w, strategies: [duration]}
+  - {id: ism_mfg, name: "ISM 제조업 PMI",    source: manual, section: growth, unit: index, freq: m, strategies: [duration], note: "ISM은 FRED 미제공. 발표일마다 수동 기록"}
+
+  # ── 인플레이션 ───────────────────────────────────────────────────
+  - {id: cpi,       name: "CPI",            source: fred, ticker: CPIAUCSL, section: inflation, unit: index, freq: m, strategies: [duration]}
+  - {id: core_cpi,  name: "근원 CPI",       source: fred, ticker: CPILFESL, section: inflation, unit: index, freq: m, strategies: [duration, belly_ow]}
+  - {id: core_pce,  name: "근원 PCE",       source: fred, ticker: PCEPILFE, section: inflation, unit: index, freq: m, strategies: [duration, belly_ow]}
+  - {id: bei_5y,    name: "5년 BEI",        source: fred, ticker: T5YIE,    section: inflation, unit: pct, freq: d, strategies: [belly_ow]}
+  - {id: bei_10y,   name: "10년 BEI",       source: fred, ticker: T10YIE,   section: inflation, unit: pct, freq: d, strategies: [duration]}
+  - {id: bei_5y5y,  name: "5y5y 기대인플레", source: fred, ticker: T5YIFR,  section: inflation, unit: pct, freq: d, strategies: [curve, duration]}
+  - {id: tips_5y,   name: "5년 TIPS 실질금리",  source: fred, ticker: DFII5,  section: inflation, unit: pct, freq: d, strategies: [belly_ow]}
+  - {id: tips_10y,  name: "10년 TIPS 실질금리", source: fred, ticker: DFII10, section: inflation, unit: pct, freq: d, strategies: [duration]}
+
+  # ── 수급·기간 프리미엄 ───────────────────────────────────────────
+  - {id: tp_kw_10y, name: "10년 기간 프리미엄(Kim-Wright)", source: fred, ticker: THREEFYTP10, section: supply_tp, unit: pct, freq: d, strategies: [curve, duration]}
+  - {id: tp_acm_10y, name: "10년 기간 프리미엄(ACM)", source: nyfed, section: supply_tp, unit: pct, freq: d, strategies: [curve, duration], note: "NY Fed 엑셀. 수집기 다음 단계"}
+  - {id: soma_ust,  name: "연준 국채 보유(SOMA)", source: fred, ticker: TREAST, section: supply_tp, unit: usd_mn, freq: w, strategies: [curve, duration]}
+  - {id: auctions,  name: "국채 입찰 결과", source: treasury, section: supply_tp, unit: index, freq: d, strategies: [curve, belly_ow], note: "Fiscal Data API. 수집기 다음 단계"}
+
+  # ── 유동성·변동성 ────────────────────────────────────────────────
+  - {id: reserves, name: "지급준비금",    source: fred, ticker: WRESBAL,   section: liquidity_vol, unit: usd_mn, freq: w, strategies: [duration]}
+  - {id: on_rrp,   name: "ON RRP 잔액",   source: fred, ticker: RRPONTSYD, section: liquidity_vol, unit: usd_bn, freq: d, strategies: [duration]}
+  - {id: tga,      name: "재무부 일반계정(TGA)", source: fred, ticker: WTREGEN, section: liquidity_vol, unit: usd_mn, freq: w, strategies: [duration]}
+  - {id: ig_oas,   name: "IG 회사채 OAS", source: fred, ticker: BAMLC0A0CM,   section: liquidity_vol, unit: pct, freq: d, strategies: [duration], note: "ICE 라이선스로 FRED는 최근 3년만 제공"}
+  - {id: hy_oas,   name: "HY 회사채 OAS", source: fred, ticker: BAMLH0A0HYM2, section: liquidity_vol, unit: pct, freq: d, strategies: [duration], note: "ICE 라이선스로 FRED는 최근 3년만 제공"}
+  - {id: vix,      name: "VIX",           source: fred, ticker: VIXCLS,      section: liquidity_vol, unit: index, freq: d, strategies: [duration]}
+  - {id: move,     name: "MOVE 지수",     source: manual, section: liquidity_vol, unit: index, freq: d, strategies: [curve, duration], note: "ICE 지수라 무료 API 없음. 수동 기록"}

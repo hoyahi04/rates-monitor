@@ -11,6 +11,19 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
+## 데이터 수집
+
+지표 목록은 `config/indicators.yaml` 한 파일에서 관리한다. 지표를 추가하려면 이 파일에 한 줄을 추가하고 아래 명령을 다시 실행한다.
+
+```bash
+python -m src.fetch              # FRED 지표 전체 수집 → data/raw/fred/<id>.csv
+python -m src.fetch ust_10y sofr # 일부 지표만
+```
+
+FRED는 키 없이도 받을 수 있다. `FRED_API_KEY` 환경변수가 있으면 공식 API를 사용한다. 수집 결과 요약은 `data/raw/_meta.json`에 남는다.
+ISM, MOVE, 점도표, 금리 인하 확률처럼 무료 API가 없는 지표는 `data/manual/<id>.csv`(`date,value`)에 담당자가 직접 기록한다.
+페이지에서는 `from src.data import load_series` 후 `load_series("sofr")`처럼 지표 id로 불러온다.
+
 ## 4인 작업 분담 예시
 
 | 역할 | 작업 파일 | 첫 PR |
