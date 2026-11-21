@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor — Tab 1–5 개념 학습 자료</title>
+<style>
+:root{
+  --ink:#182b3a;--muted:#62717d;--line:#dce3e7;--accent:#147b79;--soft:#eef6f5;--warn:#fff7e8;
+  --grid:#e8edf0;--axis:#9aa7b0;
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--base:#8e9aa3;
+  --up:#e34948;--down:#2a78d6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#edf0f2;color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14.5px;line-height:1.8;word-break:keep-all}
+main{max-width:1020px;margin:48px auto;background:#fff;padding:60px 64px;box-shadow:0 12px 48px #182b3a0b}
+header{border-top:5px solid var(--ink);padding-top:25px;margin-bottom:24px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent)}
+h1{font-size:34px;line-height:1.3;letter-spacing:-1.3px;margin:10px 0 12px}
+h1 span{font-size:22px;font-weight:400;color:var(--muted)}
+.subtitle{color:var(--muted);margin:0}
+h2{font-size:21px;letter-spacing:-.5px;margin:56px 0 14px;padding-top:20px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:baseline}
+h2 b{font-size:12px;color:var(--accent);letter-spacing:.05em}
+h3{font-size:15.5px;margin:28px 0 8px}
+p{margin:8px 0}
+code,.mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;background:#f2f5f6;padding:1px 5px;border-radius:3px}
+nav.toc{background:var(--soft);padding:18px 24px;border-left:3px solid var(--accent);font-size:13px}
+nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:32px}
+nav.toc a{color:var(--ink);text-decoration:none}nav.toc a:hover{color:var(--accent);text-decoration:underline}
+.key{background:var(--soft);border-left:3px solid var(--accent);padding:12px 18px;margin:14px 0;font-size:13.5px}
+.key strong:first-child{color:var(--accent)}
+.caution{background:var(--warn);border-left:3px solid #d99a1e;padding:12px 18px;margin:14px 0;font-size:13px}
+.formula{font-family:"SF Mono",Menlo,Consolas,monospace;background:#f6f8f9;border:1px solid var(--line);padding:12px 16px;margin:12px 0;font-size:13.5px;overflow-x:auto;white-space:pre}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.6;margin:12px 0}
+th{text-align:left;background:var(--ink);color:#fff;padding:9px 12px;font-weight:500}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{border:1px solid var(--line);padding:16px 18px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p,.card li{font-size:13px}
+ul{padding-left:18px}li{margin:3px 0}li::marker{color:#90a7ab}
+.chart{position:relative;margin:10px 0 4px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-title{font-size:13px;font-weight:700;margin:14px 0 0}
+.chart-sub{font-size:12px;color:var(--muted);margin:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:6px 0}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed}
+.tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);box-shadow:0 4px 14px #182b3a1a;padding:8px 10px;font-size:12px;line-height:1.55;border-radius:4px;opacity:0;transition:opacity .1s;white-space:nowrap;z-index:5}
+.tip b{display:block;margin-bottom:2px}
+.tip .sw{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.small-mult{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.small-mult .card{padding:10px 12px}
+.small-mult h4{font-size:13px;margin:0}
+.small-mult p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.55}
+.regime{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.regime .card h4 span{font-size:11px;color:var(--accent);font-weight:600;margin-left:6px}
+.explorer{border:1px solid var(--accent);background:#fbfefe;padding:18px 22px;margin:16px 0}
+.sliders{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:8px 0 6px}
+.sliders label{font-size:12.5px;display:block}
+.sliders output{font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
+.sliders input{width:100%;accent-color:var(--accent)}
+.readout{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.readout div{background:#fff;border:1px solid var(--line);padding:8px 12px}
+.readout small{display:block;color:var(--muted);font-size:11px}
+.readout strong{font-size:17px;font-variant-numeric:tabular-nums}
+.regime-label{margin-top:10px;font-size:14px;padding:10px 14px;background:var(--soft)}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.presets button{font:inherit;font-size:12px;border:1px solid #cddfdd;background:#fff;color:#225e5c;padding:4px 10px;cursor:pointer}
+.presets button:hover{background:var(--soft)}
+details{border:1px solid var(--line);padding:10px 16px;margin:8px 0}
+details summary{cursor:pointer;font-weight:650;font-size:13.5px}
+details[open] summary{margin-bottom:6px;color:var(--accent)}
+details p{font-size:13px}
+.gloss td:first-child{font-weight:700;white-space:nowrap;color:var(--accent)}
+.foot{margin-top:40px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media(max-width:760px){main{margin:0;padding:30px 20px}.grid2,.regime,.sliders,.readout{grid-template-columns:1fr 1fr}.small-mult{grid-template-columns:1fr 1fr}nav.toc ol{columns:1}}
+@media print{body{background:#fff}main{margin:0;padding:0;box-shadow:none;max-width:none}details{break-inside:avoid}details:not([open]) > *:not(summary){display:block}.explorer{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ---- multi-tab shell ---- */
+.tabbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:0;margin:0 -64px 28px;padding:0 64px;overflow-x:auto}
+.tabbar button{font:inherit;font-size:13px;background:none;border:0;border-bottom:3px solid transparent;padding:13px 16px 10px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabbar button b{display:block;font-size:10px;letter-spacing:.12em;color:#90a7ab;font-weight:700}
+.tabbar button:hover{color:var(--ink)}
+.tabbar button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:700}
+.tabbar button[aria-selected="true"] b{color:var(--accent)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.tab-hero{margin:4px 0 22px}
+.tab-hero h1{font-size:30px}
+.global-note{margin-bottom:6px}
+.pager{display:flex;justify-content:space-between;margin-top:40px;padding-top:16px;border-top:1px solid var(--line)}
+.pager button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;padding:8px 14px;cursor:pointer;color:var(--ink)}
+.pager button:hover{border-color:var(--accent);color:var(--accent)}
+.pager button[hidden]{visibility:hidden;display:block}
+/* ---- extra components ---- */
+.calc{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0}
+.calc label{font-size:12px;color:var(--muted);display:block}
+.calc input{display:block;width:100%;margin-top:3px;font:inherit;font-size:15px;font-variant-numeric:tabular-nums;padding:6px 8px;border:1px solid var(--line);color:var(--ink)}
+.calc input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.legend i.blk{width:10px;height:10px;border:0;border-radius:2px}
+.taccount{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);margin:12px 0}
+.taccount>div{padding:12px 18px}.taccount>div:first-child{border-right:1px solid var(--ink)}
+.taccount h4{margin:0 0 6px;font-size:13px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.taccount ul{font-size:13px;margin:0}
+table.matrix td:first-child{font-weight:700;color:var(--accent);white-space:nowrap}
+@media(max-width:760px){.tabbar{margin:0 -20px 20px;padding:0 20px}.calc{grid-template-columns:1fr 1fr}}
+@media print{.tabbar,.pager{display:none}.tab-panel{display:block!important;break-before:page}.tab-panel:first-of-type{break-before:auto}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">STUDY GUIDE · TABS 01–05 · MACRO VIEWS</div>
+<h1>Rates Monitor <span>— 개념 학습 자료</span></h1>
+<p class="subtitle">Yield Curve · Yield Decomposition · Treasury Auction · Supply &amp; Fed Balance Sheet · Monetary Policy &amp; Money Market</p>
+</header>
+<p class="caution global-note">차트·예시의 수치는 <strong>개념 설명을 위한 가상 예시</strong>입니다(역사적 사례로 명시한 것 제외). 대시보드를 만든 뒤 실제 데이터로 같은 계산을 다시 해보세요. 정책 설정·이력은 2025년 말 기준으로 정리했으므로, 이후 변화는 FOMC 자료와 데이터로 확인하세요.</p>
+<nav class="tabbar" role="tablist"><button role="tab" data-tab="1" data-label="TAB 01 Yield Curve" aria-selected="false"><b>TAB 01</b>Yield Curve</button><button role="tab" data-tab="2" data-label="TAB 02 Decomposition" aria-selected="false"><b>TAB 02</b>Decomposition</button><button role="tab" data-tab="3" data-label="TAB 03 Auction" aria-selected="false"><b>TAB 03</b>Auction</button><button role="tab" data-tab="4" data-label="TAB 04 Supply & Fed BS" aria-selected="false"><b>TAB 04</b>Supply & Fed BS</button><button role="tab" data-tab="5" data-label="TAB 05 Policy & Money Mkt" aria-selected="false"><b>TAB 05</b>Policy & Money Mkt</button><button role="tab" data-tab="map" data-label="SUMMARY 연결 지도" aria-selected="false"><b>SUMMARY</b>연결 지도</button></nav>
+<section class="tab-panel" data-tab="1" id="tab1">
+<div class="tab-hero"><div class="eyebrow">TAB 01</div><h1>Yield Curve Monitor <span>— 시장 모니터링</span></h1>
+<p class="subtitle">국채금리 · 수익률곡선 · 커브 스프레드 · Steepening/Flattening · 과거 백분위</p></div>
+
+
+<nav class="toc"><strong>목차</strong>
+<ol>
+<li><a href="#t1-1">기초: 채권가격·금리·bp·곡선의 종류</a></li>
+<li><a href="#t1-2">만기별 국채금리(3M~30Y)가 말해주는 것</a></li>
+<li><a href="#t1-3">수익률곡선의 형태와 이론</a></li>
+<li><a href="#t1-4">곡선 비교: 현재 vs 1주·1개월·1년 전</a></li>
+<li><a href="#t1-5">만기별 금리 변화(bp)</a></li>
+<li><a href="#t1-6">커브 스프레드: 2s10s·5s30s·3m10y</a></li>
+<li><a href="#t1-7">Butterfly: 2s5s10s</a></li>
+<li><a href="#t1-8">Steepening / Flattening 4가지 국면</a></li>
+<li><a href="#t1-9">과거 백분위(Percentile)</a></li>
+<li><a href="#t1-10">대시보드 구현 시 체크포인트</a></li>
+<li><a href="#t1-11">셀프 체크 퀴즈</a></li>
+<li><a href="#t1-12">용어집</a></li>
+</ol></nav>
+
+
+<!-- ============ 1 ============ -->
+<h2 id="t1-1"><b>01</b> 기초: 채권가격·금리·bp·곡선의 종류</h2>
+<h3>금리(수익률)란?</h3>
+<p>국채의 <strong>수익률(yield)</strong>은 지금 가격에 채권을 사서 만기까지 보유할 때 얻는 연환산 수익률(YTM, 만기수익률)입니다. 쿠폰과 원금은 고정되어 있으므로, <strong>가격이 오르면 수익률은 내리고, 가격이 내리면 수익률은 오릅니다.</strong></p>
+<div class="key"><strong>핵심</strong>　채권가격 ↑ ⇔ 금리 ↓ (강세, <em>bull</em>) / 채권가격 ↓ ⇔ 금리 ↑ (약세, <em>bear</em>). Bull·Bear는 <u>채권가격 기준</u>입니다. 금리가 내려가는 게 bull입니다.</div>
+
+<h3>bp(basis point)</h3>
+<p>1bp = 0.01%p. 금리 4.25% → 4.32%면 “+7bp”입니다. 금리 변화와 스프레드는 거의 항상 bp로 표시합니다.</p>
+
+<h3>금리 변화가 가격에 미치는 영향 — Duration</h3>
+<div class="formula">가격 변화율 ≈ − Modified Duration × Δ금리
+예) 10Y 국채 Duration ≈ 8.5 → 금리 +10bp(0.10%) ⇒ 가격 ≈ −0.85%
+    30Y 국채 Duration ≈ 17  → 금리 +10bp            ⇒ 가격 ≈ −1.7%</div>
+<p>같은 bp 변화라도 장기물일수록 가격이 크게 움직입니다. 그래서 “2Y가 10bp 오른 것”과 “30Y가 10bp 오른 것”은 손익 측면에서 무게가 다릅니다. 이 개념은 Tab 6·7의 DV01로 이어집니다.</p>
+
+<h3>미국 국채의 종류</h3>
+<table>
+<thead><tr><th>구분</th><th>만기</th><th>이자</th><th>Tab 1 대상</th></tr></thead>
+<tbody>
+<tr><td>T-Bill</td><td>4주~52주</td><td>할인 발행(쿠폰 없음)</td><td>3M</td></tr>
+<tr><td>T-Note</td><td>2·3·5·7·10년</td><td>반기 쿠폰</td><td>2Y · 5Y · 10Y</td></tr>
+<tr><td>T-Bond</td><td>20·30년</td><td>반기 쿠폰</td><td>20Y · 30Y</td></tr>
+</tbody></table>
+<p><strong>On-the-run</strong>은 가장 최근 발행된 지표물(유동성 최고), <strong>off-the-run</strong>은 그 이전 발행물입니다. 대시보드에서 쓰는 공개 데이터(미 재무부 Daily Par Yield Curve, FRED <code>DGS10</code> 등)는 정확히 “10년 남은 가상의 채권” 금리를 보간해 만든 <strong>CMT(Constant Maturity Treasury)</strong>라는 점을 기억해 두세요.</p>
+
+<h3>Tab 1의 곡선은 어떤 수익률인가? — Par · Spot · Forward</h3>
+<p>Tab 1의 각 점은 <strong>Par Yield</strong>입니다. “만기가 정확히 N년이고, <u>가격이 액면(100)이 되도록 쿠폰이 정해진 가상의 국채</u>”의 YTM이므로 <strong>Par Yield = 그 채권의 YTM = 쿠폰율</strong>입니다. 반기 복리 채권등가수익률(bond-equivalent yield) 기준이고, 3M Bill도 할인율이 아니라 채권등가수익률로 환산된 값이라 쿠폰채와 바로 비교할 수 있습니다.</p>
+<table>
+<thead><tr><th>곡선</th><th>정의</th><th>주 용도</th><th>Rates Monitor</th></tr></thead>
+<tbody>
+<tr><td>Par 곡선</td><td>액면가 쿠폰채의 YTM</td><td>시장 모니터링, 커브 스프레드</td><td>Tab 1 (재무부 CMT, FRED <code>DGS*</code>)</td></tr>
+<tr><td>Spot (Zero) 곡선</td><td>무쿠폰채 수익률 = 각 시점 현금흐름의 할인율</td><td>채권 가격 산정, 현금흐름 할인, KRD</td><td>Tab 6·7 (예: Fed GSW zero curve)</td></tr>
+<tr><td>Forward 곡선</td><td>미래 특정 기간에 대해 지금 고정할 수 있는 내재 금리</td><td>정책 기대, Carry·Roll-down</td><td>Tab 5·6·7</td></tr>
+</tbody></table>
+<h3>예시 — Par에서 Spot·Forward 구하기 (Bootstrapping)</h3>
+<p class="chart-sub">계산을 단순하게 하려고 연 1회 이자, 연 복리로 가정합니다.</p>
+<div class="formula">1Y Par = 4.00%  → 1Y Spot s₁ = 4.00%         (1년 채권은 현금흐름이 1번뿐)
+2Y Par = 4.50%  → 쿠폰 4.5, 가격 100인 2년 채권
+   100 = 4.5 / 1.04 + 104.5 / (1 + s₂)²
+   (1 + s₂)² = 104.5 / (100 − 4.3269) = 1.09226  → 2Y Spot s₂ ≈ 4.51%
+1년 후 1년 Forward f₁,₂ = (1 + s₂)² / (1 + s₁) − 1 = 1.09226 / 1.04 − 1 ≈ 5.03%
+
+결과: Forward 5.03%  &gt;  Spot 4.51%  &gt;  Par 4.50%</div>
+<div class="key"><strong>규칙</strong>　곡선이 <strong>우상향</strong>이면 Forward &gt; Spot &gt; Par, <strong>역전</strong>이면 Forward &lt; Spot &lt; Par 순서가 됩니다. Par 곡선은 중간 쿠폰이 낮은 할인율로 할인되기 때문에 Spot보다 덜 휘어집니다. Par와 Spot의 차이는 수 bp로 작아서 Tab 1의 스프레드·bp 변화·백분위 분석에는 Par를 그대로 쓰면 충분합니다. 하지만 Tab 6·7에서 포지션을 평가하고 Carry·Roll-down과 KRD를 계산할 때는 Spot·Forward 곡선이 필요합니다.</div>
+<div class="caution"><strong>CMT ≠ 실제 종목의 YTM</strong>　CMT는 최근 발행 국채(on-the-run) 호가를 바탕으로 곡선을 맞춰 보간한 <u>가상 채권</u>의 수익률입니다. 시장에서 실제로 거래되는 10Y 지표물의 YTM과 비슷하지만 정확히 같지는 않습니다.</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="t1-2"><b>02</b> 만기별 국채금리가 말해주는 것</h2>
+<p>각 만기 금리는 “그 기간 동안의 <strong>기대 단기금리 평균</strong> + <strong>기간 프리미엄</strong>”으로 생각할 수 있습니다(Tab 2에서 정식으로 분해). 만기가 짧을수록 Fed 정책에, 길수록 성장·인플레이션·수급·불확실성에 민감합니다.</p>
+<table>
+<thead><tr><th>만기</th><th>주로 반영하는 것</th><th>시장에서 부르는 이름</th></tr></thead>
+<tbody>
+<tr><td>3M</td><td>현재 정책금리(Fed Funds) 및 다음 1~2회 FOMC 기대. 정책금리와 거의 붙어 움직임</td><td>Front end / Bills</td></tr>
+<tr><td>2Y</td><td>향후 2년간 Fed 정책 경로 기대. <strong>통화정책에 가장 민감한 쿠폰 국채</strong></td><td>Front end</td></tr>
+<tr><td>5Y</td><td>정책 경로의 중기 부분 + 경기 사이클. 커브의 “허리”</td><td>Belly</td></tr>
+<tr><td>10Y</td><td>장기 성장·인플레이션 기대 + 기간 프리미엄. 모기지·회사채 가격의 기준</td><td>Benchmark</td></tr>
+<tr><td>20Y</td><td>장기 구간. 2020년 재발행 이후 수요가 상대적으로 약해 30Y보다 금리가 높은 “kink”가 나타나기도 함</td><td>Long end</td></tr>
+<tr><td>30Y</td><td>초장기 인플레이션·재정 우려·기간 프리미엄. 연기금·보험사 수요(ALM)</td><td>Long bond</td></tr>
+</tbody></table>
+<div class="key"><strong>직관</strong>　“Fed가 금리를 올린다” 뉴스엔 앞쪽(3M·2Y)이 먼저 반응하고, “재정적자·국채 공급 증가” 뉴스엔 뒤쪽(10Y·30Y)이 더 크게 반응하는 경향이 있습니다.</div>
+
+<!-- ============ 3 ============ -->
+<h2 id="t1-3"><b>03</b> 수익률곡선의 형태와 이론</h2>
+<p><strong>수익률곡선(Yield Curve)</strong>은 같은 발행자(미 재무부)의 국채 금리를 만기 순서대로 이은 선입니다. 가로축은 만기, 세로축은 금리입니다.</p>
+<div class="small-mult" id="shapes"></div>
+<p class="chart-sub">가로축의 만기는 등간격으로 표시(실제 기간 비례 아님). 점 위에 마우스를 올리면 값이 표시됩니다.</p>
+
+<h3>곡선 모양을 설명하는 3가지 이론</h3>
+<div class="grid2">
+<div class="card"><h4>① 기대가설 (Expectations Hypothesis)</h4><p>장기금리 = 미래 단기금리 기대의 평균. 곡선이 우상향하면 시장이 금리 상승을, 역전되면 금리 인하를 예상한다는 뜻.</p></div>
+<div class="card"><h4>② 유동성·기간 프리미엄 이론</h4><p>장기채는 위험(금리 변동, 인플레이션)이 크므로 투자자가 추가 보상(term premium)을 요구 → 기대가 평평해도 곡선은 보통 우상향.</p></div>
+<div class="card"><h4>③ 시장분할 / 선호서식지 이론</h4><p>은행은 단기, 연기금은 초장기처럼 투자자마다 선호 만기가 있어 구간별 수급이 금리를 결정. 경매·공급(Tab 3·4) 분석의 근거.</p></div>
+<div class="card"><h4>실무적 결론</h4><p>곡선 = <strong>정책 기대</strong> + <strong>기간 프리미엄</strong> + <strong>구간별 수급</strong>. Tab 1은 결과(모양)를 보여주고, Tab 2~5는 원인을 분해합니다.</p></div>
+</div>
+
+<h3>곡선 움직임의 3요소: Level · Slope · Curvature</h3>
+<p>금리곡선의 일간 변동을 주성분분석(PCA)하면 대체로 세 가지 요인이 대부분을 설명합니다.</p>
+<table>
+<thead><tr><th>요인</th><th>의미</th><th>Tab 1 지표</th></tr></thead>
+<tbody>
+<tr><td>Level (수준)</td><td>전 만기가 같은 방향으로 움직임 (평행이동). 변동의 가장 큰 부분</td><td>각 만기 금리, 10Y</td></tr>
+<tr><td>Slope (기울기)</td><td>단기와 장기가 다르게 움직임 → 가팔라지거나 평평해짐</td><td>2s10s · 5s30s · 3m10y</td></tr>
+<tr><td>Curvature (곡률)</td><td>중기물이 양 끝 대비 다르게 움직임 → 허리가 휘어짐</td><td>2s5s10s Butterfly</td></tr>
+</tbody></table>
+
+<!-- ============ 4 ============ -->
+<h2 id="t1-4"><b>04</b> 곡선 비교: 현재 vs 1주·1개월·1년 전</h2>
+<p>여러 시점의 곡선을 겹쳐 그리면 “무엇이 움직였는지”가 한눈에 보입니다. 아래는 현재·1개월 전·1년 전 비교 예시입니다(대시보드에서는 1주 전도 함께 표시).</p>
+<p class="chart-title">수익률곡선 비교 (가상 예시, %)</p>
+<div class="legend" id="cmp-legend"></div>
+<div class="chart" id="cmp"></div>
+<h3>읽는 순서</h3>
+<ol>
+<li><strong>Level</strong>: 곡선 전체가 위/아래로 이동했는가? (예시: 1년 전 대비 앞쪽이 크게 하락)</li>
+<li><strong>Slope</strong>: 앞쪽과 뒤쪽 중 어디가 더 움직였는가? (예시: 1년 전엔 3M &gt; 10Y로 역전 → 현재는 우상향으로 정상화 = <em>Bull steepening</em>)</li>
+<li><strong>Curvature</strong>: 5Y가 양옆 대비 튀어나오거나 들어갔는가?</li>
+<li><strong>원인 연결</strong>: 그 사이 FOMC·CPI·경매 등 어떤 이벤트가 있었는가? (Market Event Calendar)</li>
+</ol>
+<div class="key"><strong>비교 기간의 의미</strong>　1주 = 최근 이벤트 반응(단기 노이즈 포함), 1개월 = 추세 전환 여부, 1년 = 금리 사이클(인상기/인하기) 위치 파악.</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="t1-5"><b>05</b> 만기별 금리 변화(bp)</h2>
+<div class="formula">일간 변화(bp)  = (오늘 금리 − 전 영업일 금리) × 100
+주간 변화(bp)  = (오늘 금리 − 1주 전 영업일 금리) × 100      ※ 금리 단위가 % 일 때</div>
+<p class="chart-title">만기별 일간 금리 변화 (가상 예시, bp)</p>
+<div class="legend"><span><i style="border-color:var(--up);border-top-width:8px;width:10px"></i>금리 상승 (채권 약세)</span><span><i style="border-color:var(--down);border-top-width:8px;width:10px"></i>금리 하락 (채권 강세)</span></div>
+<div class="chart" id="bp"></div>
+<p>위 예시는 2Y·5Y가 장기물보다 더 많이 올랐습니다 → 금리 상승(bear) + 기울기 축소(flattening) = <strong>Bear flattening</strong>의 하루입니다. 매파적 Fed 발언이나 강한 고용지표 직후 흔히 나타나는 패턴입니다.</p>
+<div class="caution"><strong>주의</strong>　금리 상승을 빨간색으로 칠할지 파란색으로 칠할지는 관점 문제입니다(채권 보유자에게 금리 상승 = 손실). 대시보드에서는 범례로 의미를 명시하고 부호(+/−)를 숫자와 함께 표시하세요.</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="t1-6"><b>06</b> 커브 스프레드: 2s10s · 5s30s · 3m10y</h2>
+<p>커브 스프레드는 <strong>장기 금리 − 단기 금리</strong>로, 곡선의 기울기를 숫자 하나로 요약합니다. 양수면 우상향(정상), 음수면 역전입니다.</p>
+<div class="formula">2s10s  = 10Y − 2Y
+5s30s  = 30Y − 5Y
+3m10y  = 10Y − 3M</div>
+<table>
+<thead><tr><th>스프레드</th><th>무엇을 보나</th><th>특징</th></tr></thead>
+<tbody>
+<tr><td>2s10s</td><td>가장 대표적인 기울기 지표. 정책 기대(2Y) vs 장기 성장·인플레이션(10Y)</td><td>시장 해설에서 “커브”라고 하면 보통 이것. 역전은 경기침체 신호로 자주 인용</td></tr>
+<tr><td>5s30s</td><td>장기 구간의 기울기. 기간 프리미엄·장기 수급·재정 우려</td><td>Fed 정책 영향이 상대적으로 적어 2s10s와 다르게 움직이기도 함 (예: 2s10s 역전 중에도 5s30s는 양수)</td></tr>
+<tr><td>3m10y</td><td>현재 정책금리 수준(3M) vs 장기금리</td><td>NY Fed 경기침체 확률 모형이 사용하는 스프레드. 학술적으로 침체 예측력이 가장 많이 검증됨</td></tr>
+</tbody></table>
+<h3>계산 예시 (§04의 “현재” 곡선 사용)</h3>
+<table>
+<thead><tr><th>만기</th><th class="num">3M</th><th class="num">2Y</th><th class="num">5Y</th><th class="num">10Y</th><th class="num">20Y</th><th class="num">30Y</th></tr></thead>
+<tbody><tr><td>금리(%)</td><td class="num">4.30</td><td class="num">3.90</td><td class="num">3.95</td><td class="num">4.25</td><td class="num">4.82</td><td class="num">4.80</td></tr></tbody></table>
+<div class="formula">2s10s = 4.25 − 3.90 = +0.35%p = +35bp   → 우상향
+5s30s = 4.80 − 3.95 = +0.85%p = +85bp   → 장기 구간이 가파름
+3m10y = 4.25 − 4.30 = −0.05%p = −5bp    → 소폭 역전 (정책금리가 아직 높음)</div>
+<div class="key"><strong>역전(Inversion)의 해석</strong>　단기금리 &gt; 장기금리 = 시장이 “앞으로 Fed가 금리를 내릴 것(경기 둔화)”을 예상. 단, 역전 자체보다 <strong>역전 해소 과정(재가팔라짐, 특히 bull steepening)</strong>이 실제 침체 직전에 나타난 경우가 많다는 점도 함께 알아두세요. 2022년 7월부터 약 2년간 이어진 2s10s 역전은 침체 없이 해소되어, 신호의 한계를 보여준 사례로 자주 언급됩니다.</div>
+
+<!-- ============ 7 ============ -->
+<h2 id="t1-7"><b>07</b> Butterfly: 2s5s10s</h2>
+<p>Butterfly는 <strong>중간 만기(body, 5Y)가 양 날개(wings, 2Y·10Y) 대비 얼마나 높거나 낮은지</strong>를 측정합니다. 곡선의 “휘어짐(curvature)”을 나타냅니다.</p>
+<div class="formula">2s5s10s Butterfly = 2 × 5Y − 2Y − 10Y
+                  = (5Y − 2Y) − (10Y − 5Y)        ← 2s5s 기울기 − 5s10s 기울기</div>
+<table>
+<thead><tr><th>값</th><th>의미</th><th>상대가치 해석</th></tr></thead>
+<tbody>
+<tr><td>양수 (+)</td><td>5Y 금리가 양 날개 평균보다 높음 → 허리가 위로 볼록</td><td>5Y가 상대적으로 <strong>싸다(cheap)</strong></td></tr>
+<tr><td>음수 (−)</td><td>5Y 금리가 양 날개 평균보다 낮음 → 허리가 아래로 오목</td><td>5Y가 상대적으로 <strong>비싸다(rich)</strong></td></tr>
+</tbody></table>
+<div class="formula">예시: 2 × 3.95 − 3.90 − 4.25 = 7.90 − 8.15 = −0.25%p = −25bp
+→ 5Y가 2Y·10Y 대비 25bp 낮다 → Belly rich</div>
+<div class="caution"><strong>부호 관행 주의</strong>　일부 리서치는 <code>2Y + 10Y − 2×5Y</code>로 반대 부호를 씁니다. 대시보드에 <strong>정의식을 반드시 명시</strong>하세요. 또한 위 식은 단순 50:50 가중이며, Tab 6에서는 DV01 중립·회귀 가중 Butterfly로 발전시킵니다.</div>
+<p><strong>왜 중요한가?</strong>　Fed 정책 기대가 바뀔 때 5Y가 가장 크게 움직이는 경우가 많아(“belly-led”), Butterfly는 정책 기대 변화와 중기물 수급을 포착합니다. 극단값은 평균회귀 매매(Tab 6 Z-score 전략)의 후보가 됩니다.</p>
+
+<!-- ============ 8 ============ -->
+<h2 id="t1-8"><b>08</b> Steepening / Flattening 4가지 국면</h2>
+<p>스프레드가 커지면 <strong>Steepening</strong>, 작아지면 <strong>Flattening</strong>입니다. 여기에 금리 전체 방향(Bull = 하락, Bear = 상승)을 붙여 4가지 국면으로 분류합니다.</p>
+<div class="legend"><span><i class="dash" style="border-color:var(--base)"></i>변경 전</span><span><i style="border-color:var(--s1)"></i>변경 후</span></div>
+<div class="regime" id="regimes"></div>
+
+<table>
+<thead><tr><th>국면</th><th>움직임</th><th>대표적 원인</th></tr></thead>
+<tbody>
+<tr><td>Bull Steepening</td><td>금리 하락, 단기물이 더 많이 하락</td><td>Fed 금리 인하 기대 확대, 경기 둔화 우려 (인하 사이클 초기)</td></tr>
+<tr><td>Bear Steepening</td><td>금리 상승, 장기물이 더 많이 상승</td><td>기간 프리미엄 상승, 국채 공급 증가·재정 우려, 장기 인플레이션 기대 상승</td></tr>
+<tr><td>Bear Flattening</td><td>금리 상승, 단기물이 더 많이 상승</td><td>Fed 금리 인상·매파적 발언 (예: 2022년 인상 사이클)</td></tr>
+<tr><td>Bull Flattening</td><td>금리 하락, 장기물이 더 많이 하락</td><td>안전자산 선호(flight to quality), 장기 성장·인플레이션 기대 하락, 장기물 수요 증가</td></tr>
+</tbody></table>
+<p>단기와 장기가 <strong>반대 방향</strong>으로 움직이면 “Steepening twist / Flattening twist”라고 부릅니다.</p>
+
+<h3>직접 움직여 보기</h3>
+<div class="explorer">
+<div class="chart-sub">슬라이더로 단기(3M·2Y)·중기(5Y)·장기(10Y·20Y·30Y) 금리 변화를 주면 스프레드와 국면이 자동 분류됩니다. 5Y는 단기·장기 변화의 평균에 “Belly 추가 변화”를 더해 움직입니다.</div>
+<div class="presets" id="t1-presets">
+<button data-p="-30,0,-10">Bull Steepening</button>
+<button data-p="5,0,30">Bear Steepening</button>
+<button data-p="35,0,10">Bear Flattening</button>
+<button data-p="-5,0,-30">Bull Flattening</button>
+<button data-p="-10,0,10">Twist</button>
+<button data-p="0,15,0">Belly cheapening</button>
+<button data-p="0,0,0">초기화</button>
+</div>
+<div class="sliders">
+<label>단기 변화 (3M·2Y): <output id="o-f">0</output>bp<input type="range" id="r-f" min="-50" max="50" step="1" value="0"></label>
+<label>Belly 추가 변화 (5Y): <output id="o-b">0</output>bp<input type="range" id="r-b" min="-30" max="30" step="1" value="0"></label>
+<label>장기 변화 (10Y·20Y·30Y): <output id="o-l">0</output>bp<input type="range" id="r-l" min="-50" max="50" step="1" value="0"></label>
+</div>
+<div class="legend"><span><i class="dash" style="border-color:var(--base)"></i>변경 전</span><span><i style="border-color:var(--s1)"></i>변경 후</span></div>
+<div class="chart" id="exp"></div>
+<div class="readout">
+<div><small>Δ 2Y</small><strong id="x-2y">0</strong></div>
+<div><small>Δ 10Y</small><strong id="x-10y">0</strong></div>
+<div><small>Δ 2s10s</small><strong id="x-s">0</strong></div>
+<div><small>Δ 2s5s10s Fly</small><strong id="x-f">0</strong></div>
+</div>
+<div class="regime-label" id="x-reg">—</div>
+</div>
+
+<h3>분류 규칙 (대시보드 구현용)</h3>
+<div class="formula">Δs  = Δ(10Y − 2Y)               # 기울기 변화
+ΔL  = (Δ2Y + Δ10Y) / 2           # 평균 수준 변화
+if |Δs| &lt; 임계값(예: 2bp):     "기울기 변화 미미"
+elif Δ2Y와 Δ10Y 부호가 반대:      "Steepening/Flattening Twist"
+else:
+    방향 = "Steepening" if Δs &gt; 0 else "Flattening"
+    성격 = "Bull" if ΔL &lt; 0 else "Bear"</div>
+
+<!-- ============ 9 ============ -->
+<h2 id="t1-9"><b>09</b> 과거 백분위 (Percentile)</h2>
+<p>“2s10s가 +35bp”라는 숫자만으로는 높은지 낮은지 알기 어렵습니다. <strong>과거 분포 속 위치</strong>를 보여주는 것이 백분위입니다.</p>
+<div class="formula">백분위(%) = (과거 관측치 중 현재 값 이하인 개수 ÷ 전체 관측치 수) × 100</div>
+<h3>예시</h3>
+<p>과거 10개 관측치(bp): <code>−80, −50, −20, 0, 10, 25, 40, 60, 90, 120</code>, 현재 2s10s = +35bp<br>
+→ 35 이하인 값: 6개 → 백분위 = 6/10 × 100 = <strong>60번째 백분위</strong> → 과거 대비 “중간보다 약간 가파른” 수준.</p>
+<div class="grid2">
+<div class="card"><h4>① 수준(level)의 백분위</h4><p>“현재 2s10s는 지난 10년 중 몇 % 위치인가?” → 곡선이 역사적으로 가파른지/평평한지 판단.</p></div>
+<div class="card"><h4>② 변화(change)의 백분위</h4><p>“이번 1개월 Steepening 폭(+40bp)은 과거 1개월 변화 중 몇 % 위치인가?” → 이번 움직임이 이례적인지 판단. Tab 1의 “Steepening/Flattening 및 과거 백분위”는 두 관점을 모두 볼 수 있게 설계하면 좋습니다.</p></div>
+</div>
+<h3>백분위 vs Z-score</h3>
+<table>
+<thead><tr><th></th><th>백분위</th><th>Z-score (Tab 6)</th></tr></thead>
+<tbody>
+<tr><td>계산</td><td>순위 기반</td><td>(현재 − 평균) ÷ 표준편차</td></tr>
+<tr><td>장점</td><td>분포 가정 불필요, 이상치에 강함, 직관적(0~100)</td><td>극단 정도를 연속적으로 표현, 모형·신호에 쓰기 좋음</td></tr>
+<tr><td>단점</td><td>극단 구간에서 차이 구분이 둔함(99 vs 99.9)</td><td>정규분포 가정, 이상치에 민감</td></tr>
+</tbody></table>
+<div class="caution"><strong>룩백 기간 선택이 결과를 바꿉니다.</strong>　1년·5년·10년·전체 기간 중 무엇을 쓰느냐에 따라 같은 값도 10%가 되기도, 80%가 되기도 합니다. 금리 레짐(제로금리기 vs 고금리기)이 다르면 과거 분포가 현재와 맞지 않을 수 있으므로, 대시보드에 <strong>룩백 기간을 선택 옵션</strong>으로 두고 기간을 함께 표시하세요.</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="t1-10"><b>10</b> 대시보드 구현 시 체크포인트</h2>
+<h3>공개 데이터 소스</h3>
+<table>
+<thead><tr><th>지표</th><th>FRED 시리즈 ID</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>3M · 2Y · 5Y</td><td><code>DGS3MO</code> · <code>DGS2</code> · <code>DGS5</code></td><td>원천: 미 재무부 Daily Par Yield Curve (Fed H.15)</td></tr>
+<tr><td>10Y · 20Y · 30Y</td><td><code>DGS10</code> · <code>DGS20</code> · <code>DGS30</code></td><td>일간, 단위 %</td></tr>
+<tr><td>2s10s · 3m10y</td><td><code>T10Y2Y</code> · <code>T10Y3M</code></td><td>직접 계산값과 일치하는지 검증용</td></tr>
+</tbody></table>
+<h3>실무 체크리스트</h3>
+<ul>
+<li><strong>휴장일·결측</strong>: FRED는 휴장일을 <code>.</code>(결측)으로 제공 → 변화 계산 시 “직전 유효 관측치” 사용.</li>
+<li><strong>“1주 전” 정의</strong>: 5영업일 전 vs 달력상 7일 전(없으면 그 이전 영업일) 중 하나로 통일하고 표기.</li>
+<li><strong>단위</strong>: 원자료 %, 화면 표시는 금리 %(소수 2~3자리), 변화·스프레드는 bp(소수 1자리).</li>
+<li><strong>스프레드 정의 명시</strong>: 특히 Butterfly 부호.</li>
+<li><strong>CMT의 한계</strong>: 보간 금리이므로 실제 매매 가능한 채권 금리와 다를 수 있음(Tab 6 이후 실제 종목 분석 시 유의).</li>
+<li><strong>이벤트 연결</strong>: 큰 변화가 있었던 날을 Market Event Calendar와 연동해 원인을 확인.</li>
+</ul>
+
+<!-- ============ 11 ============ -->
+<h2 id="t1-11"><b>11</b> 셀프 체크 퀴즈</h2>
+<p class="chart-sub">문제를 풀고 클릭해서 답을 확인하세요.</p>
+<details><summary>Q1. 2Y가 +12bp, 10Y가 +3bp 움직였다. 2s10s 변화와 국면은?</summary><p>2s10s 변화 = 3 − 12 = <strong>−9bp</strong>. 금리 상승(bear) + 기울기 축소 → <strong>Bear Flattening</strong>. 매파적 Fed 신호에 흔한 패턴.</p></details>
+<details><summary>Q2. 2Y가 −15bp, 10Y가 −5bp 움직였다면?</summary><p>2s10s 변화 = −5 − (−15) = <strong>+10bp</strong>. 금리 하락(bull) + 기울기 확대 → <strong>Bull Steepening</strong>. 금리 인하 기대 확대 시 전형적.</p></details>
+<details><summary>Q3. 2Y 4.00%, 5Y 3.80%, 10Y 4.10%일 때 2s5s10s Butterfly는? 5Y는 싼가 비싼가?</summary><p>2×3.80 − 4.00 − 4.10 = 7.60 − 8.10 = <strong>−50bp</strong>. 음수 → 5Y 금리가 날개 대비 낮음 → 5Y가 <strong>비싸다(rich)</strong>.</p></details>
+<details><summary>Q4. 2Y −5bp, 10Y +5bp. 어떻게 분류하나?</summary><p>2s10s +10bp로 가팔라졌지만 단기·장기가 반대 방향 → <strong>Steepening Twist</strong>. 평균 수준 변화는 0이라 bull/bear를 붙이기 어렵습니다.</p></details>
+<details><summary>Q5. 3M 금리가 Fed Funds 금리와 거의 같이 움직이는 이유는?</summary><p>3개월 동안의 기대 단기금리 평균 ≈ 현재 정책금리(+다음 FOMC 기대)이고, 만기가 짧아 기간 프리미엄이 거의 없기 때문입니다.</p></details>
+<details><summary>Q6. 현재 5s30s가 과거 10년 중 95번째 백분위라면 무슨 의미인가? 바로 Flattener를 해야 하나?</summary><p>지난 10년 중 95%의 날보다 장기 구간이 가파르다는 뜻(역사적으로 매우 steep). 하지만 <strong>바로 매매 신호는 아닙니다.</strong> 기간 프리미엄 상승·공급 증가 같은 구조적 원인이면 계속 가팔라질 수 있으므로, Tab 2(분해)·Tab 4(수급)로 원인을 확인하고 Tab 6의 Fair Value 모형과 비교해야 합니다.</p></details>
+<details><summary>Q7. 10Y 국채(Duration 8.5)와 2Y 국채(Duration 1.9)를 같은 금액 보유. 둘 다 금리가 +10bp 오르면 가격 변화는?</summary><p>10Y ≈ −0.85%, 2Y ≈ −0.19%. 같은 bp 변화라도 손익은 약 4.5배 차이 → 커브 트레이드에서 금액이 아니라 <strong>DV01을 맞춰야 하는 이유</strong>(Tab 6·7).</p></details>
+
+<!-- ============ 12 ============ -->
+<h2 id="t1-12"><b>12</b> 용어집</h2>
+<table class="gloss">
+<tbody>
+<tr><td>Yield / YTM</td><td>만기수익률. 현재 가격으로 사서 만기까지 보유 시 연환산 수익률</td></tr>
+<tr><td>bp</td><td>basis point, 0.01%p</td></tr>
+<tr><td>CMT</td><td>Constant Maturity Treasury. 정확한 만기에 맞춰 보간한 국채 금리</td></tr>
+<tr><td>On/Off-the-run</td><td>최근 발행 지표물 / 이전 발행물</td></tr>
+<tr><td>Front end · Belly · Long end</td><td>단기(~2Y) · 중기(5Y 전후) · 장기(10Y~30Y) 구간</td></tr>
+<tr><td>Bull / Bear</td><td>채권가격 상승(금리 하락) / 채권가격 하락(금리 상승)</td></tr>
+<tr><td>Steepening / Flattening</td><td>장단기 스프레드 확대 / 축소</td></tr>
+<tr><td>Inversion</td><td>단기금리 &gt; 장기금리 (스프레드 음수)</td></tr>
+<tr><td>Butterfly</td><td>중기물 vs 양쪽 만기의 상대 수준. 곡률 지표</td></tr>
+<tr><td>Rich / Cheap</td><td>상대적으로 금리가 낮음(비쌈) / 높음(쌈)</td></tr>
+<tr><td>Term Premium</td><td>장기채 보유 위험에 대한 추가 보상 (Tab 2)</td></tr>
+<tr><td>Duration / DV01</td><td>금리 민감도 / 금리 1bp 변화 시 가격 변화액 (Tab 6·7)</td></tr>
+<tr><td>Percentile</td><td>과거 분포에서 현재 값의 순위 위치(0~100)</td></tr>
+</tbody></table>
+
+
+
+</section>
+<!-- ===================================================== TAB 2 ===================================================== -->
+<section class="tab-panel" data-tab="2" id="tab2">
+<div class="tab-hero"><div class="eyebrow">TAB 02</div><h1>Yield Decomposition <span>— 금리 변동 원인 분석</span></h1>
+<p class="subtitle">명목금리 = 실질금리 + BEI · 명목금리 = 기대 단기금리 + Term Premium · 기여도 · Waterfall</p></div>
+
+<nav class="toc"><strong>목차</strong><ol>
+<li><a href="#t2-1">왜 금리를 분해하는가</a></li>
+<li><a href="#t2-2">명목금리·실질금리·인플레이션</a></li>
+<li><a href="#t2-3">TIPS와 실질금리</a></li>
+<li><a href="#t2-4">BEI(손익분기 인플레이션)</a></li>
+<li><a href="#t2-5">기대 단기금리 + Term Premium</a></li>
+<li><a href="#t2-6">ACM 모형</a></li>
+<li><a href="#t2-7">두 분해의 관계와 해석</a></li>
+<li><a href="#t2-8">기여도와 Waterfall Chart</a></li>
+<li><a href="#t2-9">구현 체크포인트</a></li>
+<li><a href="#t2-10">셀프 체크 퀴즈</a></li>
+</ol></nav>
+
+<h2 id="t2-1"><b>01</b> 왜 금리를 분해하는가</h2>
+<p>Tab 1에서 “10Y가 이번 주 +18bp 올랐다”는 것을 확인했다면, Tab 2는 <strong>“왜 올랐는가”</strong>를 묻습니다. 같은 +18bp라도 원인에 따라 의미와 대응이 완전히 다릅니다.</p>
+<table>
+<thead><tr><th>상승 원인</th><th>시장의 메시지</th><th>커브·전략 함의</th></tr></thead>
+<tbody>
+<tr><td>실질금리 ↑</td><td>성장 기대 개선 또는 Fed 긴축 강화</td><td>실물·정책 요인 → 단기물도 함께 움직이는 경우 많음</td></tr>
+<tr><td>BEI ↑</td><td>인플레이션 우려 확대</td><td>CPI·유가 이벤트와 연결, TIPS 상대 매력 변화</td></tr>
+<tr><td>기대 단기금리 ↑</td><td>Fed가 금리를 더 오래/더 높게 유지할 것이라는 기대</td><td>앞쪽 주도 → Bear flattening 경향</td></tr>
+<tr><td>Term Premium ↑</td><td>장기채 보유에 더 큰 보상 요구 (불확실성·공급·재정)</td><td>뒤쪽 주도 → Bear steepening 경향</td></tr>
+</tbody></table>
+<div class="key"><strong>핵심</strong>　Tab 2에는 <u>서로 다른 두 가지 분해</u>가 있습니다. ① 인플레이션 축: 실질금리 + BEI, ② 기대 축: 기대 단기금리 + Term Premium. 같은 금리를 다른 칼로 자른 것이므로 <strong>섞어서 더하면 안 됩니다.</strong></div>
+
+<h2 id="t2-2"><b>02</b> 명목금리·실질금리·인플레이션</h2>
+<p><strong>명목금리</strong>는 화폐 단위 수익률, <strong>실질금리</strong>는 물가 상승을 뺀 구매력 기준 수익률입니다. 둘의 관계는 피셔 방정식으로 표현합니다.</p>
+<div class="formula">(1 + 명목금리) = (1 + 실질금리) × (1 + 기대인플레이션)
+⇒ 명목금리 ≈ 실질금리 + 기대인플레이션          (금리가 낮을 때 근사)</div>
+<p>예) 명목 4.25%, 기대인플레이션 2.30% → 실질금리 ≈ 1.95%. 실질금리는 “경제가 실제로 요구하는 자금의 가격”이라 성장률·Fed 정책 스탠스와 밀접합니다.</p>
+
+<h2 id="t2-3"><b>03</b> TIPS와 실질금리</h2>
+<p><strong>TIPS(Treasury Inflation-Protected Securities)</strong>는 원금이 CPI(CPI-U, 계절조정 전)에 연동되는 물가연동 국채입니다. 그래서 TIPS 수익률은 시장이 직접 거래하는 <strong>실질금리</strong>입니다.</p>
+<div class="grid2">
+<div class="card"><h4>구조</h4><ul>
+<li>원금 × (CPI 지수 비율) = 조정 원금</li>
+<li>쿠폰 = 고정 실질 쿠폰율 × 조정 원금</li>
+<li>만기 시 조정 원금과 최초 액면 중 큰 금액 상환 (디플레이션 하한)</li>
+<li>5Y·10Y·30Y 신규 발행 (재발행 포함)</li></ul></div>
+<div class="card"><h4>대시보드 데이터</h4><ul>
+<li>FRED <code>DFII10</code>: 10Y TIPS 실질수익률 (CMT 기준)</li>
+<li><code>DFII5</code>, <code>DFII30</code> 등 다른 만기도 제공</li>
+<li>명목 <code>DGS10</code>과 같은 날짜 기준으로 맞춰서 사용</li></ul></div>
+</div>
+<div class="caution"><strong>주의</strong>　TIPS 원금 조정에는 약 2~3개월 전 CPI가 쓰이는 <strong>인덱스 래그</strong>가 있고, CPI의 계절성 때문에 단기 TIPS 수익률은 왜곡될 수 있습니다. 그래서 Tab 2는 10Y처럼 만기가 충분히 긴 구간을 중심으로 봅니다.</div>
+
+<h2 id="t2-4"><b>04</b> BEI (Breakeven Inflation)</h2>
+<div class="formula">BEI = 명목 국채 수익률 − 같은 만기 TIPS 실질수익률
+10Y BEI = DGS10 − DFII10   (FRED에서 T10YIE로 바로 제공)</div>
+<p>“손익분기”인 이유: 향후 10년 실제 인플레이션이 BEI보다 높으면 TIPS 투자가, 낮으면 명목 국채 투자가 유리합니다. 두 채권의 기대수익이 같아지는 인플레이션 수준입니다.</p>
+<h3>BEI ≠ 순수 기대인플레이션</h3>
+<div class="formula">BEI = 기대인플레이션 + 인플레이션 위험 프리미엄 − TIPS 유동성 프리미엄 (± 기타 기술적 요인)</div>
+<ul>
+<li><strong>인플레이션 위험 프리미엄</strong>: 인플레이션 불확실성이 크면 명목채 투자자가 추가 보상 요구 → BEI ↑</li>
+<li><strong>TIPS 유동성 프리미엄</strong>: TIPS는 명목 국채보다 거래가 적어 금리가 더 높게 형성 → BEI ↓. 위기 시 크게 확대됨</li>
+<li>2008년 금융위기 때 단기 BEI가 음수까지 떨어진 것은 “디플레이션 기대”만이 아니라 TIPS 유동성 급락의 영향이 컸습니다.</li>
+</ul>
+<h3>5y5y Forward BEI</h3>
+<p>Fed가 중시하는 <strong>장기 기대인플레이션의 고정(anchoring)</strong> 여부는 “5년 뒤부터 5년간”의 BEI로 봅니다. 단기 유가·CPI 충격의 영향을 덜 받습니다.</p>
+<div class="formula">5y5y = [ (1+BEI₁₀)¹⁰ / (1+BEI₅)⁵ ]^(1/5) − 1
+     ≈ 2 × BEI₁₀ − BEI₅                           (FRED T5YIFR)</div>
+
+<div class="explorer">
+<p class="chart-title" style="margin-top:0">계산기 — BEI와 5y5y Forward</p>
+<div class="calc">
+<label>10Y 명목금리 (%)<input type="number" step="0.01" id="c2-n" value="4.25"></label>
+<label>10Y TIPS 실질금리 (%)<input type="number" step="0.01" id="c2-r" value="1.95"></label>
+<label>5Y BEI (%)<input type="number" step="0.01" id="c2-b5" value="2.40"></label>
+</div>
+<div class="readout">
+<div><small>10Y BEI</small><strong id="c2-bei">—</strong></div>
+<div><small>5y5y (정확식)</small><strong id="c2-fw">—</strong></div>
+<div><small>5y5y (근사식)</small><strong id="c2-fwa">—</strong></div>
+<div><small>피셔 정확식 기대인플레</small><strong id="c2-fisher">—</strong></div>
+</div>
+<div class="regime-label" id="c2-msg">—</div>
+</div>
+
+<h2 id="t2-5"><b>05</b> 기대 단기금리 + Term Premium</h2>
+<p>두 번째 분해는 “Fed 정책 기대”와 “장기채 보유 보상”을 나눕니다.</p>
+<div class="formula">10Y 금리 = 향후 10년간 기대 단기금리의 평균 (Risk-neutral yield)  +  Term Premium</div>
+<div class="grid2">
+<div class="card"><h4>기대 단기금리 (Expectations)</h4><p>투자자가 10년 동안 단기채(예: 3M)를 계속 굴릴 때 예상되는 평균 금리. FOMC·고용·물가 지표로 Fed 경로 기대가 바뀌면 움직입니다.</p></div>
+<div class="card"><h4>Term Premium (기간 프리미엄)</h4><p>단기채를 굴리는 대신 10년물을 한 번에 사는 위험(금리·인플레이션 불확실성, 수급)에 대한 추가 보상. 국채 공급 증가·재정 우려·변동성 확대 시 상승, QE·안전자산 수요 시 하락. <strong>음수도 가능</strong>(2010년대 다수 기간).</p></div>
+</div>
+<div class="key"><strong>직관</strong>　“10Y 상승의 대부분이 Term Premium”이면 시장이 Fed보다 <u>장기 리스크·수급</u>을 걱정한다는 뜻 → Tab 3(경매)·Tab 4(공급)와 연결해서 확인합니다.</div>
+
+<h2 id="t2-6"><b>06</b> ACM 모형</h2>
+<p><strong>ACM</strong>(Adrian, Crump &amp; Moench, 2013)은 NY Fed 연구진이 만든 국채 기간구조 모형으로, NY Fed가 추정치를 공개합니다.</p>
+<ul>
+<li><strong>방법</strong>: 다양한 만기 국채 금리에서 주성분(PCA) 요인 5개를 뽑고, 요인의 동학과 초과수익률 회귀로 위험의 가격을 추정하는 <strong>무차익 affine 모형</strong></li>
+<li><strong>산출</strong>: 만기별 적합 금리(<code>ACMY10</code>), 위험중립 금리 = 기대 단기금리(<code>ACMRNY10</code>), Term Premium(<code>ACMTP10</code>)</li>
+<li><strong>관계</strong>: ACMY10 = ACMRNY10 + ACMTP10</li>
+<li><strong>대안 모형</strong>: Kim–Wright(Fed Board, FRED <code>THREEFYTP10</code>). 모형마다 수준이 다를 수 있으므로 <u>방향과 변화</u> 중심으로 해석</li>
+</ul>
+<div class="caution"><strong>모형 추정치의 한계</strong>　Term Premium은 관측되지 않는 값입니다. 모형 가정·추정 기간에 따라 달라지고, 새 데이터가 들어오면 과거 값이 수정될 수 있습니다. 또 ACM 적합 금리(ACMY10)는 실제 <code>DGS10</code>과 조금 달라서, 분해 합계와 실제 변화 사이에 <strong>잔차(모형 오차)</strong>가 생깁니다. 대시보드에서는 이를 별도 막대로 보여주세요.</div>
+
+<h2 id="t2-7"><b>07</b> 두 분해의 관계와 해석</h2>
+<p>두 분해는 서로 다른 축입니다. 실질금리 안에도 “기대 실질 단기금리 + 실질 Term Premium”이 있고, BEI 안에도 “기대인플레이션 + 인플레이션 위험 프리미엄”이 있습니다.</p>
+<table class="matrix">
+<thead><tr><th></th><th>기대 부분</th><th>프리미엄 부분</th></tr></thead>
+<tbody>
+<tr><td>실질 (Real)</td><td>기대 실질 단기금리</td><td>실질 Term Premium</td></tr>
+<tr><td>인플레이션 (BEI)</td><td>기대인플레이션</td><td>인플레이션 위험 프리미엄 (− 유동성 프리미엄)</td></tr>
+</tbody></table>
+<h3>해석 연습 — 10Y가 +20bp 올랐다면?</h3>
+<table>
+<thead><tr><th>관측된 조합</th><th>가능한 해석</th></tr></thead>
+<tbody>
+<tr><td>실질 +18 · BEI +2 / 기대 +15 · TP +5</td><td>강한 고용·매파적 Fed → 정책 경로 상향. 2Y도 크게 올랐을 가능성 (Bear flattening)</td></tr>
+<tr><td>실질 +5 · BEI +15 / 기대 +8 · TP +12</td><td>CPI 서프라이즈·유가 급등 → 인플레이션 우려와 불확실성 보상 동시 확대</td></tr>
+<tr><td>실질 +16 · BEI +4 / 기대 +3 · TP +17</td><td>Fed 경로는 그대로인데 장기 보상 요구 ↑ → 공급 확대(Refunding)·재정 우려·부진한 경매 (Bear steepening)</td></tr>
+</tbody></table>
+
+<h2 id="t2-8"><b>08</b> 기여도와 Waterfall Chart</h2>
+<p>분해가 덧셈 구조이므로 기여도는 각 요소의 변화량 그 자체입니다.</p>
+<div class="formula">Δ10Y = Δ실질금리 + ΔBEI                          (정확히 성립: BEI를 차이로 정의했기 때문)
+Δ10Y = Δ기대 단기금리 + ΔTerm Premium + Δ잔차     (ACM 적합 금리와 실제 금리 차이)
+기여율(%) = Δ요소 ÷ Δ10Y × 100                      ※ Δ10Y가 0에 가까우면 기여율은 의미 없음</div>
+<p><strong>Waterfall Chart</strong>는 시작점에서 각 요인의 +/− 변화를 차례로 쌓아 최종 변화에 도달하는 과정을 보여줍니다.</p>
+<div class="grid2">
+<div><p class="chart-title">① 인플레이션 축: 10Y 주간 변화 (가상, bp)</p><div class="chart" id="wf2a"></div></div>
+<div><p class="chart-title">② 기대 축: 10Y 주간 변화 (가상, bp)</p><div class="chart" id="wf2b"></div></div>
+</div>
+<div class="legend"><span><i class="blk" style="background:var(--up)"></i>상승 기여</span><span><i class="blk" style="background:var(--down)"></i>하락 기여</span><span><i class="blk" style="background:var(--ink)"></i>합계</span></div>
+<p>예시 해석: 10Y +18bp 중 실질금리가 +13bp로 주도했고, 기대 축에서는 Term Premium이 +11bp로 더 컸습니다. → “Fed 경로 변화보다 <u>실질 Term Premium 상승</u>이 핵심”이라는 결론. 원인 후보로 같은 주의 경매 결과(Tab 3)와 Refunding 발표(Tab 4)를 확인합니다.</p>
+
+<h2 id="t2-9"><b>09</b> 구현 체크포인트</h2>
+<table>
+<thead><tr><th>지표</th><th>소스 / ID</th><th>빈도·비고</th></tr></thead>
+<tbody>
+<tr><td>10Y 명목</td><td>FRED <code>DGS10</code></td><td>일간</td></tr>
+<tr><td>10Y 실질(TIPS)</td><td>FRED <code>DFII10</code></td><td>일간</td></tr>
+<tr><td>10Y·5Y BEI, 5y5y</td><td>FRED <code>T10YIE</code> · <code>T5YIE</code> · <code>T5YIFR</code></td><td>일간. 직접 계산값과 검증</td></tr>
+<tr><td>ACM 기대금리·TP</td><td>NY Fed 웹사이트 (ACM Term Premia 파일)</td><td>일별 시계열 제공, 업데이트 주기는 실시간이 아님 → 최신일 표시 필수</td></tr>
+<tr><td>Kim–Wright TP</td><td>FRED <code>THREEFYTP10</code></td><td>교차 검증용</td></tr>
+</tbody></table>
+<ul>
+<li>두 분해를 <strong>별도 패널</strong>로 표시하고 각 패널 합계가 Δ10Y와 맞는지 검증 (잔차 표시)</li>
+<li>ACM 업데이트가 늦을 경우: 최신일까지는 인플레이션 축만 표시하고 “ACM 최신일: YYYY-MM-DD” 명시</li>
+<li>BEI는 “시장 기반 인플레이션 보상(compensation)”이라고 표기하는 것이 정확</li>
+</ul>
+
+<h2 id="t2-10"><b>10</b> 셀프 체크 퀴즈</h2>
+<details><summary>Q1. 10Y 명목 4.40%, 10Y TIPS 2.10%. BEI는? 이 값이 “시장이 예상하는 인플레이션 2.30%”라고 말해도 되나?</summary><p>BEI = 2.30%. 그러나 BEI에는 인플레이션 위험 프리미엄(+)과 TIPS 유동성 프리미엄(−)이 섞여 있으므로 “인플레이션 보상(compensation)”이라고 표현하는 것이 정확합니다.</p></details>
+<details><summary>Q2. 5Y BEI 2.50%, 10Y BEI 2.35%. 5y5y(근사)는? 해석은?</summary><p>2×2.35 − 2.50 = <strong>2.20%</strong>. 단기 인플레이션 기대(2.50%)는 높지만 장기 기대는 낮음 → 최근 물가 충격이 일시적이라고 보고, 장기 기대는 비교적 안정적이라는 뜻.</p></details>
+<details><summary>Q3. 10Y +15bp 중 ACM 기대 단기금리 −2bp, Term Premium +16bp. 어떤 이벤트를 의심해야 하나?</summary><p>Fed 경로 기대는 오히려 내려갔는데 장기 보상이 크게 상승 → 국채 공급 확대(Quarterly Refunding), 부진한 장기물 경매, 재정 우려, 변동성 확대 등. Tab 3·4와 Event Calendar 확인.</p></details>
+<details><summary>Q4. Term Premium이 음수라는 것은 무엇을 의미하나?</summary><p>투자자가 장기채를 보유하는 데 추가 보상을 요구하지 않고 오히려 “보험료”를 지불한다는 뜻. 장기채가 주식 하락 시 헤지 역할을 하거나(음의 주식-채권 상관), QE로 장기채가 시장에서 흡수될 때 나타났습니다.</p></details>
+<details><summary>Q5. 실질금리 Δ와 Term Premium Δ를 더해서 10Y 변화를 설명해도 되나?</summary><p>안 됩니다. 두 분해는 서로 다른 축이라 겹치는 부분이 있습니다(실질 Term Premium은 양쪽에 모두 포함). 각 분해 안에서만 합산하세요.</p></details>
+</section>
+
+<!-- ===================================================== TAB 3 ===================================================== -->
+<section class="tab-panel" data-tab="3" id="tab3">
+<div class="tab-hero"><div class="eyebrow">TAB 03</div><h1>Treasury Auction Monitor <span>— 경매 분석</span></h1>
+<p class="subtitle">경매 구조 · High Yield · Bid-to-Cover · 투자자별 낙찰 비중 · Tail · New Issue/Reopening</p></div>
+
+<nav class="toc"><strong>목차</strong><ol>
+<li><a href="#t3-1">국채 경매의 기본 구조</a></li>
+<li><a href="#t3-2">경매 일정과 사이클</a></li>
+<li><a href="#t3-3">단일가격 경매 시뮬레이터</a></li>
+<li><a href="#t3-4">핵심 결과 지표</a></li>
+<li><a href="#t3-5">투자자별 낙찰 비중</a></li>
+<li><a href="#t3-6">Tail과 WI 금리</a></li>
+<li><a href="#t3-7">추세·과거 평균 비교와 입찰 전후 금리</a></li>
+<li><a href="#t3-8">New Issue vs Reopening</a></li>
+<li><a href="#t3-9">실전 사례: 2026년 10월 10Y 경매 읽기</a></li>
+<li><a href="#t3-10">구현 체크포인트</a></li>
+<li><a href="#t3-11">셀프 체크 퀴즈</a></li>
+</ol></nav>
+
+<h2 id="t3-1"><b>01</b> 국채 경매의 기본 구조</h2>
+<p>미 재무부는 모든 시장성 국채를 <strong>경매</strong>로 발행합니다. 경매 결과는 “지금 시장이 이 만기의 국채를 얼마나 원하는가”를 보여주는 <strong>수요 체온계</strong>입니다.</p>
+<div class="grid2">
+<div class="card"><h4>단일가격(Uniform-price, Dutch) 경매</h4><p>입찰자는 원하는 금리와 금액을 제출합니다. 재무부는 낮은 금리(높은 가격)부터 차례로 채워서 발행액에 도달하는 금리(<strong>High Yield, stop-out</strong>)를 정하고, <u>모든 낙찰자가 같은 High Yield</u>로 받습니다.</p></div>
+<div class="card"><h4>경쟁 vs 비경쟁 입찰</h4><ul>
+<li><strong>경쟁 입찰</strong>: 금리를 지정. 한 입찰자는 발행액의 최대 35%까지 낙찰 가능</li>
+<li><strong>비경쟁 입찰</strong>: 금리 지정 없이 결과 금리를 수용 (개인 등, 1인당 상한 있음). 전액 우선 배정</li></ul></div>
+</div>
+<div class="formula">공고(Announcement) → 경매(Auction, 쿠폰채는 보통 ET 13:00 마감) → 결제(Settlement, 발행일)</div>
+
+<h2 id="t3-2"><b>02</b> 경매 일정과 사이클</h2>
+<table>
+<thead><tr><th>만기</th><th>주기</th><th>특징</th></tr></thead>
+<tbody>
+<tr><td>2Y · 5Y · 7Y</td><td>매월 (보통 월말 같은 주에 연속 실시)</td><td>매월 신규 발행. 정책 기대에 민감</td></tr>
+<tr><td>3Y · 10Y · 30Y</td><td>매월 (보통 월 중순 같은 주)</td><td>10Y·30Y는 분기 Refunding 월(2·5·8·11월) 신규 발행, 나머지 두 달은 Reopening</td></tr>
+<tr><td>20Y</td><td>매월</td><td>분기마다 신규 발행, 나머지 달은 Reopening</td></tr>
+<tr><td>TIPS · FRN</td><td>별도 일정</td><td>Tab 3 대상 외 (참고)</td></tr>
+</tbody></table>
+<p class="chart-sub">정확한 일정은 재무부 경매 일정표(Tentative Auction Schedule)로 확인 → Market Event Calendar에 반영합니다.</p>
+
+<h2 id="t3-3"><b>03</b> 단일가격 경매 시뮬레이터</h2>
+<p>가상의 10Y 경매 입찰장부입니다. 발행액 슬라이더를 움직이면 High Yield, Bid-to-Cover, 투자자별 낙찰 비중이 어떻게 바뀌는지 확인하세요.</p>
+<div class="explorer">
+<div class="sliders" style="grid-template-columns:1fr"><label>발행액 (Offering): <output id="o-off">42</output> $bn<input type="range" id="r-off" min="15" max="78" step="1" value="42"></label></div>
+<div class="legend" id="auc-legend"></div>
+<div class="chart" id="auc"></div>
+<p class="chart-sub">가로축 = 누적 입찰금액($bn), 막대 높이 = 입찰 금리. 진한 부분은 낙찰, 연한 부분은 미낙찰. 금리가 낮은(=가격이 높은) 입찰부터 채워집니다.</p>
+<div class="readout">
+<div><small>High Yield (stop-out)</small><strong id="a-hy">—</strong></div>
+<div><small>Bid-to-Cover</small><strong id="a-btc">—</strong></div>
+<div><small>Allotted at High</small><strong id="a-ah">—</strong></div>
+<div><small>Indirect · Direct · Dealer</small><strong id="a-mix" style="font-size:14px">—</strong></div>
+</div>
+<div class="regime-label" id="a-msg">—</div>
+</div>
+<p><strong>Allotted at High</strong>: High Yield와 정확히 같은 금리로 입찰한 물량 중 실제로 배정된 비율. 마지막 금리 구간이 부분 배정되기 때문에 생깁니다.</p>
+
+<h2 id="t3-4"><b>04</b> 핵심 결과 지표</h2>
+<table>
+<thead><tr><th>지표</th><th>정의</th><th>강한 경매</th><th>약한 경매</th></tr></thead>
+<tbody>
+<tr><td>High Yield</td><td>낙찰 최고 금리 = 모든 낙찰자가 받는 금리</td><td>입찰 직전 시장금리(WI)보다 낮음</td><td>WI보다 높음</td></tr>
+<tr><td>Bid-to-Cover</td><td>총 입찰액 ÷ 낙찰액</td><td>과거 평균보다 높음</td><td>과거 평균보다 낮음</td></tr>
+<tr><td>Indirect 비중</td><td>해외 중앙은행·자산운용사 등 간접 입찰자 낙찰 비중</td><td>높음</td><td>낮음</td></tr>
+<tr><td>Primary Dealer 비중</td><td>딜러가 떠안은 비중 (잔여 물량 흡수)</td><td>낮음</td><td>높음</td></tr>
+<tr><td>Tail</td><td>High Yield − WI 금리 (ET 13:00 기준)</td><td>음수 (Stop-through)</td><td>양수 (Tail)</td></tr>
+</tbody></table>
+<div class="key"><strong>쿠폰 결정</strong>　신규 발행물의 쿠폰율은 High Yield를 1/8%(0.125%) 단위로 내림하여 정합니다(최소 0.125%). 그래서 발행 가격은 보통 액면(100)보다 약간 낮습니다. Reopening은 기존 쿠폰을 그대로 쓰므로 가격이 액면과 크게 다를 수 있습니다.</div>
+
+<h2 id="t3-5"><b>05</b> 투자자별 낙찰 비중</h2>
+<div class="grid2">
+<div class="card"><h4>Indirect Bidders</h4><p>Primary Dealer 등을 통해(또는 NY Fed를 통한 해외 공적기관) 간접 입찰. 해외 중앙은행·국부펀드, 대형 자산운용사·해외 투자자 포함. <strong>“실수요”</strong>의 대표 지표로 쓰입니다.</p></div>
+<div class="card"><h4>Direct Bidders</h4><p>재무부 시스템에 직접 자기 계정으로 입찰하는 비딜러 기관(연기금, 헤지펀드, 은행 등). 최근 수년간 비중이 커지는 추세.</p></div>
+<div class="card"><h4>Primary Dealers</h4><p>NY Fed의 국채 거래 상대방. 모든 경매에 <strong>발행액 대비 비례로 입찰할 의무</strong>가 있어 남은 물량을 흡수합니다. 딜러 비중 ↑ = 최종 수요자가 부족했다는 신호.</p></div>
+<div class="card"><h4>더 자세한 분류</h4><p>재무부는 경매 후 <strong>Investor Class Allotments</strong>(투자펀드, 해외·국제기관, 연기금, 은행 등)도 공개합니다. 해외 수요 추세 분석에 유용.</p></div>
+</div>
+<p class="chart-title">최근 12회 10Y 경매 낙찰 비중 (가상 예시, %)</p>
+<div class="legend" id="mix-legend"></div>
+<div class="chart" id="mix"></div>
+<p>예시에서 11번째 경매는 Dealer 비중이 크게 튀었습니다(Indirect 수요 부족). 이런 경매는 대개 Tail도 크고, 경매 직후 해당 만기와 장기 구간 금리가 오르는 경우가 많습니다.</p>
+
+<h2 id="t3-6"><b>06</b> Tail과 WI(When-Issued) 금리</h2>
+<p><strong>WI 금리</strong>는 경매 전 “발행될 예정인 국채”를 미리 거래하는 시장의 금리로, 시장이 예상한 경매 금리입니다.</p>
+<div class="formula">Tail(bp) = (High Yield − 13:00 WI 금리) × 100
+  > 0  → Tail (예상보다 높은 금리에 낙찰 = 수요 약함)
+  < 0  → Stop-through (예상보다 낮은 금리 = 수요 강함)
+예) High Yield 4.212%, WI 4.195% → Tail +1.7bp → 약한 경매</div>
+<div class="caution"><strong>데이터 제약</strong>　WI 금리는 Bloomberg 등 유료 데이터에 주로 있습니다(연구계획서: “자료 확보 시”). 대안으로 ① 경매일 CMT 금리 대비 High Yield 차이, ② 직전 6회 평균 대비 Bid-to-Cover·Dealer 비중 편차를 조합한 <strong>경매 강도 점수</strong>를 만들 수 있습니다. 단, CMT는 장 마감 기준이라 13:00 WI와 시점이 다른 근사치입니다.</div>
+
+<h2 id="t3-7"><b>07</b> 추세·과거 평균 비교와 입찰 전후 금리</h2>
+<h3>비교 방법</h3>
+<ul>
+<li>같은 만기 <strong>최근 6회·12회 평균</strong> 대비 편차 (Bid-to-Cover, Indirect·Dealer 비중, Tail)</li>
+<li>Z-score로 표준화: (이번 값 − 12회 평균) ÷ 12회 표준편차 → 만기 간 비교 가능</li>
+<li>발행 규모가 바뀌면(증액기) Bid-to-Cover가 구조적으로 낮아질 수 있음 → 규모와 함께 표시</li>
+</ul>
+<h3>Auction Concession (경매 전 금리 양보)</h3>
+<p>대량 공급을 앞두고 딜러·투자자가 미리 포지션을 줄이면서 경매 며칠 전부터 해당 만기 금리가 오르고(가격 하락), 경매 후 다시 내리는 패턴이 관찰됩니다.</p>
+<div class="formula">경매 전 변화 = 금리(T) − 금리(T−5영업일)      T = 경매일
+경매 후 변화 = 금리(T+2) − 금리(T)</div>
+<p>이 패턴은 Tab 6에서 “경매·공급 요인을 활용한 매매 신호 검증”의 출발점이 됩니다.</p>
+
+<h2 id="t3-8"><b>08</b> New Issue vs Reopening</h2>
+<table>
+<thead><tr><th></th><th>New Issue (신규 발행)</th><th>Reopening (재발행)</th></tr></thead>
+<tbody>
+<tr><td>CUSIP</td><td>새 종목</td><td>기존 종목에 물량 추가 (같은 CUSIP)</td></tr>
+<tr><td>쿠폰</td><td>경매 결과로 결정</td><td>기존 쿠폰 그대로</td></tr>
+<tr><td>만기</td><td>정확히 10년 등</td><td>잔존만기가 약간 짧음 (예: 9년 10개월)</td></tr>
+<tr><td>규모</td><td>상대적으로 큼</td><td>상대적으로 작은 경우 많음</td></tr>
+<tr><td>분석 시 유의</td><td colspan="2">수요 특성이 다를 수 있으므로 과거 평균 비교는 <strong>같은 유형끼리</strong> 하는 것이 좋습니다.</td></tr>
+</tbody></table>
+
+<h2 id="t3-9"><b>09</b> 실전 사례: 2026년 10월 10Y 경매 읽기</h2>
+<p class="chart-sub">출처: 메르 블로그 「국채 경매」(네이버 블로그 ranto28, 2026.10). 블로그에 인용된 재무부 경매 결과 공고 수치를 바탕으로 개념별로 다시 정리했습니다.</p>
+<p>2026년 10월 7일(ET), 한국시간 10월 8일 새벽 2시에 실시된 10Y 국채 경매입니다. 재무부의 <strong>경매 결과 공고문(Auction Results)</strong>을 항목별로 읽는 연습을 해 봅니다.</p>
+
+<h3>① 무엇을 팔았나 — Reopening</h3>
+<table>
+<thead><tr><th>공고 항목</th><th>값</th><th>읽는 법</th></tr></thead>
+<tbody>
+<tr><td>Term and Type of Security</td><td>9-Year 10-Month Note</td><td>8월에 신규 발행한 10Y를 같은 조건으로 추가 발행한 것(<strong>Reopening</strong>). 그사이 두 달이 지나 잔존만기가 9년 10개월로 표기됩니다.</td></tr>
+<tr><td>CUSIP</td><td>91282CRF0</td><td>채권의 고유번호. 8월 발행분과 같은 번호라서 시장에서는 <strong>같은 채권으로 합쳐서 거래</strong>됩니다.</td></tr>
+<tr><td>Interest Rate (쿠폰)</td><td>4-5/8% (4.625%)</td><td>8월 신규 발행 때 정해진 쿠폰을 그대로 씁니다. 액면 $1,000당 연 $46.25를 6개월마다 $23.125씩 지급합니다.</td></tr>
+<tr><td>Price</td><td>94.864261</td><td>쿠폰(4.625%)보다 낙찰금리(5.300%)가 높으므로 <strong>액면 이하(할인)로 발행</strong>됐습니다.</td></tr>
+</tbody></table>
+<div class="formula">가격 검증: 쿠폰 4.625%, 수익률 5.300%, 2026-10-15 결제, 2036-08-15 만기, 반기 이자
+→ 가격(경과이자 제외) ≈ 94.87   (공고 94.864와 일치. 결제일·일수 계산 관행 차이로 소수점 이하가 조금 다름)
+→ 8월에 4.625%로 산 투자자의 평가손 ≈ −5%   (금리 +67.5bp × Duration 약 7.8)</div>
+<div class="key"><strong>포인트</strong>　Reopening에서는 쿠폰이 이미 정해져 있으므로 <strong>시장금리 변화가 발행 가격에 그대로 나타납니다.</strong> §04의 쿠폰 결정 규칙(High Yield를 1/8% 단위로 내림)은 신규 발행에만 적용됩니다.</div>
+
+<h3>② 어떤 금리로 낙찰됐나 — High · Low · Allotted at High</h3>
+<table>
+<thead><tr><th>공고 항목</th><th>값</th><th>읽는 법</th></tr></thead>
+<tbody>
+<tr><td>High Yield</td><td>5.300%</td><td>낙찰된 입찰 중 가장 높은 금리. 단일가격 방식이라 <strong>낙찰자 전원이 5.300%</strong>를 적용받습니다(5.0%를 써냈어도 5.3%). 블로그는 2000년 이후 약 26년 만의 최고 수준이라고 언급합니다.</td></tr>
+<tr><td>Allotted at High</td><td>57.60%</td><td>정확히 5.300%를 써낸 입찰자는 신청 물량의 57.6%만 받았습니다. 5.300%보다 낮게 쓴 입찰은 전량 낙찰, 높게 쓴 입찰은 전량 탈락입니다(§03 시뮬레이터와 같은 구조).</td></tr>
+<tr><td>Low Yield</td><td>4.300%</td><td>낙찰된 경쟁입찰 물량의 <strong>5%가 이 금리 이하</strong>로 입찰했다는 뜻. 시장금리보다 1%p 낮게 쓴 것은 금리보다 <u>물량 확보</u>를 우선한 공격적 입찰입니다. 어차피 5.300%를 받으므로 손해는 없습니다.</td></tr>
+<tr><td>Median Yield</td><td>(공고에 함께 표시)</td><td>낙찰 경쟁입찰 물량의 50%가 이 금리 이하로 입찰. High Yield와의 거리가 가까울수록 입찰이 촘촘했다는 뜻입니다.</td></tr>
+</tbody></table>
+
+<h3>③ 수요의 양 — Bid-to-Cover는 Subtotal로</h3>
+<div class="formula">공고 표의 줄 구성:  경쟁입찰 + 비경쟁입찰 = Subtotal  →  + SOMA = Total
+Bid-to-Cover = Subtotal 신청액 ÷ Subtotal 낙찰액 = $108.07bn ÷ $39.00bn = 2.77배</div>
+<ul>
+<li><strong>SOMA</strong>(이번 회차 $0.926bn)는 Fed가 보유 중인 만기 국채를 새 국채로 바꾸는 물량(rollover)입니다. 경매 가격 경쟁에 참여하지 않으므로 <strong>Total이 아니라 Subtotal로 응찰배율을 계산</strong>합니다. (Tab 4의 SOMA 재투자와 같은 개념)</li>
+<li>블로그는 2.5배를 수요의 많고 적음을 가르는 기준으로 쓰고, 2.77배를 <strong>강한 수요</strong>로 해석합니다. 대시보드에서는 이런 고정 기준선과 함께 <u>10Y의 최근 6·12회 평균</u> 대비 편차를 같이 보여주면 더 객관적입니다.</li>
+</ul>
+
+<h3>④ 수요의 질 — 응찰자 유형별 낙찰 비중</h3>
+<table>
+<thead><tr><th>유형</th><th>이번 경매</th><th>평소</th><th>해석</th></tr></thead>
+<tbody>
+<tr><td>Indirect</td><td><strong>80% 이상</strong></td><td>최근 10회 평균 72.4%</td><td>해외 중앙은행·해외 기관·대형 운용사 수요가 강함 → <strong>해외 수요</strong>가 살아 있음</td></tr>
+<tr><td>Primary Dealer</td><td><strong>2.54%</strong> (신청 $52.88bn 중 낙찰 $0.98bn)</td><td>약 9%</td><td>딜러가 팔리지 않은 물량을 떠안은 게 거의 없음 → 최종 투자자가 물량을 다 가져감</td></tr>
+</tbody></table>
+<p class="chart-sub">비중의 분모 = 경쟁입찰 낙찰액. 딜러는 의무적으로 큰 금액을 입찰하지만(신청 $52.88bn), 다른 투자자가 더 낮은 금리를 써내면 거의 받지 못합니다. 딜러의 <strong>신청액이 아니라 낙찰 비중</strong>을 봐야 하는 이유입니다.</p>
+
+<h3>⑤ 종합 판단과 블로그의 결론</h3>
+<div class="grid2">
+<div class="card"><h4>지표 체크리스트</h4><ul>
+<li>Bid-to-Cover 2.77배 (2.5배 기준 상회) — <strong>강함</strong></li>
+<li>Indirect 80%+ (평균 72.4%) — <strong>강함</strong>, 해외 수요</li>
+<li>Dealer 2.54% (평소 약 9%) — <strong>강함</strong></li>
+<li>Low Yield 4.300% — 물량 확보형 공격적 입찰 존재</li></ul></div>
+<div class="card"><h4>블로그의 결론 (요약)</h4><p>세 지표 모두 강한 수요를 보여줬습니다. 5.3%라는 낙찰금리 자체는 부담스럽지만 미국채 수요가 살아 있다는 점이 시장을 어느 정도 안심시킬 것이라고 봅니다. 프랑스 재정 상황과 비교해 “그래도 미국이 낫다”는 인식, 그리고 5.3%라는 금리 자체의 매력이 수요를 끌어냈을 수 있다고 해석합니다.</p></div>
+</div>
+<div class="caution"><strong>대시보드 관점에서 더 볼 것</strong>
+<ul style="margin:6px 0 0">
+<li><strong>Tail</strong>: 블로그 분석에는 WI 금리 대비 Tail이 없습니다. 5.300%가 예상보다 낮은 금리였는지(Stop-through)를 알려면 13:00 WI 금리가 필요합니다(§06). 무료 데이터만 쓴다면 경매일과 전날의 CMT 10Y로 대략 비교합니다.</li>
+<li><strong>Reopening끼리 비교</strong>: 10회 평균(72.4%)에 신규 발행이 섞여 있다면 유형별 평균도 같이 봅니다(§08).</li>
+<li><strong>경매 후 금리</strong>: 강한 경매 이후 10Y·30Y 금리가 실제로 내려갔는지 Tab 1 데이터로 T+1·T+2 반응을 확인합니다(§07).</li>
+<li><strong>원인 연결</strong>: 5.3%라는 높은 금리 수준은 Tab 2(Term Premium)와 Tab 4(공급)로 원인을 나눠 봅니다.</li>
+</ul></div>
+
+<h2 id="t3-10"><b>10</b> 구현 체크포인트</h2>
+<ul>
+<li><strong>데이터</strong>: Treasury Fiscal Data API의 경매 결과 데이터(Auctions Query) 또는 TreasuryDirect 경매 결과 → High Yield, Bid-to-Cover, 입찰자 유형별 낙찰액, Reopening 여부, 발행액. (필드명은 API 문서로 확인)</li>
+<li><strong>비중 계산</strong>: 투자자별 비중 = 해당 유형 낙찰액 ÷ 경쟁 입찰 낙찰액 합계 (분모 정의를 통일·명시. Fed SOMA 인수분은 보통 제외)</li>
+<li><strong>만기별 분리</strong>: 2Y·5Y·7Y·10Y·20Y·30Y 각각 12회 추세</li>
+<li><strong>경매 시각 정렬</strong>: 입찰 전후 금리 변화는 Tab 1 일간 데이터로 계산</li>
+<li><strong>이벤트 연동</strong>: 경매일을 Market Event Calendar에 표시 → 클릭 시 Tab 3 해당 경매로 이동</li>
+</ul>
+
+<h2 id="t3-11"><b>11</b> 셀프 체크 퀴즈</h2>
+<details><summary>Q1. 발행액 $40bn, 총 입찰 $98bn. Bid-to-Cover는?</summary><p>98 ÷ 40 = <strong>2.45배</strong>. 해당 만기의 과거 평균과 비교해야 강약을 판단할 수 있습니다.</p></details>
+<details><summary>Q2. High Yield 4.312%, WI 4.330%. Tail은? 강한가 약한가?</summary><p>4.312 − 4.330 = −1.8bp → <strong>Stop-through</strong>. 시장 예상보다 낮은 금리(높은 가격)에 낙찰 = 강한 수요.</p></details>
+<details><summary>Q3. Primary Dealer 낙찰 비중이 평소 15%에서 이번에 28%로 급등했다. 의미는?</summary><p>최종 투자자(Indirect·Direct) 수요가 부족해 딜러가 잔여 물량을 떠안았다는 뜻 → 약한 경매. 딜러 재고 증가(Tab 4 Dealer Positions)로 이어지고, 단기적으로 해당 구간 금리 상승 압력.</p></details>
+<details><summary>Q4. 단일가격 경매에서 4.18%에 입찰해 낙찰된 투자자는 몇 % 금리를 받나? (High Yield 4.20%)</summary><p><strong>4.20%</strong>. 단일가격 경매이므로 모든 낙찰자가 High Yield를 받습니다. 더 낮은 금리로 입찰한 사람도 손해 보지 않으므로 공격적 입찰이 가능합니다.</p></details>
+<details><summary>Q5. 10Y Reopening 경매의 Bid-to-Cover를 지난 신규 발행 경매와 직접 비교해도 될까?</summary><p>주의가 필요합니다. 규모·수요층이 다를 수 있어 같은 유형(Reopening끼리)과 비교하거나, 유형 표시를 함께 하는 것이 좋습니다.</p></details>
+<details><summary>Q6. (사례) 신청 Subtotal $108.07bn, 낙찰 Subtotal $39.00bn, SOMA $0.926bn. Bid-to-Cover는? SOMA를 포함해야 하나?</summary><p>108.07 ÷ 39.00 = <strong>2.77배</strong>. SOMA는 Fed가 만기 국채를 바꾸는 물량이라 경쟁에 참여하지 않으므로 <strong>제외</strong>하고 Subtotal로 계산합니다.</p></details>
+<details><summary>Q7. (사례) Low Yield가 4.300%인데 High Yield는 5.300%. 4.3%를 써낸 투자자는 손해인가?</summary><p>아닙니다. 단일가격 경매라 모두 5.300%를 받습니다. 낮은 금리를 써내는 것은 “금리와 상관없이 물량을 꼭 받겠다”는 뜻이고, 그만큼 수요가 절박하다는 신호로 볼 수 있습니다.</p></details>
+</section>
+
+<!-- ===================================================== TAB 4 ===================================================== -->
+<section class="tab-panel" data-tab="4" id="tab4">
+<div class="tab-hero"><div class="eyebrow">TAB 04</div><h1>Treasury Supply &amp; Fed Balance Sheet <span>— 국채 수급 분석</span></h1>
+<p class="subtitle">국채 발행잔액 · 순발행 · Quarterly Refunding · SOMA · TGA · Dealer Positions · 지급준비금</p></div>
+
+<nav class="toc"><strong>목차</strong><ol>
+<li><a href="#t4-1">왜 수급이 금리에 영향을 주나</a></li>
+<li><a href="#t4-2">국채 발행잔액과 구성</a></li>
+<li><a href="#t4-3">순발행(Net Issuance)</a></li>
+<li><a href="#t4-4">Quarterly Refunding</a></li>
+<li><a href="#t4-5">Fed SOMA: QE와 QT</a></li>
+<li><a href="#t4-6">Fed 대차대조표와 TGA</a></li>
+<li><a href="#t4-7">지급준비금 계산기</a></li>
+<li><a href="#t4-8">Primary Dealer Positions</a></li>
+<li><a href="#t4-9">구현 체크포인트</a></li>
+<li><a href="#t4-10">셀프 체크 퀴즈</a></li>
+</ol></nav>
+
+<h2 id="t4-1"><b>01</b> 왜 수급이 금리에 영향을 주나</h2>
+<p>이론적으로 금리는 정책 기대로 결정되지만(기대가설), 현실에서는 <strong>시장이 흡수해야 하는 듀레이션 물량</strong>이 Term Premium에 영향을 줍니다(선호서식지 이론).</p>
+<div class="formula">민간이 흡수해야 할 국채 = 재무부 순발행 − Fed 순매입(SOMA 증감)
+                         → 많을수록 Term Premium ↑ 압력 (특히 장기물)</div>
+<div class="grid2">
+<div class="card"><h4>공급 측 (재무부)</h4><p>재정적자 → 차입 필요 → 국채 발행. 어떤 만기로 조달하느냐(Bill vs Coupon)가 커브에 영향.</p></div>
+<div class="card"><h4>흡수 측 (Fed·딜러·투자자)</h4><p>Fed가 사면(QE) 민간 공급 ↓, Fed가 줄이면(QT) 민간 공급 ↑. 딜러는 일시적으로 재고를 떠안는 완충 역할.</p></div>
+</div>
+
+<h2 id="t4-2"><b>02</b> 국채 발행잔액과 구성</h2>
+<ul>
+<li><strong>시장성 국채(Marketable)</strong>: Bills · Notes · Bonds · TIPS · FRN. 시장에서 거래되는 국채 (Tab 4 분석 대상)</li>
+<li><strong>비시장성</strong>: 사회보장신탁기금 등 정부 내부 보유분 → 금리 수급 분석에서는 제외</li>
+<li><strong>Bill 비중</strong>: 재무부 자문위원회(TBAC)는 대략 20% 내외를 권고 기준으로 언급해 왔습니다. Bill 비중 ↑ = 듀레이션 공급 ↓ (장기물 부담 완화), 대신 단기자금시장(Tab 5)에 부담</li>
+<li><strong>WAM</strong>(가중평균만기): 발행잔액의 평균 만기. 길어질수록 시장이 흡수하는 듀레이션 ↑</li>
+</ul>
+<p class="chart-sub">데이터: 월간 국채 잔액 보고서 MSPD(Monthly Statement of the Public Debt), Fiscal Data API.</p>
+
+<h2 id="t4-3"><b>03</b> 순발행 (Net Issuance)</h2>
+<div class="formula">순발행 = 총발행(Gross Issuance) − 만기상환(Redemptions)
+만기 구간별: Bills / 2–5Y / 7–10Y / 20–30Y 로 나눠서 집계</div>
+<ul>
+<li>총발행이 커도 만기상환이 많으면 순공급은 작을 수 있습니다. <strong>시장에 새로 풀리는 양은 순발행</strong>입니다.</li>
+<li>더 정확히 “듀레이션 공급”을 보려면 순발행 × 듀레이션(또는 10Y 환산 물량, 10Y equivalents)으로 환산합니다.</li>
+<li>Bill은 재정 수요 변동을 흡수하는 <strong>완충 장치</strong>: 세수 시즌·부채한도 국면에 Bill 발행이 크게 출렁입니다.</li>
+</ul>
+
+<h2 id="t4-4"><b>04</b> Quarterly Refunding</h2>
+<p>재무부는 매 분기(2·5·8·11월 초) 향후 차입 계획과 쿠폰채 발행 규모를 발표합니다. 장기 공급에 대한 가장 중요한 정보 이벤트입니다.</p>
+<table>
+<thead><tr><th>시점</th><th>발표 내용</th><th>시장이 보는 것</th></tr></thead>
+<tbody>
+<tr><td>월요일</td><td>차입 추정치 (이번 분기·다음 분기 순차입, 분기말 TGA 목표 잔액)</td><td>예상보다 큰 차입 → 공급 우려</td></tr>
+<tr><td>수요일 오전</td><td>Refunding Statement: 쿠폰채 경매 규모, 향후 가이던스, TBAC 권고문</td><td>쿠폰 증액 여부·만기 배분, “최소 향후 몇 분기 유지” 문구 변화</td></tr>
+<tr><td>그 다음 주</td><td>Refunding 경매 (3Y·10Y·30Y)</td><td>Tab 3 경매 결과로 수요 확인</td></tr>
+</tbody></table>
+<div class="key"><strong>사례</strong>　2023년 8월 Refunding에서 차입 추정치와 쿠폰 증액이 예상보다 커지자 장기금리가 급등하고 Term Premium이 크게 상승(Bear steepening)했습니다. 반대로 2023년 11월 Refunding에서 장기물 증액 폭이 예상보다 작자 금리가 크게 하락했습니다. → Tab 4 이벤트가 Tab 2(Term Premium)·Tab 1(5s30s)로 전이되는 대표 사례.</div>
+
+<h2 id="t4-5"><b>05</b> Fed SOMA: QE와 QT</h2>
+<p><strong>SOMA</strong>(System Open Market Account)는 NY Fed가 운용하는 Fed의 증권 보유 계정입니다.</p>
+<table>
+<thead><tr><th>정책</th><th>방법</th><th>금리·유동성 영향</th></tr></thead>
+<tbody>
+<tr><td>QE (양적완화)</td><td>국채·MBS 매입</td><td>민간 듀레이션 공급 ↓ → Term Premium ↓, 지급준비금 ↑</td></tr>
+<tr><td>재투자</td><td>만기 도래분만큼 다시 매입</td><td>보유 규모 유지</td></tr>
+<tr><td>QT (양적긴축)</td><td>만기 도래분 일부 재투자 중단(월 상한 cap)</td><td>재무부가 상환 재원을 민간에서 조달 → 민간 공급 ↑, 준비금 ↓</td></tr>
+</tbody></table>
+<p><strong>최근 흐름(참고)</strong>: 2022년 6월 QT 시작(국채 월 상한 $30bn→9월 $60bn) → 2024년 6월 $25bn으로 감속 → 2025년 4월 $5bn으로 추가 감속 → 2025년 12월 1일 QT 종료, 이후 준비금 관리 목적의 Bill 매입. <em>최신 상황은 FOMC 성명과 H.4.1 데이터로 확인하세요.</em></p>
+<div class="caution"><strong>QT 상환의 메커니즘</strong>　Fed가 만기 국채를 재투자하지 않으면, 재무부는 Fed에 상환할 돈을 마련하기 위해 민간에 국채를 추가로 발행합니다. 민간이 그 국채를 사며 낸 돈은 은행 준비금에서 빠져나가 결국 Fed 대차대조표가 줄어듭니다.</div>
+
+<h2 id="t4-6"><b>06</b> Fed 대차대조표와 TGA</h2>
+<p>Fed 대차대조표를 단순화하면 다음과 같습니다. 자산이 바뀌거나 다른 부채가 바뀌면 <strong>지급준비금</strong>이 조정됩니다.</p>
+<div class="taccount">
+<div><h4>자산 (Assets)</h4><ul><li>SOMA 국채</li><li>SOMA MBS</li><li>대출·기타 (SRF, 할인창구 등)</li></ul></div>
+<div><h4>부채 (Liabilities)</h4><ul><li><strong>지급준비금 (Reserves)</strong> — 은행이 Fed에 맡긴 돈</li><li>화폐발행 (Currency)</li><li><strong>TGA</strong> — 재무부의 Fed 당좌계좌</li><li><strong>ON RRP</strong> — MMF 등이 Fed에 맡긴 자금</li></ul></div>
+</div>
+<div class="formula">Δ준비금 ≈ ΔSOMA(+대출) − ΔTGA − ΔON RRP − Δ화폐발행</div>
+<h3>TGA (Treasury General Account)</h3>
+<ul>
+<li>세금이 들어오거나 국채를 발행하면 민간 예금 → TGA로 이동 ⇒ <strong>준비금 ↓</strong></li>
+<li>재무부가 지출하면 TGA → 민간 ⇒ <strong>준비금 ↑</strong></li>
+<li><strong>부채한도 국면</strong>: 신규 차입이 막혀 TGA를 소진 → 준비금 ↑. 한도 해소 후 TGA 재건(대량 Bill 발행) → 준비금·ON RRP ↓ (예: 2023년 6월 이후)</li>
+<li>데이터: 일간 Daily Treasury Statement(DTS), 주간 H.4.1 / FRED <code>WTREGEN</code></li>
+</ul>
+
+<h2 id="t4-7"><b>07</b> 지급준비금 계산기</h2>
+<div class="explorer">
+<div class="chart-sub">각 항목의 변화($bn)를 바꾸면 준비금 변화가 계산됩니다(화폐발행 변화는 0으로 가정). 상승 막대는 준비금 증가 요인, 하락 막대는 감소 요인입니다.</div>
+<div class="presets" id="p4">
+<button data-p="-150,0,0">QT 약 6개월 (월 $25bn)</button>
+<button data-p="0,400,-150">부채한도 해소 후 TGA 재건</button>
+<button data-p="0,-300,0">부채한도 중 TGA 소진</button>
+<button data-p="300,0,0">QE $300bn</button>
+<button data-p="-150,0,-150">QT + RRP 감소</button>
+<button data-p="0,0,0">초기화</button>
+</div>
+<div class="sliders">
+<label>ΔSOMA 보유: <output id="o4-s">0</output>$bn<input type="range" id="r4-s" min="-400" max="400" step="10" value="0"></label>
+<label>ΔTGA: <output id="o4-t">0</output>$bn<input type="range" id="r4-t" min="-400" max="400" step="10" value="0"></label>
+<label>ΔON RRP: <output id="o4-r">0</output>$bn<input type="range" id="r4-r" min="-400" max="400" step="10" value="0"></label>
+</div>
+<div class="chart" id="wf4"></div>
+<div class="regime-label" id="m4">—</div>
+</div>
+<div class="key"><strong>ON RRP의 완충 역할</strong>　ON RRP 잔액이 클 때는 QT·TGA 증가로 빠지는 돈이 주로 ON RRP에서 나와 준비금이 덜 줄었습니다. ON RRP가 거의 소진되면(2024~2025년) 같은 충격이 <strong>준비금을 직접 감소</strong>시켜 단기자금시장 압력(Tab 5)으로 이어집니다.</div>
+
+<h2 id="t4-8"><b>08</b> Primary Dealer Positions</h2>
+<p>NY Fed는 매주 Primary Dealer들의 국채 순포지션(Primary Dealer Statistics)을 공개합니다.</p>
+<ul>
+<li><strong>순포지션 ↑</strong>: 딜러가 소화되지 않은 국채를 재고로 떠안고 있음 → 공급 과잉 신호, 추가 흡수 여력 ↓</li>
+<li>딜러 대차대조표는 규제(SLR 등)로 제약 → 재고가 쌓이면 시장 유동성 악화, 경매 부진(딜러 비중↑)과 연결</li>
+<li>만기 구간별(≤2Y, 2–6Y, 6–11Y, &gt;11Y 등)로 보면 어느 구간에 공급 부담이 쌓였는지 확인 가능</li>
+<li>Tab 3 “Dealer 낙찰 비중” ↔ Tab 4 “Dealer 순포지션”을 함께 보면 경매 부진이 재고로 남았는지 판단</li>
+</ul>
+<h3>은행 지급준비금 및 유동성 여건</h3>
+<p>준비금이 “충분(ample)”한지 “부족(scarce)”해지는지가 핵심입니다. 2019년 9월에는 준비금이 감소한 상태에서 법인세 납부·국채 결제가 겹쳐 레포금리가 급등했습니다. 준비금 수준은 Tab 5의 SOFR–IORB 스프레드와 함께 해석합니다(FRED <code>WRESBAL</code>).</p>
+
+<h2 id="t4-9"><b>09</b> 구현 체크포인트</h2>
+<table>
+<thead><tr><th>지표</th><th>소스</th><th>빈도</th></tr></thead>
+<tbody>
+<tr><td>국채 발행잔액·구성</td><td>Fiscal Data API — MSPD</td><td>월간</td></tr>
+<tr><td>발행·상환 (순발행)</td><td>경매 결과 + 만기 일정 / DTS 공채 발행·상환 항목</td><td>경매별·일간</td></tr>
+<tr><td>Quarterly Refunding</td><td>Treasury Refunding 문서 (Financing Estimates, Statement, TBAC)</td><td>분기</td></tr>
+<tr><td>SOMA 보유</td><td>NY Fed SOMA Holdings / FRED <code>TREAST</code>, <code>WALCL</code></td><td>주간</td></tr>
+<tr><td>TGA</td><td>DTS(일간) / FRED <code>WTREGEN</code>(주간)</td><td>일·주간</td></tr>
+<tr><td>ON RRP</td><td>FRED <code>RRPONTSYD</code></td><td>일간</td></tr>
+<tr><td>지급준비금</td><td>FRED <code>WRESBAL</code> (H.4.1)</td><td>주간</td></tr>
+<tr><td>Dealer Positions</td><td>NY Fed Primary Dealer Statistics</td><td>주간</td></tr>
+</tbody></table>
+<ul><li>H.4.1은 <strong>수요일 기준 값이 목요일 공개</strong>, 주간 평균과 수요일 값이 따로 있으므로 하나로 통일</li><li>빈도가 섞이므로(일·주·월·분기) 차트별 최신 기준일 표시</li></ul>
+
+<h2 id="t4-10"><b>10</b> 셀프 체크 퀴즈</h2>
+<details><summary>Q1. 이번 달 쿠폰채 총발행 $300bn, 만기상환 $180bn. 순발행은?</summary><p>300 − 180 = <strong>$120bn</strong>. 시장이 새로 흡수해야 하는 쿠폰채 물량입니다.</p></details>
+<details><summary>Q2. 한 주 동안 TGA +$150bn, ON RRP −$100bn, SOMA 변화 없음. 준비금 변화는?</summary><p>0 − 150 − (−100) = <strong>−$50bn</strong>. TGA 증가분 중 100은 ON RRP에서, 50은 준비금에서 빠져나갔습니다.</p></details>
+<details><summary>Q3. 재무부가 쿠폰 대신 Bill 발행 비중을 늘리면 커브에는 어떤 영향이 있나?</summary><p>장기 듀레이션 공급 ↓ → Term Premium 하락 압력, 장기 구간 flattening 경향. 대신 Bill 공급 ↑ → 단기자금시장 금리·RRP 잔액에 영향(Tab 5).</p></details>
+<details><summary>Q4. QT를 하면 왜 준비금이 줄어드나?</summary><p>Fed가 만기 국채를 재투자하지 않으면 재무부가 민간에서 추가 차입해 Fed에 상환합니다. 민간의 자금(은행 준비금 또는 RRP)이 빠져나가고 Fed 자산·부채가 함께 줄어듭니다.</p></details>
+<details><summary>Q5. Refunding에서 “향후 몇 분기 쿠폰 규모 유지” 문구가 삭제됐다. 시장은 어떻게 반응할까?</summary><p>향후 쿠폰 증액 가능성으로 해석 → 장기 공급 우려 → Term Premium ↑, 5s30s steepening, 장기물 경매 Concession 확대 가능성.</p></details>
+</section>
+
+<!-- ===================================================== TAB 5 ===================================================== -->
+<section class="tab-panel" data-tab="5" id="tab5">
+<div class="tab-hero"><div class="eyebrow">TAB 05</div><h1>Monetary Policy &amp; Money Market <span>— 통화정책 분석</span></h1>
+<p class="subtitle">Fed Funds Target Range · EFFR · IORB · SOFR · ON RRP · 준비금 · FOMC · 정책금리 기대 · 스트레스 지표</p></div>
+
+<nav class="toc"><strong>목차</strong><ol>
+<li><a href="#t5-1">Fed의 금리 조절 체계</a></li>
+<li><a href="#t5-2">정책금리 지도 (Corridor)</a></li>
+<li><a href="#t5-3">EFFR과 IORB</a></li>
+<li><a href="#t5-4">SOFR와 레포시장</a></li>
+<li><a href="#t5-5">SOFR–IORB 스프레드</a></li>
+<li><a href="#t5-6">ON RRP와 준비금</a></li>
+<li><a href="#t5-7">FOMC 일정과 정책금리 이력</a></li>
+<li><a href="#t5-8">시장 내재 정책금리 경로</a></li>
+<li><a href="#t5-9">단기자금시장 스트레스 지표</a></li>
+<li><a href="#t5-10">구현 체크포인트</a></li>
+<li><a href="#t5-11">셀프 체크 퀴즈</a></li>
+</ol></nav>
+
+<h2 id="t5-1"><b>01</b> Fed의 금리 조절 체계</h2>
+<p>FOMC는 <strong>Fed Funds Rate의 목표 범위</strong>(예: 3.50–3.75%, 폭 25bp)를 정합니다. 2008년 이후 준비금이 풍부한 <strong>“충분한 준비금 체제(ample reserves regime)”</strong>에서 Fed는 매일 공개시장조작으로 금리를 맞추는 대신, Fed가 직접 정하는 <strong>관리금리(administered rates)</strong>로 시장금리를 범위 안에 묶습니다.</p>
+<table>
+<thead><tr><th>도구</th><th>누구에게</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td>IORB (준비금 이자)</td><td>은행</td><td>은행이 이보다 낮은 금리로는 돈을 빌려주지 않음 → 시장금리를 끌어올리는 핵심 도구</td></tr>
+<tr><td>ON RRP 금리</td><td>MMF·GSE 등 비은행</td><td>준비금 이자를 못 받는 기관에게 바닥(floor) 제공. 현재 범위 하단에 설정</td></tr>
+<tr><td>SRF (상설 레포)</td><td>딜러·은행</td><td>국채 담보로 Fed에서 빌릴 수 있는 금리 = 범위 상단. 천장(ceiling) 역할</td></tr>
+<tr><td>Discount Window</td><td>은행</td><td>Primary Credit 금리 = 범위 상단. 비상 유동성</td></tr>
+</tbody></table>
+
+<h2 id="t5-2"><b>02</b> 정책금리 지도 (Corridor)</h2>
+<p class="chart-title">목표 범위와 관리금리·시장금리의 위치 (가상 예시, %)</p>
+<div class="chart" id="corr"></div>
+<p class="chart-sub">IORB는 범위 하단 + 15bp, ON RRP는 하단, SRF는 상단에 두는 현재의 설정 방식을 반영한 예시입니다. 설정 방식은 바뀔 수 있으므로(“technical adjustment”) FOMC Implementation Note로 확인합니다.</p>
+
+<h2 id="t5-3"><b>03</b> EFFR과 IORB</h2>
+<ul>
+<li><strong>EFFR</strong>(Effective Federal Funds Rate): 무담보 익일물 연방기금 거래의 <strong>거래량 가중 중앙값</strong>. NY Fed가 다음 영업일 오전 공표</li>
+<li>현재 연방기금시장은 작고, 주로 연방주택대출은행(FHLB)이 외국은행 지점에 빌려주는 구조(외국은행은 IORB와의 차익 획득)</li>
+<li>보통 EFFR은 IORB보다 약간 낮게 형성: <code>EFFR − IORB</code>가 0에 가까워지거나 양수로 가면 준비금 부족 신호</li>
+<li>FOMC가 목표 범위를 25bp 바꾸면 IORB·RRP도 같은 폭으로 바뀌고, EFFR도 다음 날 거의 그만큼 움직입니다</li>
+</ul>
+
+<h2 id="t5-4"><b>04</b> SOFR와 레포시장</h2>
+<p><strong>SOFR</strong>(Secured Overnight Financing Rate)는 국채를 담보로 하루 동안 돈을 빌리는 <strong>레포(repo) 거래</strong>의 금리입니다. 하루 거래량이 수조 달러 규모로, LIBOR를 대체한 달러 기준금리입니다.</p>
+<div class="grid2">
+<div class="card"><h4>구성</h4><ul><li>Tri-party repo (BNY 결제)</li><li>GCF repo (FICC)</li><li>FICC를 통한 bilateral DVP repo</li><li>거래량 가중 중앙값, 분포(1·25·75·99 백분위)도 공개</li></ul></div>
+<div class="card"><h4>관련 금리</h4><ul><li><strong>TGCR</strong>: tri-party GC만</li><li><strong>BGCR</strong>: tri-party + GCF</li><li>SOFR ≥ TGCR이 보통 (DVP 포함 → 딜러 대차대조표 비용 반영)</li></ul></div>
+</div>
+<p><strong>누가 빌리고 누가 빌려주나?</strong>　MMF·은행이 자금을 공급하고, 딜러·헤지펀드가 국채 포지션을 위해 자금을 빌립니다. 국채 공급(Tab 4)이 늘면 담보가 늘고 자금 수요가 커져 레포금리가 오를 수 있습니다.</p>
+
+<h2 id="t5-5"><b>05</b> SOFR–IORB 스프레드</h2>
+<div class="formula">SOFR − IORB (bp)
+  &lt; 0   → 준비금 충분, 레포시장 자금 여유 (은행이 준비금을 레포로 옮길 유인 없음)
+  ≈ 0~+ → 준비금 희소화 신호, 레포 자금 부족 (은행이 IORB 대신 레포에 대출할 유인)</div>
+<p class="chart-title">SOFR − IORB 스프레드 (가상 예시, bp, 영업일 기준)</p>
+<p class="chart-sub">0선 = SOFR와 IORB가 같은 수준. 0 위로 올라갈수록 레포 자금이 빡빡함.</p>
+<div class="chart" id="sofr"></div>
+<ul>
+<li><strong>월말·분기말</strong>: 외국은행 등이 결산일 대차대조표를 줄여(window dressing) 레포 공급 ↓ → 스파이크</li>
+<li><strong>세금 납부일·국채 결제일</strong>: TGA로 자금 이동(Tab 4), 국채 결제로 자금 수요 ↑ → 일시 상승</li>
+<li>일회성 스파이크보다 <strong>바닥 레벨이 지속적으로 올라가는지</strong>가 구조적 신호</li>
+</ul>
+
+<h2 id="t5-6"><b>06</b> ON RRP와 준비금</h2>
+<ul>
+<li>ON RRP 잔액은 2022년 말 약 $2.5조까지 늘었다가, Bill 공급 증가와 QT로 2024~2025년에 거의 소진되었습니다.</li>
+<li>MMF는 Bill·레포 금리가 RRP 금리보다 높으면 RRP에서 돈을 빼 그쪽으로 이동 → RRP 잔액 감소</li>
+<li><strong>ON RRP가 남아 있음</strong> = 시스템에 “잉여 유동성” 존재. <strong>소진</strong> = 이후 유동성 흡수는 준비금에서 직접 빠짐</li>
+<li>준비금 수준(FRED <code>WRESBAL</code>)은 절대 규모뿐 아니라 GDP·은행 자산 대비 비율로도 봅니다</li>
+</ul>
+
+<h2 id="t5-7"><b>07</b> FOMC 일정과 정책금리 이력</h2>
+<div class="grid2">
+<div class="card"><h4>FOMC 일정</h4><ul>
+<li>연 8회 정례회의 (약 6주 간격, 대부분 이틀)</li>
+<li>둘째 날 ET 14:00 성명 발표, 14:30 의장 기자회견</li>
+<li>3·6·9·12월: <strong>SEP</strong>(경제전망) + 점도표(Dot Plot)</li>
+<li>회의 3주 후 의사록(Minutes) 공개</li>
+<li>회의 전 약 10일간 블랙아웃(위원 발언 중단)</li></ul></div>
+<div class="card"><h4>최근 사이클 (참고)</h4><ul>
+<li>2022.3 ~ 2023.7: 인상 사이클, 0–0.25% → <strong>5.25–5.50%</strong></li>
+<li>2024.9 ~ 12: 50+25+25bp 인하 → 4.25–4.50%</li>
+<li>2025.9 ~ 12: 3회 25bp 인하 → 3.50–3.75%</li>
+<li><em>이후 이력은 FRED <code>DFEDTARU</code>·<code>DFEDTARL</code>로 자동 갱신</em></li></ul></div>
+</div>
+<p>대시보드에서는 목표 범위를 계단형 밴드로, EFFR·SOFR을 그 위의 선으로 그리면 “정책 결정 → 시장금리 전달”이 한눈에 보입니다.</p>
+
+<h2 id="t5-8"><b>08</b> 시장 내재 정책금리 경로</h2>
+<p>시장이 예상하는 FOMC 결과는 <strong>Fed Funds 선물</strong>(CME 30-Day Fed Funds Futures), SOFR 선물, OIS에서 추출합니다.</p>
+<div class="formula">Fed Funds 선물 가격 = 100 − (해당 월 평균 EFFR 기대치)
+
+FOMC가 월 중 d일에 있고, 한 달이 N일이면:
+  월평균 기대 = (d/N) × 현재 금리 + ((N−d)/N) × 회의 후 기대 금리
+  ⇒ 회의 후 기대 금리 = (월평균 기대 × N − 현재 금리 × d) ÷ (N − d)
+  25bp 인하 확률 ≈ (현재 금리 − 회의 후 기대 금리) ÷ 0.25</div>
+<div class="explorer">
+<p class="chart-title" style="margin-top:0">계산기 — 선물 가격으로 인하 확률 추정</p>
+<div class="calc">
+<label>현재 EFFR (%)<input type="number" step="0.01" id="c5-r" value="3.63"></label>
+<label>해당 월 선물 가격<input type="number" step="0.005" id="c5-p" value="96.45"></label>
+<label>FOMC 결정 반영 시작일 (d)<input type="number" step="1" id="c5-d" value="17"></label>
+<label>그 달 일수 (N)<input type="number" step="1" id="c5-n" value="31"></label>
+</div>
+<div class="readout">
+<div><small>월평균 기대 EFFR</small><strong id="c5-avg">—</strong></div>
+<div><small>회의 후 기대 금리</small><strong id="c5-post">—</strong></div>
+<div><small>기대 변화</small><strong id="c5-chg">—</strong></div>
+<div><small>25bp 인하 확률(근사)</small><strong id="c5-prob">—</strong></div>
+</div>
+<div class="regime-label" id="c5-msg">—</div>
+</div>
+<div class="caution"><strong>공개 데이터 제약과 대안</strong>　선물 데이터는 유료인 경우가 많습니다(연구계획서: “적합한 데이터 확보 시”). 무료 대안: ① <strong>2Y − EFFR</strong>(향후 2년 인하/인상 기대의 대략적 proxy), ② <strong>3M·6M T-bill − EFFR</strong>, ③ FOMC 점도표 중앙값과 시장금리 비교, ④ NY Fed 설문(SMP)의 정책금리 경로 중앙값. 단, T-bill에는 수급 요인과 기간 프리미엄이 섞여 있습니다.</div>
+
+<h2 id="t5-9"><b>09</b> 단기자금시장 스트레스 지표</h2>
+<table>
+<thead><tr><th>지표</th><th>평상시</th><th>스트레스 신호</th></tr></thead>
+<tbody>
+<tr><td>SOFR − IORB</td><td>음수 또는 0 근처</td><td>지속적 양수, 스파이크 빈도·크기 확대</td></tr>
+<tr><td>SOFR 99백분위 − SOFR</td><td>작음</td><td>꼬리 급확대 (일부 차입자가 매우 높은 금리 지불)</td></tr>
+<tr><td>EFFR − IORB</td><td>약간 음수</td><td>0 이상으로 상승</td></tr>
+<tr><td>SRF 이용액</td><td>거의 0</td><td>의미 있는 이용 발생 (천장 작동)</td></tr>
+<tr><td>ON RRP 잔액</td><td>완충 존재</td><td>소진 상태에서 준비금 감소 지속</td></tr>
+<tr><td>준비금</td><td>안정적</td><td>빠른 감소 (TGA 급증, QT)</td></tr>
+</tbody></table>
+<div class="key"><strong>사례: 2019년 9월 레포 사태</strong>　법인세 납부일과 국채 결제일이 겹쳐 준비금이 급감하자 SOFR가 하루 만에 5%대로 치솟았습니다(평소 약 2.2%). Fed는 레포 공급과 Bill 매입으로 대응했고, 이 경험이 이후 SRF 상설화로 이어졌습니다.</div>
+
+<h2 id="t5-10"><b>10</b> 구현 체크포인트</h2>
+<table>
+<thead><tr><th>지표</th><th>FRED ID / 소스</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>목표 범위 상·하단</td><td><code>DFEDTARU</code> · <code>DFEDTARL</code></td><td>일간</td></tr>
+<tr><td>EFFR</td><td><code>EFFR</code> / NY Fed Markets API</td><td>다음 영업일 공표</td></tr>
+<tr><td>IORB</td><td><code>IORB</code></td><td>2021.7 이전은 IOER(<code>IOER</code>)로 연결</td></tr>
+<tr><td>SOFR (및 백분위)</td><td><code>SOFR</code>, <code>SOFR99</code> 등 / NY Fed</td><td>다음 영업일 공표</td></tr>
+<tr><td>ON RRP</td><td><code>RRPONTSYD</code></td><td>일간</td></tr>
+<tr><td>준비금</td><td><code>WRESBAL</code></td><td>주간</td></tr>
+<tr><td>FOMC 일정</td><td>federalreserve.gov FOMC Calendar</td><td>Event Calendar와 공유</td></tr>
+</tbody></table>
+<ul><li>SOFR·EFFR은 <strong>T+1 공표</strong> → 날짜를 “거래일” 기준으로 정렬</li><li>스프레드는 bp로 표시, 월말·분기말을 차트에 음영으로 표시하면 해석이 쉬움</li></ul>
+
+<h2 id="t5-11"><b>11</b> 셀프 체크 퀴즈</h2>
+<details><summary>Q1. 목표 범위 3.50–3.75%일 때, 위 설정 방식에서 IORB·ON RRP·SRF 금리는?</summary><p>IORB 3.65%(하단+15bp), ON RRP 3.50%(하단), SRF 최저 입찰 금리 3.75%(상단).</p></details>
+<details><summary>Q2. SOFR − IORB가 몇 달째 −5bp에서 +3bp로 바닥이 올라왔다. 무엇을 의심해야 하나?</summary><p>준비금이 “충분”에서 “희소” 쪽으로 이동 중일 가능성. Tab 4의 준비금·TGA·ON RRP 추이, QT 속도, Bill 공급을 함께 확인합니다. Fed가 QT 종료·준비금 관리 매입을 검토하는 근거가 되는 신호입니다.</p></details>
+<details><summary>Q3. 현재 EFFR 3.63%, FOMC가 15일(30일 달), 선물 가격 96.50. 회의 후 기대 금리와 인하 확률은? (d=15)</summary><p>월평균 = 3.50%. 회의 후 = (3.50×30 − 3.63×15) ÷ 15 = (105 − 54.45) ÷ 15 = <strong>3.37%</strong>. 기대 변화 −26bp → 25bp 인하 확률 ≈ <strong>100%</strong>(일부 추가 인하 기대 포함).</p></details>
+<details><summary>Q4. 매월 말 SOFR가 튀는 이유는?</summary><p>외국은행 등이 결산일 대차대조표를 줄이기 위해 레포 중개를 축소하고, 국채 결제가 월말에 몰리기 때문입니다. 일회성 스파이크는 계절적 요인이므로 구조적 신호와 구분해야 합니다.</p></details>
+<details><summary>Q5. 2Y 국채금리가 EFFR보다 60bp 낮다면 시장은 무엇을 기대하나?</summary><p>향후 2년간 평균 정책금리가 현재보다 낮을 것, 즉 <strong>누적 인하</strong>를 기대(대략 2년 평균이 60bp 낮음 → 기간 프리미엄을 무시하면 2년 말까지 100bp 이상 인하 가능성 반영). 2Y는 Tab 1과 Tab 5를 잇는 핵심 만기입니다.</p></details>
+</section>
+
+<!-- ===================================================== LINKS ===================================================== -->
+<section class="tab-panel" data-tab="map" id="tabmap">
+<div class="tab-hero"><div class="eyebrow">SUMMARY</div><h1>Tab 1–5 연결 지도 <span>— Macro Views 정리</span></h1>
+<p class="subtitle">Tab 1–5의 개념이 Tab 6(Relative Value)으로 이어지는 흐름</p></div>
+<table>
+<thead><tr><th>질문</th><th>보는 탭</th><th>핵심 지표</th></tr></thead>
+<tbody>
+<tr><td>금리가 얼마나, 어디서 움직였나?</td><td>Tab 1</td><td>만기별 bp 변화, 2s10s·5s30s·Fly, 백분위</td></tr>
+<tr><td>왜 움직였나? (인플레이션 vs 실질 / 정책 기대 vs 프리미엄)</td><td>Tab 2</td><td>Real·BEI·5y5y, ACM 기대금리·TP</td></tr>
+<tr><td>정책 기대가 바뀌었나?</td><td>Tab 5</td><td>FOMC, 선물 내재 경로, 2Y−EFFR</td></tr>
+<tr><td>공급이 부담인가?</td><td>Tab 4</td><td>순발행, Refunding, SOMA(QT), Dealer 재고</td></tr>
+<tr><td>수요가 받쳐주나?</td><td>Tab 3</td><td>Tail, Bid-to-Cover, Indirect·Dealer 비중</td></tr>
+<tr><td>자금시장 유동성은 괜찮나?</td><td>Tab 4 · Tab 5</td><td>TGA, ON RRP, 준비금, SOFR−IORB</td></tr>
+</tbody></table>
+<h3>대표 시나리오 연결</h3>
+<div class="grid2">
+<div class="card"><h4>매파적 FOMC</h4><p>Tab 5 정책 경로 ↑ → Tab 2 기대 단기금리·실질금리 ↑ → Tab 1 <strong>Bear flattening</strong> (2Y 주도)</p></div>
+<div class="card"><h4>Refunding 증액 + 부진한 30Y 경매</h4><p>Tab 4 공급 ↑ → Tab 3 Tail·Dealer 비중 ↑ → Tab 2 Term Premium ↑ → Tab 1 <strong>Bear steepening</strong> (5s30s ↑)</p></div>
+<div class="card"><h4>CPI 서프라이즈 (상방)</h4><p>Tab 2 BEI ↑ (+ 실질금리 ↑) → Tab 5 인하 기대 축소 → Tab 1 금리 전반 상승</p></div>
+<div class="card"><h4>성장 쇼크·위험회피</h4><p>Tab 5 인하 기대 ↑ → Tab 2 실질금리·기대금리 ↓ → Tab 1 <strong>Bull steepening</strong> (안전자산 수요가 크면 Bull flattening)</p></div>
+</div>
+<div class="key"><strong>다음 단계</strong>　이 “원인 진단”을 바탕으로 Tab 6에서 2s10s·5s30s·Butterfly의 <strong>Fair Value</strong>를 추정하고, 실제 값과의 괴리(Residual·Z-score)로 커브 포지션을 정합니다.</div>
+</section>
+
+<div class="pager"><button id="pg-prev"></button><button id="pg-next"></button></div>
+<p class="foot">Rates Monitor 연구계획서 Tab 1–5(Macro Views) 학습용 자료 · 다음 단계: Tab 6 Curve Positioning &amp; Relative Value</p>
+</main>
+<script>
+const M=['3M','2Y','5Y','10Y','20Y','30Y'];
+const C={s1:'#2a78d6',s2:'#eb6834',s3:'#1baf7a',base:'#8e9aa3',up:'#e34948',down:'#2a78d6',grid:'#e8edf0',axis:'#9aa7b0',muted:'#62717d',ink:'#182b3a'};
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function niceRange(vals,pad){let lo=Math.min(...vals),hi=Math.max(...vals);const p=Math.max((hi-lo)*0.15,pad||0.1);return[Math.floor((lo-p)*10)/10,Math.ceil((hi+p)*10)/10]}
+
+function curveChart(host,series,o={}){
+  host.innerHTML='';
+  const W=o.w||640,H=o.h||260,m={t:14,r:o.labelRight?70:16,b:28,l:40};
+  const all=series.flatMap(s=>s.values);
+  const [y0,y1]=o.yr||niceRange(all,0.1);
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':o.aria||'수익률곡선 차트'},host);
+  const x=i=>m.l+(W-m.l-m.r)*(i/(M.length-1));
+  const y=v=>m.t+(H-m.t-m.b)*(1-(v-y0)/(y1-y0));
+  const step=(y1-y0)>1.2?0.5:(y1-y0)>0.6?0.2:0.1;
+  for(let v=Math.ceil(y0/step)*step;v<=y1+1e-9;v+=step){
+    el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:C.grid,'stroke-width':1},svg);
+    const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':o.small?10:11,fill:C.muted},svg);t.textContent=v.toFixed(o.small?1:2);
+  }
+  M.forEach((mm,i)=>{const t=el('text',{x:x(i),y:H-8,'text-anchor':'middle','font-size':o.small?10:11,fill:C.muted},svg);t.textContent=mm});
+  series.forEach(s=>{
+    const d=s.values.map((v,i)=>(i?'L':'M')+x(i)+','+y(v)).join('');
+    el('path',{d,fill:'none',stroke:s.color,'stroke-width':2,'stroke-dasharray':s.dash?'5 4':'none','stroke-linejoin':'round'},svg);
+    s.values.forEach((v,i)=>el('circle',{cx:x(i),cy:y(v),r:o.small?3:4,fill:s.color,stroke:'#fff','stroke-width':2},svg));
+  });
+  if(o.labelRight){
+    const L=series.map(s=>({n:s.name,y:y(s.values[M.length-1])+4})).sort((a,b)=>a.y-b.y);
+    for(let k=1;k<L.length;k++) if(L[k].y-L[k-1].y<13) L[k].y=L[k-1].y+13;
+    L.forEach(l=>{const t=el('text',{x:W-m.r+8,y:l.y,'font-size':11,fill:C.ink},svg);t.textContent=l.n});
+  }
+  // hover layer
+  const tip=document.createElement('div');tip.className='tip';host.appendChild(tip);
+  const cross=el('line',{y1:m.t,y2:H-m.b,stroke:C.axis,'stroke-width':1,'stroke-dasharray':'2 3',opacity:0},svg);
+  const hit=el('rect',{x:m.l-20,y:0,width:W-m.l-m.r+40,height:H,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{
+    const r=svg.getBoundingClientRect(),sx=(ev.clientX-r.left)*W/r.width;
+    const i=Math.max(0,Math.min(M.length-1,Math.round((sx-m.l)/((W-m.l-m.r)/(M.length-1)))));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('opacity',1);
+    tip.innerHTML=`<b>${M[i]}</b>`+series.map(s=>`<div><span class="sw" style="background:${s.color}"></span>${s.name}: ${s.values[i].toFixed(2)}%</div>`).join('')+(o.extraTip?o.extraTip(i):'');
+    tip.style.opacity=1;
+    const px=x(i)*r.width/W, left=px>r.width*0.6?px-tip.offsetWidth-12:px+12;
+    tip.style.left=left+'px';tip.style.top='8px';
+  });
+  hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cross.setAttribute('opacity',0)});
+}
+
+// §03 shapes
+const shapes=[
+ ['정상 (Normal)',[3.0,3.4,3.7,4.0,4.3,4.4],'우상향. 기간 프리미엄 + 완만한 성장 기대. 가장 흔한 형태'],
+ ['평탄 (Flat)',[4.2,4.2,4.15,4.2,4.25,4.2],'장단기 차이 거의 없음. 사이클 전환점(인상 막바지 등)'],
+ ['역전 (Inverted)',[5.4,4.9,4.5,4.3,4.4,4.3],'단기 &gt; 장기. 향후 금리 인하·경기 둔화 기대'],
+ ['험프 (Humped)',[4.0,4.5,4.6,4.4,4.3,4.2],'중기물이 가장 높음. 단기 인상 후 장기 인하 기대 혼재']
+];
+const sh=document.getElementById('shapes');
+shapes.forEach(([n,v,d])=>{const c=document.createElement('div');c.className='card';c.innerHTML=`<h4>${n}</h4><div class="chart"></div><p>${d}</p>`;sh.appendChild(c);
+ curveChart(c.querySelector('.chart'),[{name:n.split(' ')[0],values:v,color:C.s1}],{w:260,h:150,yr:[2.8,5.6],small:true,aria:n+' 수익률곡선'})});
+
+// §04 comparison
+const now=[4.30,3.90,3.95,4.25,4.82,4.80], m1=[4.45,3.80,3.85,4.15,4.70,4.72], y1=[5.30,4.60,4.30,4.30,4.55,4.45];
+const cmpS=[{name:'현재',values:now,color:C.s1},{name:'1개월 전',values:m1,color:C.s2},{name:'1년 전',values:y1,color:C.s3}];
+document.getElementById('cmp-legend').innerHTML=cmpS.map(s=>`<span><i style="border-color:${s.color}"></i>${s.name}</span>`).join('');
+curveChart(document.getElementById('cmp'),cmpS,{labelRight:true,h:280,extraTip:i=>`<div style="color:#62717d;margin-top:3px">1년 변화: ${((now[i]-y1[i])*100>0?'+':'')}${((now[i]-y1[i])*100).toFixed(0)}bp</div>`});
+
+// §05 bp bars
+(function(){
+ const host=document.getElementById('bp'),d=[-1.0,4.5,5.2,3.8,2.9,2.5];
+ const W=640,H=220,m={t:16,r:16,b:28,l:40},lo=-4,hi=8;
+ const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'만기별 일간 금리 변화 막대그래프'},host);
+ const y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo)),bw=(W-m.l-m.r)/M.length;
+ for(let v=lo;v<=hi;v+=2){el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:v===0?C.axis:C.grid,'stroke-width':1},svg);const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=(v>0?'+':'')+v}
+ const tip=document.createElement('div');tip.className='tip';host.appendChild(tip);
+ d.forEach((v,i)=>{
+  const cx=m.l+bw*i+bw/2,w=Math.min(36,bw*0.5),top=y(Math.max(v,0)),h=Math.abs(y(v)-y(0));
+  const r=Math.min(4,h/2);
+  // rounded data-end, square at baseline
+  let path;
+  if(v>=0) path=`M${cx-w/2},${y(0)}V${top+r}Q${cx-w/2},${top} ${cx-w/2+r},${top}H${cx+w/2-r}Q${cx+w/2},${top} ${cx+w/2},${top+r}V${y(0)}Z`;
+  else {const b=y(v);path=`M${cx-w/2},${y(0)}V${b-r}Q${cx-w/2},${b} ${cx-w/2+r},${b}H${cx+w/2-r}Q${cx+w/2},${b} ${cx+w/2},${b-r}V${y(0)}Z`}
+  el('path',{d:path,fill:v>=0?C.up:C.down},svg);
+  const lbl=el('text',{x:cx,y:v>=0?top-5:y(v)+14,'text-anchor':'middle','font-size':11,fill:C.ink,'font-weight':600},svg);lbl.textContent=(v>0?'+':'')+v.toFixed(1);
+  const t=el('text',{x:cx,y:H-8,'text-anchor':'middle','font-size':11,fill:C.muted},svg);t.textContent=M[i];
+  const hit=el('rect',{x:m.l+bw*i,y:0,width:bw,height:H,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect();tip.innerHTML=`<b>${M[i]}</b>${v>0?'+':''}${v.toFixed(1)}bp · ${v>=0?'금리 상승':'금리 하락'}`;tip.style.opacity=1;tip.style.left=(cx*r.width/W+14)+'px';tip.style.top='10px'});
+  hit.addEventListener('mouseleave',()=>tip.style.opacity=0);
+ });
+})();
+
+// §08 regimes
+const before=[4.30,4.00,4.00,4.20,4.50,4.55];
+const shift=(f,b,l)=>before.map((v,i)=>{const d=i<=1?f:i===2?(f+l)/2+b:l;return +(v+d/100).toFixed(4)});
+const regs=[
+ ['Bull Steepening','금리↓ · 단기 더 많이↓',shift(-30,0,-10)],
+ ['Bear Steepening','금리↑ · 장기 더 많이↑',shift(5,0,30)],
+ ['Bull Flattening','금리↓ · 장기 더 많이↓',shift(-5,0,-30)],
+ ['Bear Flattening','금리↑ · 단기 더 많이↑',shift(35,0,10)]
+];
+const rg=document.getElementById('regimes');
+regs.forEach(([n,s,v])=>{const c=document.createElement('div');c.className='card';const ds=((v[3]-v[1])-(before[3]-before[1]))*100;
+ c.innerHTML=`<h4>${n}<span>${s}</span></h4><div class="chart"></div><p class="chart-sub">Δ2s10s ${ds>0?'+':''}${ds.toFixed(0)}bp</p>`;rg.appendChild(c);
+ curveChart(c.querySelector('.chart'),[{name:'변경 전',values:before,color:C.base,dash:true},{name:'변경 후',values:v,color:C.s1}],{w:420,h:190,yr:[3.6,5.0],aria:n})});
+
+// explorer
+const rf=document.getElementById('r-f'),rb=document.getElementById('r-b'),rl=document.getElementById('r-l');
+const fmt=v=>(v>0?'+':'')+v.toFixed(1)+'bp';
+function classify(d2,d10){const ds=d10-d2,L=(d2+d10)/2;
+ if(Math.abs(ds)<2) return Math.abs(L)<2?'변화 거의 없음':`기울기 변화 미미 — 거의 평행이동 (${L<0?'Bull':'Bear'}, 평균 ${fmt(L)})`;
+ const dir=ds>0?'Steepening':'Flattening';
+ if(d2*d10<0) return `${dir} Twist — 단기와 장기가 반대 방향`;
+ const nature=L<0?'Bull':'Bear';
+ const why={ 'Bull Steepening':'단기물이 더 많이 하락 → 금리 인하 기대 확대 시 전형적','Bear Steepening':'장기물이 더 많이 상승 → 기간 프리미엄·공급·재정 우려','Bull Flattening':'장기물이 더 많이 하락 → 안전자산 선호·장기 성장 기대 하락','Bear Flattening':'단기물이 더 많이 상승 → Fed 인상·매파적 신호'}[nature+' '+dir];
+ return `<strong>${nature} ${dir}</strong> — ${why}`;
+}
+function update(){
+ const f=+rf.value,b=+rb.value,l=+rl.value;
+ document.getElementById('o-f').textContent=f;document.getElementById('o-b').textContent=b;document.getElementById('o-l').textContent=l;
+ const after=shift(f,b,l);
+ curveChart(document.getElementById('exp'),[{name:'변경 전',values:before,color:C.base,dash:true},{name:'변경 후',values:after,color:C.s1}],{h:240,yr:[3.4,5.2],extraTip:i=>`<div style="color:#62717d;margin-top:3px">변화: ${fmt((after[i]-before[i])*100)}</div>`});
+ const d2=(after[1]-before[1])*100,d10=(after[3]-before[3])*100,d5=(after[2]-before[2])*100;
+ document.getElementById('x-2y').textContent=fmt(d2);document.getElementById('x-10y').textContent=fmt(d10);
+ document.getElementById('x-s').textContent=fmt(d10-d2);document.getElementById('x-f').textContent=fmt(2*d5-d2-d10);
+ let lab=classify(d2,d10);const fly=2*d5-d2-d10;
+ if(Math.abs(fly)>=2) lab+=`<br><span style="font-size:12.5px;color:#62717d">Butterfly ${fmt(fly)} → 5Y가 날개 대비 ${fly>0?'싸짐 (belly cheapening)':'비싸짐 (belly richening)'}</span>`;
+ document.getElementById('x-reg').innerHTML=lab;
+}
+[rf,rb,rl].forEach(r=>r.addEventListener('input',update));
+document.querySelectorAll('#t1-presets button').forEach(btn=>btn.addEventListener('click',()=>{const [f,b,l]=btn.dataset.p.split(',');rf.value=f;rb.value=b;rl.value=l;update()}));
+update();
+
+
+// ================= shared helpers for Tabs 2-5 =================
+function addTip(host){const t=document.createElement('div');t.className='tip';host.appendChild(t);return t}
+function placeTip(tip,svg,W,px){const r=svg.getBoundingClientRect(),x=px*r.width/W;tip.style.opacity=1;tip.style.top='8px';tip.style.left=(x>r.width*0.6?x-tip.offsetWidth-12:x+12)+'px'}
+function niceStep(span){const raw=span/5,p=Math.pow(10,Math.floor(Math.log10(raw))),n=raw/p;return (n<1.5?1:n<3?2:n<7?5:10)*p}
+function sgn(v,d=0){return (v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d)}
+function roundedBar(x,w,yBase,yEnd){ // rounded at data end, square at baseline
+  const up=yEnd<yBase,h=Math.abs(yBase-yEnd),r=Math.min(4,h/2,w/2);
+  if(h<0.5) return `M${x},${yBase}H${x+w}`;
+  return up?`M${x},${yBase}V${yEnd+r}Q${x},${yEnd} ${x+r},${yEnd}H${x+w-r}Q${x+w},${yEnd} ${x+w},${yEnd+r}V${yBase}Z`
+           :`M${x},${yBase}V${yEnd-r}Q${x},${yEnd} ${x+r},${yEnd}H${x+w-r}Q${x+w},${yEnd} ${x+w},${yEnd-r}V${yBase}Z`;
+}
+
+// Waterfall: items=[{name,v}], total label
+function waterfall(host,items,o={}){
+  host.innerHTML='';
+  const unit=o.unit||'bp',W=o.w||460,H=o.h||240,m={t:22,r:10,b:30,l:44};
+  const total=items.reduce((a,b)=>a+b.v,0);
+  let cum=0;const bars=items.map(it=>{const s=cum;cum+=it.v;return{...it,s,e:cum}});
+  bars.push({name:o.totalName||'합계',v:total,s:0,e:total,total:true});
+  const ext=bars.flatMap(b=>[b.s,b.e]).concat([0]);let lo=Math.min(...ext),hi=Math.max(...ext);
+  const pad=Math.max((hi-lo)*0.12,1);lo-=lo<0?pad:0;hi+=hi>0?pad:pad*0.2;
+  const st=niceStep(hi-lo);lo=Math.floor(lo/st)*st;hi=Math.ceil(hi/st)*st;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':o.aria||'Waterfall chart'},host);
+  const y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo)),bw=(W-m.l-m.r)/bars.length;
+  for(let v=lo;v<=hi+1e-9;v+=st){el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:Math.abs(v)<1e-9?C.axis:C.grid,'stroke-width':1},svg);
+    const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=(v>0?'+':'')+(+v.toFixed(2))}
+  const tip=addTip(host);
+  bars.forEach((b,i)=>{
+    const w=Math.min(52,bw*0.56),x=m.l+bw*i+(bw-w)/2;
+    const col=b.total?C.ink:(b.v>=0?C.up:C.down);
+    const top=Math.min(y(b.s),y(b.e)),h=Math.max(Math.abs(y(b.s)-y(b.e)),1.5);
+    if(b.total) el('path',{d:roundedBar(x,w,y(0),y(b.e)),fill:col},svg);
+    else el('rect',{x,y:top,width:w,height:h,rx:3,fill:col},svg);
+    if(!b.total&&i<bars.length-1){const nx=m.l+bw*(i+1)+(bw-w)/2;el('line',{x1:x+w,x2:nx,y1:y(b.e),y2:y(b.e),stroke:C.axis,'stroke-width':1,'stroke-dasharray':'2 2'},svg)}
+    const ly=b.e>=b.s?top-6:top+h+13;
+    const lt=el('text',{x:x+w/2,y:b.total&&b.e<0?y(b.e)+14:ly,'text-anchor':'middle','font-size':11.5,'font-weight':650,fill:C.ink},svg);lt.textContent=sgn(b.v,o.dec||0)+(unit==='bp'?'':'');
+    const nt=el('text',{x:x+w/2,y:H-10,'text-anchor':'middle','font-size':11,fill:b.total?C.ink:C.muted,'font-weight':b.total?700:400},svg);nt.textContent=b.name;
+    const hit=el('rect',{x:m.l+bw*i,y:0,width:bw,height:H,fill:'transparent'},svg);
+    hit.addEventListener('mousemove',()=>{tip.innerHTML=`<b>${b.name}</b>${sgn(b.v,o.dec||0)} ${unit}`+(b.total?'':` <span style="color:#62717d">(누적 ${sgn(b.e,o.dec||0)})</span>`);placeTip(tip,svg,W,x+w/2)});
+    hit.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+}
+
+// ================= TAB 2 =================
+waterfall(document.getElementById('wf2a'),[{name:'실질금리',v:13},{name:'BEI',v:5}],{totalName:'Δ10Y',aria:'인플레이션 축 waterfall'});
+waterfall(document.getElementById('wf2b'),[{name:'기대 단기금리',v:6},{name:'Term Premium',v:11},{name:'모형 잔차',v:1}],{totalName:'Δ10Y',aria:'기대 축 waterfall'});
+(function(){
+  const g=id=>parseFloat(document.getElementById(id).value)/100,s=(id,v)=>document.getElementById(id).textContent=v;
+  function upd(){
+    const n=g('c2-n'),r=g('c2-r'),b5=g('c2-b5');if([n,r,b5].some(isNaN))return;
+    const b10=n-r,fw=Math.pow(Math.pow(1+b10,10)/Math.pow(1+b5,5),1/5)-1,fa=2*b10-b5,fi=(1+n)/(1+r)-1;
+    s('c2-bei',(b10*100).toFixed(2)+'%');s('c2-fw',(fw*100).toFixed(2)+'%');s('c2-fwa',(fa*100).toFixed(2)+'%');s('c2-fisher',(fi*100).toFixed(2)+'%');
+    const d=(fw-b5)*10000;
+    document.getElementById('c2-msg').innerHTML=Math.abs(d)<5?'단기(5Y)와 장기(5y5y) 인플레이션 보상이 비슷 → 인플레이션 기대 곡선이 평평합니다.'
+      :d<0?`5y5y가 5Y BEI보다 ${Math.abs(d).toFixed(0)}bp 낮음 → 시장은 <strong>단기 물가 압력이 장기적으로는 완화</strong>될 것으로 봅니다(장기 기대 안정).`
+      :`5y5y가 5Y BEI보다 ${d.toFixed(0)}bp 높음 → <strong>장기 인플레이션 보상이 더 큼</strong>. 장기 기대 불안 또는 인플레이션 위험 프리미엄 확대 가능성.`;
+  }
+  ['c2-n','c2-r','c2-b5'].forEach(id=>document.getElementById(id).addEventListener('input',upd));upd();
+})();
+
+// ================= TAB 3 =================
+(function(){
+  const TYPES={I:{name:'Indirect',c:C.s1},D:{name:'Direct',c:C.s2},P:{name:'Primary Dealer',c:C.s3}};
+  const bids=[[4.175,6,'P'],[4.180,8,'I'],[4.185,10,'I'],[4.188,6,'D'],[4.190,8,'P'],[4.193,10,'I'],[4.195,8,'D'],[4.198,10,'P'],[4.200,8,'I'],[4.205,12,'P'],[4.210,8,'P'],[4.220,6,'P']];
+  const WI=4.195,AVG_BTC=2.45,AVG_PD=18;
+  const total=bids.reduce((a,b)=>a+b[1],0);
+  document.getElementById('auc-legend').innerHTML=Object.values(TYPES).map(t=>`<span><i class="blk" style="background:${t.c}"></i>${t.name}</span>`).join('')+`<span><i class="dash" style="border-color:${C.ink}"></i>WI 금리 ${WI.toFixed(3)}% (가상)</span>`;
+  const host=document.getElementById('auc'),sl=document.getElementById('r-off');
+  function run(){
+    const off=+sl.value;document.getElementById('o-off').textContent=off;
+    let cum=0,stop=null,alloc={I:0,D:0,P:0},ah=0;
+    const rows=bids.map(([yv,a,t])=>{const s=cum;cum+=a;let f=0;
+      if(s<off){f=Math.min(a,off-s);if(s+a>=off&&stop===null){stop=yv;ah=f/a}}
+      alloc[t]+=f;return{yv,a,t,s,e:cum,f}});
+    if(stop===null)stop=bids[bids.length-1][0];
+    // chart
+    host.innerHTML='';const W=640,H=260,m={t:14,r:16,b:34,l:52},lo=4.165,hi=4.225;
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'입찰 누적 금액과 금리'},host);
+    const x=v=>m.l+(W-m.l-m.r)*v/total,y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+    for(let v=4.17;v<=4.2251;v+=0.01){el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:C.grid},svg);const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=v.toFixed(2)+'%'}
+    for(let v=0;v<=total;v+=20){const t=el('text',{x:x(v),y:H-14,'text-anchor':'middle','font-size':11,fill:C.muted},svg);t.textContent=v}
+    const xl=el('text',{x:W-m.r,y:H-1,'text-anchor':'end','font-size':10.5,fill:C.muted},svg);xl.textContent='누적 입찰금액 ($bn)';
+    const tip=addTip(host);
+    rows.forEach(r=>{
+      const x0=x(r.s)+1,x1=x(r.e)-1,col=TYPES[r.t].c;
+      el('rect',{x:x0,y:y(r.yv),width:Math.max(x1-x0,1),height:y(lo)-y(r.yv),fill:col,opacity:0.28},svg);
+      if(r.f>0) el('rect',{x:x0,y:y(r.yv),width:Math.max(x(r.s+r.f)-1-x0,1),height:y(lo)-y(r.yv),fill:col},svg);
+      const hit=el('rect',{x:x(r.s),y:m.t,width:x(r.e)-x(r.s),height:H-m.t-m.b,fill:'transparent'},svg);
+      hit.addEventListener('mousemove',()=>{tip.innerHTML=`<b>${TYPES[r.t].name}</b>입찰 ${r.yv.toFixed(3)}% · $${r.a}bn<br>낙찰 $${r.f.toFixed(1)}bn`;placeTip(tip,svg,W,(x0+x1)/2)});
+      hit.addEventListener('mouseleave',()=>tip.style.opacity=0);
+    });
+    el('line',{x1:m.l,x2:W-m.r,y1:y(WI),y2:y(WI),stroke:C.ink,'stroke-width':1.5,'stroke-dasharray':'5 4'},svg);
+    el('line',{x1:x(off),x2:x(off),y1:m.t,y2:y(lo),stroke:C.ink,'stroke-width':2},svg);
+    const ot=el('text',{x:x(off)+5,y:m.t+10,'font-size':11,'font-weight':700,fill:C.ink},svg);ot.textContent=`발행액 $${off}bn`;
+    if(x(off)>W-110){ot.setAttribute('x',x(off)-5);ot.setAttribute('text-anchor','end')}
+    // readout
+    const comp=off,btc=total/off,tail=(stop-WI)*1000;
+    const sh=k=>alloc[k]/comp*100;
+    document.getElementById('a-hy').textContent=stop.toFixed(3)+'%';
+    document.getElementById('a-btc').textContent=btc.toFixed(2)+'x';
+    document.getElementById('a-ah').textContent=(ah*100).toFixed(1)+'%';
+    document.getElementById('a-mix').textContent=`${sh('I').toFixed(0)}% · ${sh('D').toFixed(0)}% · ${sh('P').toFixed(0)}%`;
+    const tailTxt=Math.abs(tail)<0.05?'WI와 같은 금리에 낙찰 (on the screws)':tail>0?`<strong>Tail ${tail.toFixed(1)}bp</strong> — 예상보다 높은 금리 = 약한 수요`:`<strong>Stop-through ${Math.abs(tail).toFixed(1)}bp</strong> — 예상보다 낮은 금리 = 강한 수요`;
+    document.getElementById('a-msg').innerHTML=`${tailTxt}<br><span style="font-size:12.5px;color:#62717d">Bid-to-Cover ${btc.toFixed(2)}x (가상 평균 ${AVG_BTC}x 대비 ${btc>=AVG_BTC?'양호':'부진'}) · Dealer 비중 ${sh('P').toFixed(0)}% (가상 평균 ${AVG_PD}% 대비 ${sh('P')<=AVG_PD?'낮음 = 양호':'높음 = 부진'})</span>`;
+  }
+  sl.addEventListener('input',run);run();
+})();
+(function(){
+  const I=[66,68,64,70,67,65,69,71,66,68,55,67],D=[18,17,20,16,19,18,17,16,19,18,17,19],P=I.map((v,i)=>100-v-D[i]);
+  const BTC=[2.48,2.55,2.41,2.62,2.50,2.44,2.58,2.66,2.47,2.52,2.21,2.49],TAIL=[0.3,-0.8,1.1,-1.5,0.0,0.6,-0.9,-1.7,0.4,-0.2,3.2,0.1];
+  const S=[{n:'Indirect',v:I,c:C.s1},{n:'Direct',v:D,c:C.s2},{n:'Primary Dealer',v:P,c:C.s3}];
+  document.getElementById('mix-legend').innerHTML=S.map(s=>`<span><i class="blk" style="background:${s.c}"></i>${s.n}</span>`).join('');
+  const host=document.getElementById('mix'),W=640,H=240,m={t:10,r:10,b:30,l:40};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'최근 12회 경매 낙찰 비중 누적 막대'},host);
+  const y=v=>m.t+(H-m.t-m.b)*(1-v/100),bw=(W-m.l-m.r)/12;
+  [0,25,50,75,100].forEach(v=>{el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:C.grid},svg);const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=v+'%'});
+  const tip=addTip(host);
+  for(let i=0;i<12;i++){
+    const w=bw*0.62,x=m.l+bw*i+(bw-w)/2;let base=0;
+    // stack order bottom->top: Dealer, Direct, Indirect
+    [S[2],S[1],S[0]].forEach((s,k)=>{const v=s.v[i],y0=y(base),y1=y(base+v);base+=v;
+      const gapTop=k<2?2:0;
+      if(k===2) el('path',{d:roundedBar(x,w,y0,y1),fill:s.c},svg);
+      else el('rect',{x,y:y1+gapTop,width:w,height:Math.max(y0-y1-gapTop,0),fill:s.c},svg)});
+    const t=el('text',{x:x+w/2,y:H-10,'text-anchor':'middle','font-size':11,fill:i===11?C.ink:C.muted,'font-weight':i===11?700:400},svg);t.textContent=i===11?'최근':(i-11);
+    const hit=el('rect',{x:m.l+bw*i,y:0,width:bw,height:H,fill:'transparent'},svg);
+    hit.addEventListener('mousemove',()=>{tip.innerHTML=`<b>${i===11?'최근 경매':(11-i)+'회 전'}</b>`+S.map(s=>`<div><span class="sw" style="background:${s.c}"></span>${s.n}: ${s.v[i]}%</div>`).join('')+`<div style="color:#62717d;margin-top:3px">Bid-to-Cover ${BTC[i]}x · Tail ${sgn(TAIL[i],1)}bp</div>`;placeTip(tip,svg,W,x+w/2)});
+    hit.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  }
+})();
+
+// ================= TAB 4 =================
+(function(){
+  const ids=['s','t','r'],R=k=>document.getElementById('r4-'+k);
+  function upd(){
+    const s=+R('s').value,t=+R('t').value,r=+R('r').value;
+    ids.forEach(k=>document.getElementById('o4-'+k).textContent=sgn(+R(k).value));
+    waterfall(document.getElementById('wf4'),[{name:'ΔSOMA',v:s},{name:'−ΔTGA',v:-t},{name:'−ΔON RRP',v:-r}],{unit:'$bn',totalName:'Δ준비금',w:640,h:240,aria:'준비금 변화 waterfall'});
+    const d=s-t-r,parts=[];
+    if(s) parts.push(`SOMA ${s>0?'증가(매입)':'감소(QT)'}가 준비금을 ${s>0?'늘림':'줄임'}`);
+    if(t) parts.push(`TGA ${t>0?'증가(재무부가 민간 자금 흡수)':'감소(재무부 지출)'}가 준비금을 ${t>0?'줄임':'늘림'}`);
+    if(r) parts.push(`ON RRP ${r>0?'증가(MMF 자금이 Fed로)':'감소(RRP 자금이 시장으로 복귀)'}가 준비금을 ${r>0?'줄임':'늘림'}`);
+    document.getElementById('m4').innerHTML=`<strong>준비금 ${sgn(d)} $bn</strong>`+(parts.length?`<br><span style="font-size:12.5px;color:#62717d">${parts.join(' · ')}</span>`:'');
+  }
+  ids.forEach(k=>R(k).addEventListener('input',upd));
+  document.querySelectorAll('#p4 button').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.p.split(',');ids.forEach((k,i)=>R(k).value=v[i]);upd()}));
+  upd();
+})();
+
+// ================= TAB 5 =================
+(function(){ // corridor
+  const host=document.getElementById('corr'),W=760,H=260,m={t:16,r:150,b:16,l:150},lo=3.42,hi=3.83;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'정책금리 corridor 다이어그램'},host);
+  const y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  el('rect',{x:m.l,y:y(3.75),width:W-m.l-m.r,height:y(3.50)-y(3.75),fill:'#eef6f5'},svg);
+  const bt=el('text',{x:(W)/2,y:y(3.75)+16,'text-anchor':'middle','font-size':11,fill:'#225e5c','font-weight':700},svg);bt.textContent='FOMC 목표 범위 3.50–3.75%';
+  const admin=[['SRF 최저 입찰금리 (천장)',3.75],['IORB (준비금 이자)',3.65],['ON RRP 금리 (바닥)',3.50]];
+  const mkt=[['SOFR',3.67,C.s2],['EFFR',3.64,C.s1]];
+  admin.forEach(([n,v])=>{el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:C.ink,'stroke-width':1.5,'stroke-dasharray':'6 4'},svg);
+    const t=el('text',{x:m.l-8,y:y(v)+4,'text-anchor':'end','font-size':11.5,fill:C.ink},svg);t.textContent=`${n} ${v.toFixed(2)}%`});
+  let lastY=-99;
+  mkt.sort((a,b)=>b[1]-a[1]).forEach(([n,v,c])=>{el('line',{x1:m.l+40,x2:W-m.r,y1:y(v),y2:y(v),stroke:c,'stroke-width':2.5},svg);
+    el('circle',{cx:W-m.r,cy:y(v),r:4,fill:c,stroke:'#fff','stroke-width':2},svg);
+    let ly=y(v)+4;if(ly-lastY<14)ly=lastY+14;lastY=ly;
+    const t=el('text',{x:W-m.r+10,y:ly,'font-size':11.5,'font-weight':650,fill:C.ink},svg);t.textContent=`${n} ${v.toFixed(2)}% (시장)`});
+})();
+(function(){ // SOFR-IORB synthetic
+  const host=document.getElementById('sofr'),N=66,vals=[],tags={};
+  for(let i=0;i<N;i++){let v=-4+i*0.07+((i*7)%5-2)*0.6;vals.push(+v.toFixed(1))}
+  [[21,8,'월말'],[43,14,'분기말'],[31,6,'세금 납부일'],[65,9,'월말']].forEach(([i,a,n])=>{vals[i]=+(vals[i]+a).toFixed(1);tags[i]=n});
+  const W=640,H=230,m={t:22,r:16,b:28,l:40},lo=-8,hi=16;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'SOFR-IORB 스프레드 가상 시계열'},host);
+  const x=i=>m.l+(W-m.l-m.r)*i/(N-1),y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  for(let v=lo;v<=hi;v+=4){el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:v===0?C.axis:C.grid,'stroke-width':v===0?1.2:1},svg);const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=(v>0?'+':'')+v}
+  [[0,'3개월 전'],[N-1,'오늘']].forEach(([i,n])=>{const t=el('text',{x:x(i),y:H-8,'text-anchor':i?'end':'start','font-size':11,fill:C.muted},svg);t.textContent=n});
+  el('path',{d:vals.map((v,i)=>(i?'L':'M')+x(i)+','+y(v)).join(''),fill:'none',stroke:C.s1,'stroke-width':2,'stroke-linejoin':'round'},svg);
+  Object.entries(tags).forEach(([i,n])=>{i=+i;el('circle',{cx:x(i),cy:y(vals[i]),r:4,fill:C.s1,stroke:'#fff','stroke-width':2},svg);const t=el('text',{x:x(i),y:y(vals[i])-9,'text-anchor':i>N-5?'end':'middle','font-size':11,fill:C.ink},svg);t.textContent=n});
+  const tip=addTip(host),cross=el('line',{y1:m.t,y2:H-m.b,stroke:C.axis,'stroke-dasharray':'2 3',opacity:0},svg),dot=el('circle',{r:4,fill:C.s1,stroke:'#fff','stroke-width':2,opacity:0},svg);
+  const hit=el('rect',{x:m.l,y:0,width:W-m.l-m.r,height:H,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect(),sx=(ev.clientX-r.left)*W/r.width,i=Math.max(0,Math.min(N-1,Math.round((sx-m.l)/(W-m.l-m.r)*(N-1))));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('opacity',1);dot.setAttribute('cx',x(i));dot.setAttribute('cy',y(vals[i]));dot.setAttribute('opacity',1);
+    tip.innerHTML=`<b>${N-1-i===0?'오늘':(N-1-i)+'영업일 전'}</b>SOFR − IORB: ${sgn(vals[i],1)}bp${tags[i]?' · '+tags[i]:''}`;placeTip(tip,svg,W,x(i))});
+  hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cross.setAttribute('opacity',0);dot.setAttribute('opacity',0)});
+})();
+(function(){ // futures calc
+  const g=id=>parseFloat(document.getElementById(id).value),s=(id,v)=>document.getElementById(id).textContent=v;
+  function upd(){
+    const r=g('c5-r'),p=g('c5-p'),d=g('c5-d'),N=g('c5-n');if([r,p,d,N].some(isNaN)||d>=N||d<0)return;
+    const avg=100-p,post=(avg*N-r*d)/(N-d),chg=(post-r)*100,prob=-chg/25*100;
+    s('c5-avg',avg.toFixed(3)+'%');s('c5-post',post.toFixed(3)+'%');s('c5-chg',sgn(chg,1)+'bp');
+    s('c5-prob',chg<0?Math.min(prob,999).toFixed(0)+'%':'—');
+    document.getElementById('c5-msg').innerHTML=chg<-0.5?(prob>100?`25bp 인하가 완전히 반영되고 추가 인하(또는 50bp 인하) 가능성 ${(prob-100).toFixed(0)}%p 정도까지 반영된 가격입니다.`:`시장은 이번 회의에서 25bp 인하 확률을 약 <strong>${prob.toFixed(0)}%</strong>로 보고 있습니다 (동결 ${(100-prob).toFixed(0)}%).`)
+      :chg>0.5?`시장은 인상 가능성(약 ${(chg/25*100).toFixed(0)}%)을 반영하고 있습니다.`:'시장은 이번 회의에서 동결을 예상합니다.';
+  }
+  ['c5-r','c5-p','c5-d','c5-n'].forEach(id=>document.getElementById(id).addEventListener('input',upd));upd();
+})();
+
+// ================= tab navigation =================
+(function(){
+  const panels=[...document.querySelectorAll('.tab-panel')],btns=[...document.querySelectorAll('.tabbar button')];
+  function show(key,scrollEl){
+    panels.forEach(p=>p.classList.toggle('active',p.dataset.tab===key));
+    btns.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===key));
+    const i=panels.findIndex(p=>p.dataset.tab===key);
+    document.getElementById('pg-prev').hidden=i<=0;document.getElementById('pg-next').hidden=i>=panels.length-1;
+    if(i>0)document.getElementById('pg-prev').textContent='← '+btns[i-1].dataset.label;
+    if(i<panels.length-1)document.getElementById('pg-next').textContent=btns[i+1].dataset.label+' →';
+    if(scrollEl)scrollEl.scrollIntoView({block:'start'});else window.scrollTo(0,0);
+  }
+  function fromHash(){
+    const h=decodeURIComponent(location.hash.slice(1));const t=h&&document.getElementById(h);
+    const p=t?t.closest('.tab-panel'):null;
+    if(p) show(p.dataset.tab,t===p?null:t); else show('1');
+  }
+  btns.forEach(b=>b.addEventListener('click',()=>{history.replaceState(null,'','#tab'+b.dataset.tab);show(b.dataset.tab)}));
+  const step=d=>{const i=panels.findIndex(p=>p.classList.contains('active'))+d;if(panels[i]){history.replaceState(null,'','#tab'+panels[i].dataset.tab);show(panels[i].dataset.tab)}};
+  document.getElementById('pg-prev').addEventListener('click',()=>step(-1));
+  document.getElementById('pg-next').addEventListener('click',()=>step(1));
+  window.addEventListener('hashchange',fromHash);fromHash();
+})();
+</script>
+</body>
+</html>

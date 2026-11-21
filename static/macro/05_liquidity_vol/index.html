@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor · Macro 05 유동성·변동성</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --page:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --acc:#eb6834; --ctx:#b4b2a9;
+  --up:#e34948; --down:#2a78d6; --up-text:#b42318; --down-text:#1c5cab;
+  --wash-hike:rgba(227,73,72,.07); --wash-cut:rgba(42,120,214,.08);
+  --accent:#147b79; --hover:rgba(11,11,11,.04); --zone:rgba(11,11,11,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --acc:#d95926; --ctx:#5d5c57;
+    --up:#e66767; --down:#3987e5; --up-text:#f08a8a; --down-text:#86b6ef;
+    --wash-hike:rgba(230,103,103,.10); --wash-cut:rgba(57,135,229,.11);
+    --accent:#3fb5b2; --hover:rgba(255,255,255,.05); --zone:rgba(255,255,255,.06);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page)}
+.viz-root{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:13px;line-height:1.5;min-height:100vh;padding:24px 28px 48px;word-break:keep-all}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-top:4px solid var(--ink);padding-top:14px;margin-bottom:14px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+.meta{font-size:12px;color:var(--ink2);text-align:right}
+.meta b{color:var(--ink)}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin:22px 0 8px;display:flex;align-items:baseline;gap:10px}
+.sec-title span{font-weight:500;letter-spacing:0;color:var(--muted);font-size:11.5px}
+/* filter row */
+.filters{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 14px;margin-bottom:14px;position:sticky;top:0;z-index:5}
+.filters label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-right:6px}
+.seg{display:inline-flex;border:1px solid var(--ring);border-radius:7px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:4px 10px;font-size:12px;color:var(--ink2);border-right:1px solid var(--ring)}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--down);outline-offset:-2px}
+.fgroup{display:flex;align-items:center}
+.regkey{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--ink2);margin-left:auto}
+.regkey i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.regkey .hike{background:var(--wash-hike);box-shadow:inset 0 0 0 1px var(--up)}
+.regkey .cut{background:var(--wash-cut);box-shadow:inset 0 0 0 1px var(--down)}
+/* cards */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g2w{grid-template-columns:1fr 2.1fr}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px 12px;min-width:0}
+.card h2{font-size:14px;margin:0;letter-spacing:-.2px}
+.card h2 span{font-weight:500;color:var(--muted);font-size:12px}
+.card .sub{font-size:11.5px;color:var(--ink2);margin:2px 0 8px}
+section{margin-bottom:14px}
+/* 판정 */
+.verdict{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:14px;margin-bottom:10px}
+.vt{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px;min-width:0}
+.vt.main{border-left:4px solid var(--ink)}
+.vt .k{font-size:11px;color:var(--ink2);font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.vt .k em{font-style:normal;color:var(--muted);font-weight:500;text-align:right}
+.vt .row{display:flex;align-items:center;gap:14px;margin:6px 0 10px}
+.vt .score{font-size:48px;font-weight:650;letter-spacing:-2px;line-height:1;min-width:66px;font-variant-numeric:tabular-nums}
+.vt .score small{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:2px}
+.vt .word{font-size:15px;font-weight:650}
+.vt .calc{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.vt .calc b{color:var(--ink)}
+.vt .to{font-size:12px;color:var(--ink2);margin-top:8px}
+.vt .to b{color:var(--ink)}
+.meter{position:relative;display:flex;gap:2px;height:22px;margin-top:4px}
+.meter .z{background:var(--zone);font-size:10.5px;color:var(--muted);display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;min-width:0}
+.meter .z:first-child{border-radius:4px 0 0 4px}.meter .z:last-of-type{border-radius:0 4px 4px 0}
+.meter .z.on{background:var(--acc);color:#fff;font-weight:650}
+.meter i{position:absolute;top:-4px;width:3px;height:30px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--surface);transform:translateX(-1.5px)}
+.mticks{position:relative;height:16px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:3px}
+.mticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.mticks span.l{transform:none;left:0}.mticks span.r{transform:none;right:0}
+.oneline{background:var(--surface);border:1px solid var(--ring);border-left:4px solid var(--ink);border-radius:10px;padding:10px 14px;font-size:13.5px;margin-bottom:14px}
+.oneline b{font-weight:650}
+.oneline .mtd{display:block;font-size:12px;color:var(--ink2);margin-top:4px}
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 12px}
+.kpi .k{font-size:11px;color:var(--ink2);font-weight:600}
+.kpi .v{font-size:22px;font-weight:650;letter-spacing:-.5px;margin:2px 0;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.kpi .d{font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 6px;color:var(--muted)}
+.kpi .d span{white-space:nowrap}
+.up{color:var(--up-text)} .down{color:var(--down-text)} .flat{color:var(--muted)}
+/* legends & charts */
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:2px 0 4px}
+.legend .it{display:inline-flex;align-items:center;gap:6px}
+.legend .it b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:650}
+.legend .ln{display:inline-block;width:14px;height:2px;border-radius:1px}
+.legend .bx{display:inline-block;width:10px;height:10px;border-radius:2px}
+.legend .dash{display:inline-block;width:16px;height:0;border-top:1px dashed var(--ink2)}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible;outline:none}
+.chart svg:focus-visible{outline:2px solid var(--down);outline-offset:2px;border-radius:4px}
+.axis text{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.gridline{stroke:var(--grid);stroke-width:1}
+.baseline{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink2);stroke-width:1;stroke-dasharray:4 3}
+.reflabel{fill:var(--ink2);font-size:10.5px;font-weight:600}
+.cross{stroke:var(--axis);stroke-width:1}
+.dlabel{font-size:11px;fill:var(--ink2);font-variant-numeric:tabular-nums}
+.glabel{font-size:11.5px;fill:var(--ink2);font-weight:600}
+.empty{padding:30px 0;color:var(--muted);font-size:12px;text-align:center}
+/* tooltip */
+#tip{position:fixed;pointer-events:none;z-index:50;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 6px 24px rgba(0,0,0,.14);border-radius:8px;padding:8px 10px;font-size:12px;min-width:150px;opacity:0;transition:opacity .08s}
+#tip .t{font-size:11px;color:var(--muted);margin-bottom:4px}
+#tip .r{display:flex;align-items:center;gap:14px;justify-content:space-between}
+#tip .r span.n{color:var(--ink2);display:flex;align-items:center;gap:6px}
+#tip .r b{font-variant-numeric:tabular-nums}
+#tip .key{display:inline-block;width:12px;height:2px;border-radius:1px}
+/* tables */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+th{font-size:11px;color:var(--muted);font-weight:600;text-align:right;padding:6px 8px;border-bottom:1px solid var(--axis);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th.grp{text-align:center;color:var(--ink2);border-bottom:1px solid var(--grid)}
+td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+td.l{text-align:left}
+td small{color:var(--muted);font-size:11px;margin-left:4px}
+tr.sep td{color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;padding-top:12px;border-bottom:1px solid var(--axis);text-align:left}
+td.b,th.b{border-left:1px solid var(--grid)}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.finding{border-left:3px solid var(--ink);background:var(--hover);border-radius:0 6px 6px 0;padding:8px 12px;font-size:12.5px;margin:10px 0 4px}
+.finding b{font-weight:650}
+.notes{font-size:11.5px;color:var(--ink2);line-height:1.7}
+.notes ul{margin:4px 0 0;padding-left:16px}
+.notes code{font-size:11px;background:var(--hover);padding:0 4px;border-radius:3px}
+.impl{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.impl .card h2{font-size:13px}
+.impl .tagline{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--accent);margin-bottom:2px}
+.impl p{margin:6px 0 0;font-size:12.5px;color:var(--ink2)}
+.impl p b{color:var(--ink)}
+.rule{width:100%;font-size:12.5px;margin-top:2px}
+.rule td{white-space:normal;text-align:left;vertical-align:top}
+.rule td:first-child{white-space:nowrap;font-weight:650}
+.rule tr.now td{background:var(--hover)}
+details.tv{margin-top:6px;font-size:11.5px;color:var(--ink2)}
+details.tv summary{cursor:pointer;color:var(--muted);width:max-content}
+details.tv table{margin-top:6px;font-size:12px}
+.err{padding:40px;font-size:14px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.g2,.g2w,.impl{grid-template-columns:1fr}.verdict{grid-template-columns:1fr 1fr}}
+@media (max-width:720px){.viz-root{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}.verdict{grid-template-columns:1fr}.regkey{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">RATES MONITOR · MACRO · 05</div>
+    <h1>유동성·변동성</h1>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="sec-title">이번 달 판정 <span>직전 월말에 판정해 이번 달에 적용 · 세 축을 직전 3년 분포의 백분위로 측정 · 점수는 −1 / 0 / +1</span></div>
+<div class="verdict" id="verdict"></div>
+<div class="oneline" id="oneline"></div>
+<div class="kpis" id="kpis"></div>
+
+<div class="sec-title">지표 <span>아래 기간 선택은 시계열 차트 4개에 함께 적용됩니다</span></div>
+<div class="filters" role="group" aria-label="시계열 기간">
+  <div class="fgroup"><label>기간</label><div class="seg" id="f-range"></div></div>
+  <div class="regkey" aria-label="배경 음영 범례"><span><i class="hike"></i>금리 인상기</span><span><i class="cut"></i>금리 인하기</span></div>
+</div>
+
+<section class="card">
+  <h2>금리 변동성: MOVE와 직전 3년 기준선</h2>
+  <div class="sub">일별 · 그 달의 MOVE 최고값이 상위 10% 경계를 넘으면 스트레스(−1), 중앙값 아래에 머물면 안정 조건 하나를 충족합니다</div>
+  <div class="legend" id="c1-legend"></div>
+  <div class="chart" id="c1"></div>
+  <details class="tv"><summary>표로 보기 (최근 12개월 판정)</summary><div class="tablewrap"><table id="c1-table"></table></div></details>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <h2>리스크 심리: VIX와 신용 스프레드의 3년 백분위</h2>
+    <div class="sub">월말 판정값 · 0~100 · 두 백분위의 평균이 50 아래여야 안정 조건을 충족합니다</div>
+    <div class="legend" id="c2-legend"></div>
+    <div class="chart" id="c2"></div>
+    <details class="tv"><summary>표로 보기 (최근 12개월 판정)</summary><div class="tablewrap"><table id="c2-table"></table></div></details>
+  </div>
+  <div class="card">
+    <h2>유동성: 단기자금 금리 − 준비금 금리</h2>
+    <div class="sub">bp · 20영업일 평균 · SOFR 쪽이 +5bp를 넘으면 자금 경보가 켜집니다(SOFR은 2018년 4월부터)</div>
+    <div class="legend" id="c3-legend"></div>
+    <div class="chart" id="c3"></div>
+    <details class="tv"><summary>표로 보기 (최근 12개월 판정)</summary><div class="tablewrap"><table id="c3-table"></table></div></details>
+  </div>
+</section>
+
+<div class="sec-title">전략 시사점 <span>백테스트 결과를 반영한 사용법</span></div>
+<section class="impl" id="impl"></section>
+
+<div class="sec-title">백테스트 근거 <span id="bt-span"></span></div>
+
+<section class="card">
+  <h2>Q1. 점수 뒤에 금리는 얼마나 흔들렸나 <span>· 크기 예측 검증</span></h2>
+  <div class="sub">위: 매월 말 금리 변동성 백분위와 그때의 점수 · 아래: 판정 다음 달 10년 금리의 실현변동성(일별 변화의 연율 환산, bp)</div>
+  <div class="legend" id="q1h-legend"></div>
+  <div class="chart" id="q1h"></div>
+  <div class="grid g2w" style="align-items:start;margin-top:10px">
+    <div>
+      <div class="chart" id="q1"></div>
+    </div>
+    <div class="tablewrap"><table id="q1-table"></table></div>
+  </div>
+  <div class="finding" id="q1-finding"></div>
+</section>
+
+<section class="card">
+  <h2>Q2. 점수 뒤에 벨리는 예상대로 움직였나 <span>· 방향 예측 검증</span></h2>
+  <div class="sub">판정 다음 달의 2s5s10s Fly(2 × 5년 − 2년 − 10년) 변화 · 적중 = +1 뒤 Fly 하락(벨리 강세), −1 뒤 Fly 상승(벨리 약세)</div>
+  <div class="tablewrap" style="margin-top:8px"><table id="q2-table"></table></div>
+  <div class="finding" id="q2-finding"></div>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <h2>Q3. 세 축 가운데 무엇이 변동 크기를 설명하나 <span>· 축별 비교</span></h2>
+    <div class="sub">각 지표의 월말 값과 다음 달 10년 금리 실현변동성의 상관계수</div>
+    <div class="tablewrap"><table id="q3-table"></table></div>
+    <div class="finding" id="q3-finding"></div>
+  </div>
+  <div class="card">
+    <h2>Q4. 스트레스가 시작된 달에 커브는 어떻게 움직였나 <span>· 반응형 검증</span></h2>
+    <div class="sub">점수가 −1로 바뀐 달의 월간 금리 변화(bp) · 유형은 10년 금리와 2s10s의 부호로 분류</div>
+    <div class="tablewrap"><table id="q4-table"></table></div>
+    <div class="finding" id="q4-finding"></div>
+  </div>
+</section>
+
+<section class="card notes">
+  <b>데이터·계산 규칙</b>
+  <ul id="rules"></ul>
+</section>
+</div>
+<div id="tip" role="tooltip"></div>
+</div>
+
+<script src="data.js"></script>
+<script src="signals.js"></script>
+<script>
+"use strict";
+(function(){
+const D = window.LIQUIDITY_DATA, S = window.LIQUIDITY_SIGNALS;
+if(!D||!S){document.querySelector('.wrap').innerHTML='<div class="err">data.js 또는 signals.js가 없습니다. 이 폴더에서 <code>python3 fetch_data.py</code>를 실행하세요.</div>';return;}
+
+/* ---------- 도구 ---------- */
+const $ = s => document.querySelector(s);
+const ms = s => Date.parse(s.slice(0,10)+'T00:00:00Z');
+const fx = (v,d=2) => v==null ? '–' : v.toFixed(d);
+const sg = (v,d=1) => v==null ? '–' : (v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d);
+const sc = s => s==null ? '?' : s>0 ? '+1' : s<0 ? '−1' : '0';
+const ym = s => s.slice(0,4)+'년 '+(+s.slice(5,7))+'월';
+const mo = s => (+s.slice(5,7))+'월';
+const REG = {hike:'인상기', cut:'인하기', hold:'동결기'};
+const WORD = {'1':'안정','0':'중립','-1':'스트레스'};
+const TH = S.thresholds, cur = S.current, O = cur.official, MTD = cur.mtd;
+const SCOL = {'-1':'var(--up)','0':'var(--ctx)','1':'var(--down)'};
+const h = (tag, cls, text) => { const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+const alarmWord = a => a==null ? '자료 없음' : a ? '켜짐' : '꺼짐';
+
+function niceTicks(lo, hi, n){
+  if(lo===hi){lo-=1;hi+=1;}
+  const raw=(hi-lo)/n, p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p;
+  const step=(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;
+  const a=Math.floor(lo/step+1e-9)*step, b=Math.ceil(hi/step-1e-9)*step, out=[];
+  for(let v=a; v<=b+step*1e-6; v+=step) out.push(Math.round(v/step)*step);
+  out.step=step; return out;
+}
+const dec = step => { for(let d=0; d<4; d++){ const v=step*Math.pow(10,d); if(Math.abs(v-Math.round(v))<1e-9) return d; } return 4; };
+const tl = (v,d) => v===0 ? '0' : v.toFixed(d).replace('-','−');
+function timeTicks(t0, t1, maxN){
+  const a=new Date(t0), b=new Date(t1);
+  const months=(b.getUTCFullYear()-a.getUTCFullYear())*12+b.getUTCMonth()-a.getUTCMonth();
+  const step=[1,3,6,12,24,60].find(s=>months/s<=maxN)||120, out=[];
+  let k=Math.ceil((a.getUTCFullYear()*12+a.getUTCMonth())/step)*step;
+  for(;;k+=step){ const y=Math.floor(k/12), m=k%12, t=Date.UTC(y,m,1); if(t>t1) break;
+    if(t>=t0) out.push({t, label: step>=12||m===0 ? String(y) : (m+1)+'월'}); }
+  return out;
+}
+function barPath(x, y0, y1, w){
+  const r=Math.min(4, w/2, Math.abs(y1-y0)), s=y1<y0?1:-1;
+  return `M${x},${y0}V${y1+s*r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1+s*r}V${y0}Z`;
+}
+/* 최근 n개 관측의 평균(빈 값은 건너뜀). 관측이 있는 날에만 값을 둔다 */
+function rollMean(a, n){ const out=new Array(a.length).fill(null), q=[]; let sum=0;
+  a.forEach((v,i)=>{ if(v==null) return; q.push(v); sum+=v; if(q.length>n) sum-=q.shift(); if(q.length===n) out[i]=sum/n; });
+  return out; }
+
+/* ---------- 툴팁 ---------- */
+const tip = $('#tip');
+function showTip(x, y, title, rows){
+  tip.replaceChildren(h('div','t',title));
+  rows.forEach(r=>{ const d=h('div','r'), n=h('span','n');
+    if(r.color){ const k=h('span','key'); k.style.background=r.color; n.appendChild(k); }
+    n.appendChild(document.createTextNode(r.name)); d.append(n, h('b',null,r.value)); tip.appendChild(d); });
+  const w=tip.offsetWidth, hh=tip.offsetHeight;
+  tip.style.left=Math.max(8, x+16+w>innerWidth ? x-w-16 : x+16)+'px';
+  tip.style.top=Math.max(8, y+16+hh>innerHeight ? y-hh-12 : y+16)+'px';
+  tip.style.opacity=1;
+}
+const hideTip = () => { tip.style.opacity=0; };
+
+/* ---------- 시계열 차트 (선·막대 공용, 03_inflation과 같은 구현) ---------- */
+function timeChart(host, o){
+  const W=Math.max(300, host.clientWidth), H=o.h||250, m={l:46,r:14,t:12,b:26};
+  const pw=W-m.l-m.r, ph=H-m.t-m.b, [t0,t1]=o.range;
+  const ser=o.series.map(s=>({...s, pts:s.xs.map((x,i)=>[x,s.ys[i],i]).filter(p=>p[1]!=null&&p[0]>=t0&&p[0]<=t1)}));
+  let lo=Infinity, hi=-Infinity;
+  ser.forEach(s=>s.pts.forEach(p=>{ if(p[1]<lo) lo=p[1]; if(p[1]>hi) hi=p[1]; }));
+  if(!isFinite(lo)||!ser[0].pts.length){ host.innerHTML='<div class="empty">이 기간에 표시할 데이터가 없습니다.</div>'; return; }
+  (o.refs||[]).forEach(r=>{ lo=Math.min(lo,r.y); hi=Math.max(hi,r.y); });
+  if(o.zero){ lo=Math.min(lo,0); hi=Math.max(hi,0); }
+  if(o.fixed){ lo=o.fixed[0]; hi=o.fixed[1]; }
+  const tk=niceTicks(lo,hi,5), d=dec(tk.step); lo=tk[0]; hi=tk[tk.length-1];
+  const X=t=>m.l+(t-t0)/(t1-t0)*pw, Y=v=>m.t+(hi-v)/(hi-lo)*ph;
+  let g='';
+  S.regimes.forEach(r=>{ if(r.type==='hold') return; const a=Math.max(ms(r.start),t0), b=Math.min(ms(r.end),t1);
+    if(b>a) g+=`<rect x="${X(a)}" y="${m.t}" width="${X(b)-X(a)}" height="${ph}" fill="var(--wash-${r.type})"/>`; });
+  g+='<g class="axis">';
+  tk.forEach(v=>{ g+=`<line class="${v===0&&o.zero?'baseline':'gridline'}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${tl(v,d)}${o.unit||''}</text>`; });
+  timeTicks(t0,t1,Math.max(3,Math.floor(pw/64))).forEach(t=>{ g+=`<text x="${X(t.t)}" y="${H-6}" text-anchor="middle">${t.label}</text>`; });
+  g+='</g>';
+  ser.forEach(s=>{
+    if(s.kind==='col'){
+      const n=s.pts.length, slot=n>1 ? (X(s.pts[n-1][0])-X(s.pts[0][0]))/(n-1) : 24, bw=Math.max(1.5, Math.min(24, slot-2));
+      s.pts.forEach(p=>{ if(p[1]!==0) g+=`<path d="${barPath(X(p[0])-bw/2, Y(0), Y(p[1]), bw)}" fill="${s.colorFn(p[2])}"/>`; });
+    }else{
+      g+=`<path d="${s.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('')}" fill="none" stroke="${s.color}" stroke-width="${s.w||2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+  });
+  (o.refs||[]).forEach(r=>{ g+=`<line class="ref" x1="${m.l}" x2="${W-m.r}" y1="${Y(r.y)}" y2="${Y(r.y)}"/>`+(r.label?`<text class="reflabel" x="${W-m.r-4}" y="${Y(r.y)+(r.below&&Y(r.y)+18<m.t+ph?13:-5)}" text-anchor="end">${r.label}</text>`:''); });
+  ser.forEach(s=>{ if(s.kind!=='col'&&s.pts.length){ const p=s.pts[s.pts.length-1];
+    g+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; } });
+  g+=`<g class="hov" style="display:none"><line class="cross" y1="${m.t}" y2="${m.t+ph}"/>${ser.map(s=>s.kind==='col'?'':`<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join('')}</g>`;
+  g+=`<rect class="hit" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent"/>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" tabindex="0" role="img" aria-label="${o.label}">${g}</svg>`;
+
+  const svg=host.firstChild, hov=svg.querySelector('.hov'), base=ser[0].pts; let idx=base.length-1;
+  function at(i, cy){
+    idx=Math.max(0, Math.min(base.length-1, i)); const p=base[idx], x=X(p[0]);
+    hov.style.display=''; const line=hov.querySelector('line'); line.setAttribute('x1',x); line.setAttribute('x2',x);
+    const dots=hov.querySelectorAll('circle'); let k=0;
+    ser.forEach(s=>{ if(s.kind==='col') return; const v=s.ys[p[2]], c=dots[k++];
+      if(v==null) c.style.display='none'; else { c.style.display=''; c.setAttribute('cx',x); c.setAttribute('cy',Y(v)); } });
+    const rc=svg.getBoundingClientRect(), tipRows=o.tip(p[2]);
+    showTip(rc.left+x*rc.width/W, cy==null ? rc.top+m.t+10 : cy, tipRows.title, tipRows.rows);
+  }
+  svg.querySelector('.hit').addEventListener('pointermove', e=>{
+    const rc=svg.getBoundingClientRect(), t=t0+((e.clientX-rc.left)*W/rc.width-m.l)/pw*(t1-t0);
+    let a=0, b=base.length-1; while(b-a>1){ const c=(a+b)>>1; if(base[c][0]<t) a=c; else b=c; }
+    at(Math.abs(base[a][0]-t)<=Math.abs(base[b][0]-t)?a:b, e.clientY);
+  });
+  const off=()=>{ hov.style.display='none'; hideTip(); };
+  svg.querySelector('.hit').addEventListener('pointerleave', off);
+  svg.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'){at(idx-1);e.preventDefault();} else if(e.key==='ArrowRight'){at(idx+1);e.preventDefault();} else if(e.key==='Escape') off(); });
+  svg.addEventListener('focus', ()=>at(idx)); svg.addEventListener('blur', off);
+}
+
+/* ---------- 머리말 ---------- */
+$('#meta').innerHTML=`기준일 <b>${S.asof}</b> · 현재 국면 <b>${REG[MTD.regime]}</b> (정책금리 상단 ${fx(cur.policy_upper)}%)<br>데이터 생성 ${S.generated} · FRED, Yahoo Finance, 직접 받은 MOVE`;
+$('#bt-span').textContent=`성과월 ${S.split.start} ~ ${S.split.end} · 규칙 설정 구간 ${S.split.start.slice(0,4)}~${+S.split.test_start.slice(0,4)-1}, 검증 구간 ${S.split.test_start.slice(0,4)}~ · 문턱값은 결과를 보기 전에 고정`;
+
+/* ---------- 판정 ---------- */
+const ACTION = {'-1':'벨리 불릿 청산, 모든 액티브 포지션 절반', '0':'기존 포지션 유지, 신규 불릿 없음', '1':'Fly z-score ≥ +1이면 벨리 불릿 허용'};
+function meter(zones, pos, ticks, aria){
+  return `<div class="meter" role="img" aria-label="${aria}">${zones.map(z=>`<div class="z${z.on?' on':''}" style="flex:${z.w}">${z.t}</div>`).join('')}${pos==null?'':`<i style="left:${Math.max(1.5,Math.min(98.5,pos))}%"></i>`}</div>`
+    +`<div class="mticks">${ticks.map(t=>`<span${t.cls?` class="${t.cls}"`:''}${t.cls?'':` style="left:${t.x}%"`}>${t.t}</span>`).join('')}</div>`;
+}
+(function(){
+  const dm=mo(O.date), vZone=O.V>TH.stress?2:O.V<TH.calm?0:1, fpos=O.fund==null?null:(O.fund+15)/30*100;
+  const main=`<div class="vt main"><div class="k"><span>통합 점수</span><em>${O.date} 판정 → ${ym(O.month+'-01')} 적용</em></div>
+    <div class="row"><div class="score">${sc(O.score)}</div><div><div class="word">${WORD[O.score]}</div><div class="calc">${ACTION[O.score]}</div></div></div>
+    <table class="rule"><tbody>
+      <tr${O.score===-1?' class="now"':''}><td>−1</td><td>금리 변동성이 ${TH.stress} 초과</td></tr>
+      <tr${O.score===1?' class="now"':''}><td>+1</td><td>변동성·심리가 모두 ${TH.calm} 미만이고 자금 경보 꺼짐</td></tr>
+      <tr${O.score===0?' class="now"':''}><td>0</td><td>그 외</td></tr></tbody></table></div>`;
+  const v=`<div class="vt"><div class="k"><span>금리 변동성</span><em>스트레스를 판정</em></div>
+    <div class="row"><div class="score">${fx(O.V,0)}</div><div><div class="word">${['안정 조건 충족','중립 구간','스트레스'][vZone]}</div>
+      <div class="calc">${dm} MOVE 최고 <b>${fx(O.move_peak,1)}</b><br>상위 10% 경계 ${fx(O.p90,1)} · 중앙값 ${fx(O.p50,1)}</div></div></div>
+    ${meter([{w:TH.calm,t:'안정',on:vZone===0},{w:TH.stress-TH.calm,t:'중립',on:vZone===1},{w:100-TH.stress,t:'',on:vZone===2}], O.V,
+      [{cls:'l',t:'0'},{x:TH.calm,t:TH.calm},{x:TH.stress,t:TH.stress}], `금리 변동성 백분위 ${fx(O.V,0)}, 스트레스 기준 ${TH.stress}`)}</div>`;
+  const rOk=O.R!=null&&O.R<TH.calm;
+  const r=`<div class="vt"><div class="k"><span>리스크 심리</span><em>안정 판정의 확인 조건</em></div>
+    <div class="row"><div class="score">${fx(O.R,0)}</div><div><div class="word">${rOk?'안정 조건 충족':'안정 조건 미충족'}</div>
+      <div class="calc">VIX 최고 <b>${fx(O.vix_peak,1)}</b> → ${fx(O.Rv,0)}<br>신용 스프레드 <b>${fx(O.baa)}%</b> → ${fx(O.Rc,0)}</div></div></div>
+    ${meter([{w:TH.calm,t:'충족',on:rOk},{w:100-TH.calm,t:'미충족',on:!rOk}], O.R,
+      [{cls:'l',t:'0'},{x:TH.calm,t:TH.calm},{cls:'r',t:'100'}], `리스크 심리 백분위 ${fx(O.R,0)}, 안정 기준 ${TH.calm}`)}</div>`;
+  const l=`<div class="vt"><div class="k"><span>유동성</span><em>안정 판정의 확인 조건</em></div>
+    <div class="row"><div class="score">${O.fund==null?'–':sg(O.fund,1)}<small>bp</small></div><div><div class="word">자금 경보 ${alarmWord(O.alarm)}</div>
+      <div class="calc">SOFR − 준비금 금리<br>${TH.fund_days}영업일 평균 · 기준 <b>+${TH.fund}bp</b></div></div></div>
+    ${meter([{w:20,t:'꺼짐',on:O.alarm===false},{w:10,t:'경보',on:O.alarm===true}], fpos,
+      [{cls:'l',t:'−15bp'},{x:66.7,t:'+'+TH.fund},{cls:'r',t:'+15bp'}], `자금 스프레드 ${sg(O.fund,1)}bp, 경보 기준 +${TH.fund}bp`)}</div>`;
+  $('#verdict').innerHTML=main+v+r+l;
+
+  const why = O.score===-1 ? `${dm} 중 MOVE가 ${fx(O.move_peak,1)}까지 올라 3년 분포의 상위 ${fx(100-O.V,0)}%에 들어갔습니다.`
+    : O.score===1 ? `금리 변동성(${fx(O.V,0)})과 리스크 심리(${fx(O.R,0)})가 모두 3년 중앙값 아래이고 자금 경보도 꺼져 있습니다.`
+    : O.V>=TH.calm ? `금리 변동성이 ${fx(O.V,0)}번째 백분위로 스트레스 기준(${TH.stress})에는 못 미치지만 안정 기준(${TH.calm})보다 높습니다.`
+    : !rOk ? `금리 변동성은 조용하지만(${fx(O.V,0)}) 리스크 심리가 ${fx(O.R,0)}으로 안정 기준(${TH.calm})을 넘습니다.`
+    : `금리 변동성과 심리는 조용하지만 자금 경보가 켜져 있습니다.`;
+  $('#oneline').innerHTML=`<b>판정 한 줄.</b> ${ym(O.month+'-01')} 적용 점수 <b>${sc(O.score)}</b>(${WORD[O.score]}). ${why} 곡률 뷰에 ${sc(O.score)}점을 내고, 행동은 “${ACTION[O.score]}”입니다.`
+    +`<span class="mtd">이번 달 진행 상황(${MTD.date}까지): 금리 변동성 ${fx(MTD.V,0)}, 리스크 심리 ${fx(MTD.R,0)}, 자금 스프레드 ${sg(MTD.fund,1)}bp → 이대로 월말이면 ${ym(MTD.month+'-01')} 점수는 <b>${sc(MTD.score)}</b>입니다.</span>`;
+})();
+
+/* ---------- KPI ---------- */
+const DY=D.daily, WK=D.weekly;
+const DX=DY.dates.map(ms), SX=S.monthly.date.map(ms);
+const fund20=rollMean(DY.sofr_minus_rr_bp, TH.fund_days), effr20=rollMean(DY.effr_minus_rr_bp, TH.fund_days);
+function lastIdx(a){ let i=a.length-1; while(i>=0&&a[i]==null) i--; return i; }
+function agoIdx(dates, a, i, days){ const cut=new Date(ms(dates[i])-days*864e5).toISOString().slice(0,10); let j=i; while(j>0&&(dates[j]>cut||a[j]==null)) j--; return j; }
+function kpi(k, v, d, unit, sub, delta, dlab, dunit, dd){
+  const cls=delta>0?'up':delta<0?'down':'flat';
+  return `<div class="kpi"><div class="k">${k}</div><div class="v">${v==null?'–':v.toFixed(d)}<small>${unit}</small></div><div class="d"><span>${sub}</span><span class="${cls}">${dlab} ${sg(delta,dd)}${dunit}</span></div></div>`;
+}
+(function(){
+  const dk=(name,arr,d,unit,scale,dunit,dd,dates=DY.dates,days=30,lab='1개월 전 대비')=>{ const i=lastIdx(arr), j=agoIdx(dates,arr,i,days);
+    return kpi(name, arr[i], d, unit, dates[i], (arr[i]-arr[j])*scale, lab, dunit, dd); };
+  const res=WK.reserves_bn.map(v=>v==null?null:v/1000);
+  $('#kpis').innerHTML=dk('MOVE',DY.move,1,'',1,'',1)+dk('VIX',DY.vix,1,'',1,'',1)+dk('Baa − 10년 국채',DY.baa_spread,2,'%',100,'bp',0)
+    +dk('SOFR − 준비금 금리 (20일)',fund20,1,'bp',1,'bp',1)+dk('지급준비금',res,2,'조 달러',1,'조',2,WK.dates,91,'13주 전 대비')+dk('역레포 잔액',DY.rrp_bn,1,'십억 달러',1,'',1);
+})();
+
+/* ---------- 범례 ---------- */
+function legend(sel, items){ $(sel).innerHTML=items.map(it=>`<span class="it"><span class="${it.kind||'ln'}"${it.color?` style="background:${it.color}"`:''}></span>${it.name}${it.value!=null?` <b>${it.value}</b>`:''}</span>`).join(''); }
+const SCORE_LEGEND=[{name:'−1 스트레스',color:SCOL['-1'],kind:'bx'},{name:'0 중립',color:SCOL['0'],kind:'bx'},{name:'+1 안정',color:SCOL['1'],kind:'bx'}];
+
+/* ---------- 시계열 ---------- */
+const sm=S.monthly;
+/* 월말에 계산한 기준선을 일별 축에 계단으로 펼친다 */
+function stepDaily(vals){ const out=new Array(DY.dates.length).fill(null); let k=-1;
+  DY.dates.forEach((d,i)=>{ while(k+1<sm.date.length&&sm.date[k+1]<=d) k++; if(k>=0) out[i]=vals[k]; }); return out; }
+const p90d=stepDaily(sm.p90), p50d=stepDaily(sm.p50);
+const lastT=Math.max(DX[lastIdx(DY.move)], ms(S.asof));
+const RANGES=[{id:'2015',label:'2015~',t0:ms('2015-01-01')},{id:'5y',label:'최근 5년',t0:lastT-5*365.25*864e5},{id:'2y',label:'최근 2년',t0:lastT-2*365.25*864e5}];
+let rangeId='2015';
+$('#f-range').innerHTML=RANGES.map(r=>`<button type="button" data-id="${r.id}" aria-pressed="${r.id===rangeId}">${r.label}</button>`).join('');
+$('#f-range').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; rangeId=b.dataset.id;
+  $('#f-range').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x===b)); drawSeries(); });
+
+const C={acc:'var(--acc)', ink:'var(--ink)', ctx:'var(--ctx)'};
+function drawSeries(){
+  const range=[RANGES.find(r=>r.id===rangeId).t0, lastT];
+  const mi=lastIdx(DY.move);
+  legend('#c1-legend',[{name:'MOVE',color:C.ink,value:fx(DY.move[mi],1)},{name:'3년 상위 10% 경계 (스트레스 기준)',color:C.acc,value:fx(p90d[mi],1)},{name:'3년 중앙값 (안정 기준)',color:C.ctx,value:fx(p50d[mi],1)}]);
+  timeChart($('#c1'),{range, h:300, label:'MOVE 지수와 직전 3년 상위 10% 경계·중앙값',
+    series:[{name:'MOVE',color:C.ink,w:1.5,xs:DX,ys:DY.move},{name:'상위 10% 경계',color:C.acc,xs:DX,ys:p90d},{name:'중앙값',color:C.ctx,xs:DX,ys:p50d}],
+    tip:i=>({title:DY.dates[i], rows:[{name:'MOVE',color:C.ink,value:fx(DY.move[i],1)},{name:'상위 10% 경계',color:C.acc,value:fx(p90d[i],1)},{name:'중앙값',color:C.ctx,value:fx(p50d[i],1)}]})});
+
+  const li=sm.date.length-1;
+  legend('#c2-legend',[{name:'리스크 심리 (두 백분위의 평균)',color:C.acc,value:fx(sm.R[li],0)},{name:'VIX 월중 최고값',color:C.ink,value:fx(sm.Rv[li],0)},{name:'Baa − 10년 스프레드',color:C.ctx,value:fx(sm.Rc[li],0)},{name:`안정 기준 ${TH.calm}`,kind:'dash'}]);
+  timeChart($('#c2'),{range, h:280, fixed:[0,100], label:'VIX와 신용 스프레드의 3년 백분위',
+    series:[{name:'리스크 심리',color:C.acc,xs:SX,ys:sm.R},{name:'VIX',color:C.ink,w:1.25,xs:SX,ys:sm.Rv},{name:'신용',color:C.ctx,w:1.25,xs:SX,ys:sm.Rc}],
+    refs:[{y:TH.calm}],
+    tip:i=>({title:`${sm.date[i]} 판정`, rows:[{name:'리스크 심리',color:C.acc,value:fx(sm.R[i],0)},{name:`VIX 최고 ${fx(sm.vix_peak[i],1)}`,color:C.ink,value:fx(sm.Rv[i],0)},{name:`Baa 스프레드 ${fx(sm.baa[i])}%`,color:C.ctx,value:fx(sm.Rc[i],0)}]})});
+
+  const fi=lastIdx(fund20), ei=lastIdx(effr20);
+  legend('#c3-legend',[{name:'SOFR − 준비금 금리',color:C.acc,value:sg(fund20[fi],1)+'bp'},{name:'EFFR − 준비금 금리',color:C.ctx,value:sg(effr20[ei],1)+'bp'},{name:`경보 기준 +${TH.fund}bp`,kind:'dash'}]);
+  timeChart($('#c3'),{range, h:280, zero:true, label:'SOFR과 EFFR에서 준비금 금리를 뺀 값의 20영업일 평균',
+    series:[{name:'EFFR',color:C.ctx,w:1.5,xs:DX,ys:effr20},{name:'SOFR',color:C.acc,xs:DX,ys:fund20}],
+    refs:[{y:TH.fund}],
+    tip:i=>({title:DY.dates[i]+' (20영업일 평균)', rows:[{name:'SOFR − 준비금 금리',color:C.acc,value:fund20[i]==null?'–':sg(fund20[i],1)+'bp'},{name:'EFFR − 준비금 금리',color:C.ctx,value:effr20[i]==null?'–':sg(effr20[i],1)+'bp'}]})});
+
+  legend('#q1h-legend',SCORE_LEGEND.concat([{name:`기준 ${TH.stress} / ${TH.calm}`,kind:'dash'}]));
+  timeChart($('#q1h'),{range, h:200, zero:true, fixed:[0,100], label:'매월 말 금리 변동성 백분위와 점수 이력',
+    series:[{kind:'col',xs:SX,ys:sm.V,colorFn:i=>SCOL[String(sm.score[i])]}],
+    refs:[{y:TH.stress},{y:TH.calm}],
+    tip:i=>({title:`${sm.date[i]} 판정 → ${sm.month[i]} 적용`, rows:[{name:'점수',value:`${sc(sm.score[i])} ${WORD[sm.score[i]]}`},{name:'금리 변동성',value:fx(sm.V[i],0)},{name:'리스크 심리',value:fx(sm.R[i],0)},{name:'자금 경보',value:alarmWord(sm.alarm[i])},
+      {name:'다음 달 실현변동성',value:sm.rv[i]==null?'진행 중':fx(sm.rv[i],0)+'bp'},{name:'국면',value:REG[sm.regime[i]]}]})});
+}
+
+/* ---------- Q1 묶음 막대: 점수별 다음 달 실현변동성 ---------- */
+const BM=S.bt.mag, BD=S.bt.dir, AX=S.bt.axes;
+function drawMag(){
+  const host=$('#q1'), groups=[BM.samples[1], BM.samples[2], BM.samples[0]], W=Math.max(300,host.clientWidth), H=250, m={l:40,r:8,t:22,b:40}, pw=W-m.l-m.r, ph=H-m.t-m.b;
+  const tk=niceTicks(0, Math.max(...groups.flatMap(g=>g.by.map(b=>b.mean||0))), 4), hi=tk[tk.length-1], Y=v=>m.t+(hi-v)/hi*ph;
+  const band=pw/groups.length, bw=Math.max(8, Math.min(34, (band-28)/3-2));
+  let g='<g class="axis">';
+  tk.forEach(v=>{ g+=`<line class="${v===0?'baseline':'gridline'}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${v}</text>`; });
+  g+='</g>';
+  groups.forEach((s,gi)=>{ const cx=m.l+band*(gi+.5), x0=cx-(3*bw+4)/2;
+    s.by.forEach((b,bi)=>{ if(b.mean==null) return; const x=x0+bi*(bw+2);
+      g+=`<path class="bar" data-g="${gi}" data-b="${bi}" d="${barPath(x, Y(0), Y(b.mean), bw)}" fill="${SCOL[String(b.score)]}"/>`;
+      if(b.score!==0) g+=`<text class="dlabel" x="${x+bw/2}" y="${Y(b.mean)-5}" text-anchor="middle">${fx(b.mean,0)}</text>`; });
+    g+=`<text class="glabel" x="${cx}" y="${H-22}" text-anchor="middle">${s.label}</text><text class="axis" x="${cx}" y="${H-7}" text-anchor="middle" style="fill:var(--muted);font-size:11px">${s.start.slice(0,4)}~${s.end.slice(0,4)}</text>`; });
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="점수별 다음 달 10년 금리 실현변동성 평균">${g}</svg>`;
+  host.querySelectorAll('.bar').forEach(el=>{ const s=groups[+el.dataset.g], b=s.by[+el.dataset.b];
+    el.addEventListener('pointermove', e=>showTip(e.clientX, e.clientY, `${s.label} · 점수 ${sc(b.score)} (${WORD[b.score]})`, [{name:'달 수',value:b.n+'개월'},{name:'실현변동성 평균',value:fx(b.mean,1)+'bp'},{name:'중앙값',value:fx(b.median,1)+'bp'},{name:'하루 평균 변동폭',value:fx(b.absd,2)+'bp'}]));
+    el.addEventListener('pointerleave', hideTip); });
+}
+
+/* ---------- 표 ---------- */
+(function(){
+  const cell=b=>`<td class="b">${b.n}</td><td>${fx(b.mean,1)}</td>`;
+  const row=s=>`<tr><td>${s.label}${s.start?`<small>${s.start}~${s.end}</small>`:''}</td><td>${s.n}</td>${s.by.map(cell).join('')}<td class="b">${s.ratio==null?'–':fx(s.ratio,2)+'배'}</td><td>${sg(s.diff,1)}<small>t ${fx(s.t,2)}</small></td><td class="b">${fx(s.corr_v,2)}</td><td>${fx(s.corr_level,2)}</td></tr>`;
+  $('#q1-table').innerHTML=`<thead><tr><th rowspan="2">구간</th><th rowspan="2">달 수</th><th class="grp b" colspan="2">−1 스트레스</th><th class="grp b" colspan="2">0 중립</th><th class="grp b" colspan="2">+1 안정</th><th class="grp b" colspan="2">(−1)과 (+1)의 차이</th><th class="grp b" colspan="2">상관계수</th></tr>`
+    +`<tr><th class="b">달</th><th>평균 bp</th><th class="b">달</th><th>평균 bp</th><th class="b">달</th><th>평균 bp</th><th class="b">배율</th><th>bp</th><th class="b">백분위</th><th>MOVE 수준</th></tr></thead>`
+    +`<tbody>${BM.samples.map(row).join('')}<tr class="sep"><td colspan="12">국면별 (전체 기간)</td></tr>${BM.regimes.map(row).join('')}</tbody>`;
+})();
+function btTable(sel, bt, names){
+  const hit=g=>g.hit==null?'–':`${g.hit}%<small>${g.hits}/${g.n}</small>`, mean=g=>g.mean==null?'–':sg(g.mean,1);
+  const row=s=>{ const [p,z,n]=s.by; return `<tr><td>${s.label}${s.start?`<small>${s.start}~${s.end}</small>`:''}</td><td>${s.n}</td>`
+    +`<td class="b">${p.n}</td><td>${mean(p)}</td><td>${hit(p)}</td><td class="b">${z.n}</td><td>${mean(z)}</td><td class="b">${n.n}</td><td>${mean(n)}</td><td>${hit(n)}</td>`
+    +`<td class="b">${s.signal.hit==null?'–':s.signal.hit+'%'}<small>${s.signal.hits}/${s.signal.n}</small></td><td>${s.base}%</td><td>${sg(s.spread,1)}<small>t ${fx(s.t,2)}</small></td></tr>`; };
+  $(sel).innerHTML=`<thead><tr><th rowspan="2">구간</th><th rowspan="2">달 수</th><th class="grp b" colspan="3">점수 +1 (${names[0]})</th><th class="grp b" colspan="2">점수 0</th><th class="grp b" colspan="3">점수 −1 (${names[1]})</th><th class="grp b" colspan="3">종합</th></tr>`
+    +`<tr><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">달</th><th>평균 bp</th><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">신호 적중률</th><th>기준선</th><th>(+1)−(−1) bp</th></tr></thead>`
+    +`<tbody>${bt.samples.map(row).join('')}<tr class="sep"><td colspan="13">국면별 (전체 기간)</td></tr>${bt.regimes.map(row).join('')}</tbody>`;
+}
+btTable('#q2-table', BD, ['안정','스트레스']);
+(function(){
+  const keys=['all','train','test'], lab={all:'전체',train:`설정 ${S.split.start.slice(0,4)}~${+S.split.test_start.slice(0,4)-1}`,test:`검증 ${S.split.test_start.slice(0,4)}~`};
+  const rows=AX.all.rows.map((r,i)=>`<tr><td>${r.label}</td>${keys.map(k=>{ const x=AX[k].rows[i]; return `<td class="b">${x.corr==null?'–':sg(x.corr,2)}</td><td><small>${x.n}개월</small></td>`; }).join('')}</tr>`).join('');
+  $('#q3-table').innerHTML=`<thead><tr><th>지표</th>${keys.map(k=>`<th class="grp b" colspan="2">${lab[k]}</th>`).join('')}</tr></thead><tbody>${rows}`
+    +`<tr class="sep"><td colspan="7">회귀 설명력 (R²)</td></tr><tr><td>금리 변동성만</td>${keys.map(k=>`<td class="b" colspan="2">${fx(AX[k].r2_v,1)}%</td>`).join('')}</tr>`
+    +`<tr><td>금리 변동성 + 리스크 심리</td>${keys.map(k=>`<td class="b" colspan="2">${fx(AX[k].r2_vr,1)}%</td>`).join('')}</tr></tbody>`;
+  const E=S.episodes;
+  $('#q4-table').innerHTML=`<thead><tr><th>시작 달</th><th>지속</th><th>MOVE 최고</th><th class="b">2년</th><th>10년</th><th>2s10s</th><th>Fly</th><th class="b">유형</th></tr></thead><tbody>`
+    +E.map(e=>`<tr><td>${e.month}</td><td>${e.months}개월</td><td>${fx(e.epi_peak,0)}<small>${e.epi_peak_date.slice(2,7)}</small></td><td class="b">${sg(e.c2,0)}</td><td>${sg(e.c10,0)}</td><td>${sg(e.c2s10s,0)}</td><td>${sg(e.cfly,0)}</td><td class="b l">${e.type}</td></tr>`).join('')+`</tbody>`;
+})();
+
+/* ---------- 결과 해석 (숫자에서 자동 생성) ---------- */
+const mA=BM.samples[0], mTr=BM.samples[1], mTe=BM.samples[2];
+const by=(s,k)=>s.by.find(b=>b.score===k);
+const magOK = mTe.t!=null && mTe.t>=2 && mTe.ratio>1;
+const others=(s)=>{ const z=by(s,0), p=by(s,1); return (z.mean*z.n+p.mean*p.n)/(z.n+p.n); };
+$('#q1-finding').innerHTML=(magOK
+  ? `<b>크기 예측으로 확인됩니다.</b> 검증 구간에서도 −1 뒤 다음 달 실현변동성이 연 ${fx(by(mTe,-1).mean,0)}bp로, +1 뒤(${fx(by(mTe,1).mean,0)}bp)의 ${fx(mTe.ratio,2)}배였습니다(t = ${fx(mTe.t,2)}). 설정 구간은 ${fx(by(mTr,-1).mean,0)}bp 대 ${fx(by(mTr,1).mean,0)}bp(${fx(mTr.ratio,2)}배)입니다. `
+  : `<b>검증 구간에서는 확인되지 않았습니다.</b> 설정 구간에서는 −1 뒤 ${fx(by(mTr,-1).mean,0)}bp, +1 뒤 ${fx(by(mTr,1).mean,0)}bp였지만 검증 구간에서는 ${fx(by(mTe,-1).mean,0)}bp 대 ${fx(by(mTe,1).mean,0)}bp (t = ${fx(mTe.t,2)})입니다. `)
+  +(mTe.ordered ? `세 점수의 순서(−1 > 0 > +1)도 검증 구간에서 유지됐습니다.`
+    : `다만 검증 구간에서는 <b>+1과 0이 구분되지 않았습니다</b>(+1 뒤 ${fx(by(mTe,1).mean,0)}bp, 0 뒤 ${fx(by(mTe,0).mean,0)}bp, +1은 ${by(mTe,1).n}개월뿐). 확인된 것은 “−1이면 더 흔들린다”까지입니다.`)
+  +` MOVE를 백분위로 바꾸지 않은 원래 수준의 상관계수는 ${fx(mA.corr_level,2)}로 백분위(${fx(mA.corr_v,2)})보다 높습니다.`;
+
+const dA=BD.samples[0], dTe=BD.samples[2];
+const dirOK = dTe.t!=null && Math.abs(dTe.t)>=2 && dTe.signal.hit>=55 && dTe.spread<0;
+$('#q2-finding').innerHTML= dirOK
+  ? `<b>방향 예측으로 확인됩니다.</b> 검증 구간에서 신호 적중률 ${dTe.signal.hit}% (${dTe.signal.hits}/${dTe.signal.n}), +1과 −1 뒤의 Fly 평균 차이 ${sg(dTe.spread,1)}bp (t = ${fx(dTe.t,2)})입니다.`
+  : `<b>방향 예측력은 확인되지 않았습니다.</b> 점수가 +1이나 −1이었던 ${dA.signal.n}개월 중 ${dA.signal.hits}개월(${dA.signal.hit}%)만 벨리 방향이 맞았고, 기준선은 ${dA.base}%입니다. `
+    +`+1과 −1 뒤의 Fly 평균 차이는 ${sg(dA.spread,1)}bp로 ${dA.spread<0?'방향은 가설과 같지만':'방향도 가설과 다르고'} 우연과 구분되지 않습니다(t = ${fx(dA.t,2)}). 검증 구간의 적중률은 ${dTe.signal.hit}%입니다. `
+    +`이 점수는 벨리가 강해질지를 알려 주지 않습니다. Fly는 금리 차이라서 볼록성 손익이 빠져 있으므로, 불릿과 바벨의 실제 수익률로 다시 확인해야 합니다.`;
+
+const axr=(k,key)=>AX[k].rows.find(r=>r.key===key);
+$('#q3-finding').innerHTML=`<b>변동 크기를 설명하는 것은 금리 변동성 하나입니다.</b> 전체 기간 상관계수는 금리 변동성 ${sg(axr('all','V').corr,2)}, 리스크 심리 ${sg(axr('all','R').corr,2)}이고, 회귀에 심리를 더해도 설명력이 ${fx(AX.all.r2_v,1)}%에서 ${fx(AX.all.r2_vr,1)}%로 거의 늘지 않습니다. `
+  +`심리만 스트레스였던 ${AX.all.r_only.n}개월의 다음 달 실현변동성은 ${fx(AX.all.r_only.mean,0)}bp로 둘 다 평온했던 달(${fx(AX.all.neither.mean,0)}bp)과 다르지 않습니다. `
+  +`자금 경보가 켜진 ${AX.all.alarm.n}개월 뒤도 ${fx(AX.all.alarm.mean,0)}bp로 꺼진 달(${fx(AX.all.alarm.mean_off,0)}bp)보다 높지 않아, 유동성 축은 검증되지 않은 안전장치입니다. `
+  +`시카고 연은 지수는 검증 구간에서 상관이 ${sg(axr('test','NFCI').corr,2)}로 높지만 설정 구간에서는 ${sg(axr('train','NFCI').corr,2)}였고, 과거 값이 매주 다시 추정되는 지수라 그 시점에 알 수 있던 값이 아닙니다.`;
+
+const TC=S.type_count, SMo=S.same_month;
+const absMean=S.episodes.reduce((a,e)=>a+Math.abs(e.c10),0)/S.episodes.length;
+$('#q4-finding').innerHTML=`<b>스트레스의 커브 방향은 정해져 있지 않습니다.</b> 스트레스가 시작된 ${TC.n_onset}번 가운데 불 플래트닝 ${TC.onset['불 플래트닝']}번, 불 스티프닝 ${TC.onset['불 스티프닝']}번, 베어 스티프닝 ${TC.onset['베어 스티프닝']}번, 베어 플래트닝 ${TC.onset['베어 플래트닝']}번입니다. `
+  +`점수가 −1이었던 ${TC.n_all}개월 전체로 보면 ${['불 플래트닝','불 스티프닝','베어 플래트닝','베어 스티프닝'].map(t=>TC.all[t]).join(' / ')}번으로 네 유형이 고르게 나옵니다. `
+  +`“리스크오프 = 불 플래트닝”은 절반쯤만 맞습니다. 그래서 이 신호는 방향을 정하지 않고 포지션 크기만 줄입니다.`;
+
+/* ---------- 전략 시사점 ---------- */
+(function(){
+  const st=by(mA,-1).mean, ot=others(mA), k=st/ot;
+  $('#impl').innerHTML=
+   `<div class="card"><div class="tagline">곡률 뷰 · CURVE CURVATURE</div><h2>곡률 뷰에 ${sc(O.score)}점을 냅니다</h2>
+      <p>팀 규칙(곡률 = 5번 점수, 그리고 Fly z-score ≥ +1)에서 5번은 <b>불릿을 잡아도 되는 환경인지 거르는 조건</b>입니다. 지금은 “${ACTION[O.score]}”입니다.</p>
+      <p>${dirOK ? '백테스트에서 벨리 방향까지 확인되어 Fly z-score와 같은 비중으로 씁니다.' : `이 점수만으로 불릿을 잡지는 않습니다. 벨리 방향 적중률이 <b>${dA.signal.hit}%</b>였습니다.`} 벨리 불릿은 볼록성을 포기하고 carry를 받는 포지션이라, 금리가 크게 흔들릴 달을 피하는 것이 이 조건의 목적입니다.</p></div>`
+  +`<div class="card"><div class="tagline">포지션 크기 · 전체 전략</div><h2>−1이면 모든 액티브 포지션을 절반으로 줄입니다</h2>
+      <p>−1 뒤 다음 달 10년 금리의 실현변동성은 연 <b>${fx(st,0)}bp</b>로, 그 외 달(${fx(ot,0)}bp)의 <b>${fx(k,1)}배</b>였습니다. 같은 포지션의 위험이 그만큼 커집니다.</p>
+      <p>${magOK?'검증 구간에서도 유지된 결과입니다. ':''}포지션을 절반으로 줄이면 사전 TE가 평소와 비슷하거나 조금 낮게 유지됩니다. Duration과 Slope는 방향은 그대로 두고 크기만 줄입니다.</p></div>`
+  +`<div class="card"><div class="tagline">시나리오 · RISK</div><h2>변동성 스트레스는 방향 두 가지로 넣습니다</h2>
+      <p>스트레스가 시작된 달의 10년 금리 변화는 절댓값 평균 <b>${fx(absMean,0)}bp</b>였고, ${TC.n_onset}번 중 ${TC.onset['불 플래트닝']+TC.onset['불 스티프닝']}번은 하락, ${TC.onset['베어 플래트닝']+TC.onset['베어 스티프닝']}번은 상승이었습니다.</p>
+      <p>운용 페이지 Risk 섹션에 “변동성 스트레스” 시나리오를 <b>불 플래트닝</b>과 <b>베어 스티프닝</b> 두 방향으로 넣고, 둘 중 나쁜 쪽 손익으로 한도를 점검하는 것을 제안합니다.</p></div>`;
+})();
+
+/* ---------- 표로 보기 ---------- */
+(function(){
+  const n=sm.date.length; let a='', b='', c='';
+  for(let i=n-1;i>=n-12&&i>=0;i--){
+    a+=`<tr><td>${sm.date[i]}</td><td>${fx(sm.move_end[i],1)}</td><td>${fx(sm.move_peak[i],1)}</td><td>${fx(sm.p50[i],1)}</td><td>${fx(sm.p90[i],1)}</td><td>${fx(sm.V[i],0)}</td><td class="b">${sc(sm.score[i])} ${WORD[sm.score[i]]}</td></tr>`;
+    b+=`<tr><td>${sm.date[i]}</td><td>${fx(sm.vix_peak[i],1)}</td><td>${fx(sm.Rv[i],0)}</td><td>${fx(sm.baa[i])}</td><td>${fx(sm.Rc[i],0)}</td><td class="b">${fx(sm.R[i],0)}</td></tr>`;
+    c+=`<tr><td>${sm.date[i]}</td><td>${sm.fund[i]==null?'–':sg(sm.fund[i],1)}</td><td>${alarmWord(sm.alarm[i])}</td></tr>`;
+  }
+  $('#c1-table').innerHTML=`<thead><tr><th>판정일</th><th>MOVE 월말</th><th>월중 최고</th><th>3년 중앙값</th><th>상위 10% 경계</th><th>백분위</th><th class="b">점수</th></tr></thead><tbody>${a}</tbody>`;
+  $('#c2-table').innerHTML=`<thead><tr><th>판정일</th><th>VIX 월중 최고</th><th>백분위</th><th>Baa − 10년 (%)</th><th>백분위</th><th class="b">리스크 심리</th></tr></thead><tbody>${b}</tbody>`;
+  $('#c3-table').innerHTML=`<thead><tr><th>판정일</th><th>SOFR − 준비금 금리 20일 평균 (bp)</th><th>자금 경보</th></tr></thead><tbody>${c}</tbody>`;
+})();
+
+/* ---------- 계산 규칙 ---------- */
+(function(){
+  const F=S.freq, f=k=>`−1 ${F[k]['-1']}번, 0 ${F[k]['0']}번, +1 ${F[k]['1']}번`;
+  $('#rules').innerHTML=[
+    `출처: FRED(VIX <code>VIXCLS</code>, Baa − 10년 국채 <code>BAA10Y</code>, <code>SOFR</code>, <code>EFFR</code>, 준비금 금리 <code>IORB</code>·<code>IOER</code>, 지급준비금 <code>WRESBAL</code>, 역레포 <code>RRPONTSYD</code>, 정책금리 상단 <code>DFEDTARU</code>). MOVE는 2018-04-02 ~ 2026-09-22는 직접 받은 엑셀, 그 밖의 날짜는 Yahoo Finance입니다. 수익률은 운용 페이지와 같은 재무부 CMT 금리입니다.`,
+    `판정 시점: 매월 마지막 거래일 종가. 판정은 다음 달에 적용합니다. MOVE·VIX는 당일 값까지, 다음 날 공개되는 SOFR과 신용 스프레드는 전일 값까지만 씁니다.`,
+    `금리 변동성 = 그 달 MOVE 최고값이 직전 ${TH.lookback_m}개월 일별 MOVE 가운데 몇 번째 백분위인가. 월말 값이 아니라 월중 최고값을 쓰는 이유는 2020년 3월(최고 163.7, 월말 83.9)처럼 월말에 가라앉은 스트레스를 놓치지 않기 위해서입니다.`,
+    `리스크 심리 = (VIX 월중 최고값의 3년 백분위 + Baa − 10년 스프레드의 3년 백분위) ÷ 2. 하이일드 스프레드는 FRED가 최근 3년치만 제공해 2015년부터 쓸 수 없어 Baa 스프레드로 대신했습니다.`,
+    `유동성 = SOFR − 준비금 금리의 ${TH.fund_days}영업일 평균이 +${TH.fund}bp 초과면 자금 경보. SOFR이 없는 2018년 4월 이전은 ‘자료 없음’이고 경보가 꺼진 것으로 처리합니다. 준비금 금리는 2021년 7월 28일까지 IOER, 그 뒤 IORB입니다.`,
+    `통합 점수: 금리 변동성 > ${TH.stress}이면 −1. 금리 변동성 < ${TH.calm}, 리스크 심리 < ${TH.calm}, 자금 경보 꺼짐을 모두 충족하면 +1. 그 외 0. 기준값(${TH.stress}, ${TH.calm}, +${TH.fund}bp)은 결과를 보기 전에 정했고 바꾸지 않았습니다. 규칙의 형태(스트레스는 변동성만으로, 안정은 세 축 모두로)는 설정 구간 결과를 보고 정했습니다.`,
+    `점수 분포: 설정 구간 ${f('train')} · 검증 구간 ${f('test')}.`,
+    `실현변동성 = 판정 다음 달 10년 금리 일별 변화(bp)의 제곱평균제곱근 × √252. Fly = 2 × 5년 − 2년 − 10년(bp)이고 내려가면 벨리 강세입니다. t는 두 집단 평균의 차이를 표본 오차로 나눈 값이며 보통 |t| ≥ 2를 기준으로 봅니다.`,
+    `국면: 같은 방향의 연속된 금리 변경을 한 사이클로 묶고 그 사이를 동결기로 둡니다(03 인플레이션과 같은 규칙). 사후 분류라서 신호 계산에는 쓰지 않습니다.`,
+    `데이터 갱신: <code>python3 fetch_data.py</code> (분석까지 함께 실행). 월별 점수는 <code>signals_monthly.csv</code>의 <code>score_liquidity_vol</code> 열입니다.`
+  ].map(t=>`<li>${t}</li>`).join('');
+})();
+
+/* ---------- 그리기 ---------- */
+function drawAll(){ drawSeries(); drawMag(); }
+drawAll();
+let rt; addEventListener('resize', ()=>{ clearTimeout(rt); rt=setTimeout(drawAll, 120); });
+})();
+</script>
+</body>
+</html>

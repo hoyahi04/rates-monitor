@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor · Tab 1 Yield Curve Monitor</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --page:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --up:#e34948; --down:#2a78d6; --up-text:#b42318; --down-text:#1c5cab;
+  --seg-front:rgba(42,120,214,.06); --seg-belly:rgba(235,104,52,.07); --seg-long:rgba(27,175,122,.07);
+  --band:rgba(42,120,214,.10); --accent:#147b79; --hover:rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --up:#e66767; --down:#3987e5; --up-text:#f08a8a; --down-text:#86b6ef;
+    --seg-front:rgba(57,135,229,.10); --seg-belly:rgba(217,89,38,.10); --seg-long:rgba(25,158,112,.10);
+    --band:rgba(57,135,229,.16); --accent:#3fb5b2; --hover:rgba(255,255,255,.05);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page)}
+.viz-root{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:13px;line-height:1.5;min-height:100vh;padding:24px 28px 48px;word-break:keep-all}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-top:4px solid var(--ink);padding-top:14px;margin-bottom:14px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+.meta{font-size:12px;color:var(--ink2);text-align:right}
+.meta b{color:var(--ink)}
+/* filter row */
+.filters{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 14px;margin-bottom:14px;position:sticky;top:0;z-index:5}
+.filters label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-right:6px}
+.seg{display:inline-flex;border:1px solid var(--ring);border-radius:7px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:4px 10px;font-size:12px;color:var(--ink2);border-right:1px solid var(--ring)}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--s1);outline-offset:-2px}
+input[type=date],select{font:inherit;font-size:12px;color:var(--ink);background:var(--surface);border:1px solid var(--ring);border-radius:7px;padding:3px 8px}
+.fgroup{display:flex;align-items:center}
+.hint{font-size:11px;color:var(--muted)}
+/* cards */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1.15fr 1fr}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px 12px;min-width:0}
+.card h2{font-size:14px;margin:0;letter-spacing:-.2px}
+.card .sub{font-size:11.5px;color:var(--ink2);margin:2px 0 8px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+section{margin-bottom:14px}
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 12px;cursor:pointer}
+.kpi:hover{background:var(--hover)}
+.kpi .k{font-size:11px;color:var(--ink2);font-weight:600}
+.kpi .v{font-size:22px;font-weight:650;letter-spacing:-.5px;margin:2px 0}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.kpi .d{font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.pbar{position:relative;height:6px;border-radius:3px;background:var(--grid);margin-top:7px}
+.pbar i{position:absolute;top:-3px;width:3px;height:12px;border-radius:2px;background:var(--ink)}
+.pbar.sm{height:4px;margin-top:0;width:70px;display:inline-block;vertical-align:middle}
+.pbar.sm i{top:-3px;height:10px}
+.up{color:var(--up-text)} .down{color:var(--down-text)} .flat{color:var(--muted)}
+/* legends */
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:2px 0 4px}
+.legend .it{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.legend .it.off{opacity:.35}
+.legend svg{display:block}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.axis text{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.gridline{stroke:var(--grid);stroke-width:1}
+.baseline{stroke:var(--axis);stroke-width:1}
+.seglabel{fill:var(--ink2);font-size:10.5px;font-weight:700;letter-spacing:.08em}
+.dlabel{font-size:11px;fill:var(--ink2);font-variant-numeric:tabular-nums}
+.dlabel.strong{fill:var(--ink);font-weight:600}
+/* tooltip */
+#tip{position:fixed;pointer-events:none;z-index:50;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 6px 24px rgba(0,0,0,.14);border-radius:8px;padding:8px 10px;font-size:12px;min-width:140px;opacity:0;transition:opacity .08s}
+#tip .t{font-size:11px;color:var(--muted);margin-bottom:4px}
+#tip .r{display:flex;align-items:center;gap:8px;justify-content:space-between}
+#tip .r span.n{color:var(--ink2);display:flex;align-items:center;gap:6px}
+#tip .r b{font-variant-numeric:tabular-nums}
+#tip .key{display:inline-block;width:12px;height:2px;border-radius:1px}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+th{font-size:11px;color:var(--muted);font-weight:600;text-align:right;padding:6px 8px;border-bottom:1px solid var(--axis);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+tr.grp td{background:transparent;color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;padding-top:12px;border-bottom:1px solid var(--axis)}
+tbody tr.row{cursor:pointer}
+tbody tr.row:hover td{background:var(--hover)}
+tbody tr.row.sel td{background:var(--band)}
+td.name b{font-weight:650}
+td.name span{color:var(--muted);font-size:11px;margin-left:6px}
+td.sel-col{font-weight:650}
+th.sel-col{color:var(--ink)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--ring);color:var(--ink2)}
+.tag.bs,.tag.bf{border-color:var(--down);color:var(--down-text)}
+.tag.rs,.tag.rf{border-color:var(--up);color:var(--up-text)}
+.notes{font-size:11.5px;color:var(--ink2);line-height:1.7}
+.notes ul{margin:4px 0 0;padding-left:16px}
+.notes code{font-size:11px;background:var(--hover);padding:0 4px;border-radius:3px}
+.err{padding:40px;font-size:14px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}}
+@media (max-width:640px){.viz-root{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}.tablewrap{overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">RATES MONITOR · TAB 01 · MACRO VIEWS</div>
+    <h1>Yield Curve Monitor</h1>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="filters" role="group" aria-label="대시보드 필터">
+  <div class="fgroup"><label for="asof">기준일</label><input type="date" id="asof"></div>
+  <div class="fgroup"><label>비교 기간</label><div class="seg" id="f-period"></div></div>
+  <div class="fgroup"><label>백분위 기간</label><div class="seg" id="f-lookback"></div></div>
+  <span class="hint" id="f-hint"></span>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<section class="grid g2">
+  <div class="card">
+    <div class="card-head"><div><h2>수익률곡선 비교</h2><div class="sub">기준일 vs 1주·1개월·1년 전 · Front / Belly / Long 구간 표시 (가로축 만기는 등간격)</div></div></div>
+    <div class="legend" id="curve-legend"></div>
+    <div class="chart" id="curve-chart"></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div><h2 id="chg-title">만기별 금리 변화</h2><div class="sub" id="chg-sub"></div></div></div>
+    <div class="legend" id="chg-legend"></div>
+    <div class="chart" id="chg-chart"></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Summary · One Pager</h2><div class="sub">금리 수준과 커브 스프레드의 기간별 변화(bp)와 과거 백분위. 행을 클릭하면 아래 시계열 차트로 연결됩니다.</div></div>
+  </div>
+  <div class="tablewrap"><table id="summary"></table></div>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <div class="card-head"><div><h2>Steepening / Flattening 판정</h2><div class="sub" id="reg-sub"></div></div></div>
+    <div class="tablewrap"><table id="regime"></table></div>
+    <div class="notes" style="margin-top:8px">판정 규칙: Δ기울기 = Δ장기 − Δ단기. |Δ기울기| &lt; 1bp이면 ‘Parallel’, 단기·장기가 반대 방향으로 1bp 이상 움직이면 ‘Twist’. 기울기가 커지면 Steepener, 작아지면 Flattener이며, 두 만기의 평균 변화가 음수(금리 하락)이면 Bull, 양수이면 Bear로 판정합니다. Butterfly는 Δ &gt; 0이면 Belly 약세(Cheapening), Δ &lt; 0이면 Belly 강세(Richening)입니다.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div><h2>구간별 요약 (Front · Belly · Long)</h2><div class="sub">WA 방식처럼 커브를 3구간으로 나눠서 보는 요약표 · Tab 6/7의 버킷과 연결됩니다</div></div></div>
+    <div class="tablewrap"><table id="segments"></table></div>
+    <div class="notes" style="margin-top:8px">
+      구간 정의: <b>Front</b> 1M–2Y (정책금리 기대), <b>Belly</b> 3Y–7Y (정책 경로 중기 + 경기 사이클), <b>Long</b> 10Y–30Y (기간 프리미엄·재정·수급).
+      구간 변화는 해당 만기들의 단순평균(bp)이고, 구간 기울기는 구간 내 끝 만기에서 첫 만기를 뺀 값입니다(Front 3M→2Y, Belly 2Y→5Y·5Y→10Y, Long 10Y→30Y).
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2 id="ts-title">시계열</h2><div class="sub" id="ts-sub"></div></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <select id="ts-key" aria-label="시계열 항목"></select>
+      <div class="seg" id="ts-range"></div>
+      <div class="seg" id="ts-fomc"></div>
+    </div>
+  </div>
+  <div class="legend" id="ts-legend"></div>
+  <div class="chart" id="ts-chart"></div>
+</section>
+
+<section class="card notes">
+  <b>데이터·계산 규칙</b>
+  <ul>
+    <li>출처: FRED (DGS1MO~DGS30, Treasury Constant Maturity = 재무부 Par Yield Curve)와 미 재무부 Daily Par Yield Curve(최근 2년, 최신값 보강). 금리는 on-the-run 개별 종목이 아니라 보간된 CMT 금리입니다.</li>
+    <li>비교 시점: 1D는 직전 영업일, 1W·1M·3M·1Y는 기준일에서 달력 기준 7일·1·3·12개월 전 날짜 이하의 마지막 영업일입니다. 미국 공휴일 등 결측일은 직전 영업일로 대체합니다.</li>
+    <li>백분위: 기준일을 포함한 조회 기간 일별 관측치 중 현재값 이하인 비율입니다. Tab 6의 Z-score와 같은 조회 기간을 쓰도록 맞춰 둡니다.</li>
+    <li>스프레드: 2s10s = 10Y − 2Y, 5s30s = 30Y − 5Y, 3m10y = 10Y − 3M, 2s5s10s = 2×5Y − 2Y − 10Y (양수면 Belly가 싸다는 뜻).</li>
+    <li>결측 구간: 20Y는 1986–1993년 발행 중단, 30Y는 2002.02–2006.02 발행 중단, 1M은 2001.07 이전 미제공입니다.</li>
+    <li>FOMC 표시: 2024–2026 결정일을 직접 입력했습니다(연준 공식 일정과 대조 필요). 데이터 갱신: <code>python3 fetch_data.py</code></li>
+  </ul>
+</section>
+</div>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+(function(){
+const D = window.UST_DATA;
+if(!D){document.querySelector('.wrap').innerHTML='<div class="err">data.js가 없습니다. 같은 폴더에서 <code>python3 fetch_data.py</code>를 실행하세요.</div>';return;}
+
+/* ---------- 기본 데이터 ---------- */
+const TEN = D.tenors.map(t=>t.label);
+const DATES = D.dates, N = DATES.length;
+const DMS = DATES.map(s=>Date.parse(s+'T00:00:00Z'));
+const SEG = {Front:['1M','3M','6M','1Y','2Y'], Belly:['3Y','5Y','7Y'], Long:['10Y','20Y','30Y']};
+const segOf = t => Object.keys(SEG).find(k=>SEG[k].includes(t));
+
+const SPREADS = [
+  {id:'2s10s', name:'2s10s', desc:'10Y − 2Y', legs:{'10Y':1,'2Y':-1}, short:'2Y', long:'10Y', kind:'slope'},
+  {id:'5s30s', name:'5s30s', desc:'30Y − 5Y', legs:{'30Y':1,'5Y':-1}, short:'5Y', long:'30Y', kind:'slope'},
+  {id:'3m10y', name:'3m10y', desc:'10Y − 3M', legs:{'10Y':1,'3M':-1}, short:'3M', long:'10Y', kind:'slope'},
+  {id:'2s5s',  name:'2s5s',  desc:'5Y − 2Y · Front→Belly', legs:{'5Y':1,'2Y':-1}, short:'2Y', long:'5Y', kind:'slope'},
+  {id:'5s10s', name:'5s10s', desc:'10Y − 5Y · Belly→Long', legs:{'10Y':1,'5Y':-1}, short:'5Y', long:'10Y', kind:'slope'},
+  {id:'10s30s',name:'10s30s',desc:'30Y − 10Y · Long', legs:{'30Y':1,'10Y':-1}, short:'10Y', long:'30Y', kind:'slope'},
+  {id:'fly25', name:'2s5s10s Fly', desc:'2×5Y − 2Y − 10Y', legs:{'5Y':2,'2Y':-1,'10Y':-1}, kind:'fly', body:'5Y'},
+  {id:'fly51', name:'5s10s30s Fly', desc:'2×10Y − 5Y − 30Y', legs:{'10Y':2,'5Y':-1,'30Y':-1}, kind:'fly', body:'10Y'},
+];
+const FOMC = ['2024-01-31','2024-03-20','2024-05-01','2024-06-12','2024-07-31','2024-09-18','2024-11-07','2024-12-18',
+  '2025-01-29','2025-03-19','2025-05-07','2025-06-18','2025-07-30','2025-09-17','2025-10-29','2025-12-10',
+  '2026-01-28','2026-03-18','2026-04-29','2026-06-17','2026-07-29','2026-09-16','2026-10-28','2026-12-09'];
+
+// 시리즈: 금리(%) / 스프레드(bp)
+const SER = {};
+TEN.forEach(t=>SER[t]={id:t,name:t+' 국채',unit:'%',vals:D.yields[t]});
+SPREADS.forEach(s=>{
+  const v=new Array(N);
+  for(let i=0;i<N;i++){let acc=0,ok=true;for(const k in s.legs){const y=D.yields[k][i];if(y==null){ok=false;break;}acc+=s.legs[k]*y;}
+    v[i]=ok?Math.round(acc*1000)/10:null;}
+  SER[s.id]={id:s.id,name:s.name,unit:'bp',vals:v,spec:s};
+});
+// 변화(bp): 금리는 ×100, 스프레드는 그대로
+const chgBp=(id,i,j)=>{const a=SER[id].vals[i],b=SER[id].vals[j];if(a==null||b==null||j<0)return null;return SER[id].unit==='%'?Math.round((a-b)*1000)/10:Math.round((a-b)*10)/10;};
+
+/* ---------- 날짜 도우미 ---------- */
+function idxOnOrBefore(ms){let lo=0,hi=N-1,r=-1;while(lo<=hi){const m=(lo+hi)>>1;if(DMS[m]<=ms){r=m;lo=m+1;}else hi=m-1;}return r;}
+function shiftMs(ms,p){
+  const d=new Date(ms);
+  if(p==='1W'){d.setUTCDate(d.getUTCDate()-7);return d.getTime();}
+  const months={ '1M':1,'3M':3,'1Y':12,'3Y':36,'5Y':60,'10Y':120 }[p];
+  const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-months);
+  const dim=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();
+  d.setUTCDate(Math.min(day,dim));return d.getTime();
+}
+function cmpIdx(i,p){ if(p==='1D') return i-1; return idxOnOrBefore(shiftMs(DMS[i],p)); }
+function lookStart(i,lb){ if(lb==='ALL') return 0; const j=idxOnOrBefore(shiftMs(DMS[i],lb)); return Math.max(0,j+1); }
+const fmtDate=s=>s; const KDAY=['일','월','화','수','목','금','토'];
+const dow=s=>KDAY[new Date(s+'T00:00:00Z').getUTCDay()];
+
+/* ---------- 통계 ---------- */
+function stats(id,i,lb){
+  const v=SER[id].vals, s=lookStart(i,lb), arr=[];
+  for(let k=s;k<=i;k++) if(v[k]!=null) arr.push(v[k]);
+  const cur=v[i]; if(cur==null||!arr.length) return null;
+  let le=0; for(const x of arr) if(x<=cur) le++;
+  arr.sort((a,b)=>a-b);
+  const q=p=>arr[Math.min(arr.length-1,Math.max(0,Math.round(p*(arr.length-1))))];
+  return {pct:100*le/arr.length,min:arr[0],max:arr[arr.length-1],p10:q(.1),p50:q(.5),p90:q(.9),n:arr.length};
+}
+
+/* ---------- 상태 ---------- */
+const S={i:N-1, period:'1W', lookback:'10Y', tsKey:'2s10s', tsRange:'5Y', fomc:true, curveOff:new Set()};
+const PERIODS=['1D','1W','1M','3M','1Y'], LOOKBACKS=['1Y','3Y','5Y','10Y','ALL'];
+const PLABEL={'1D':'1일','1W':'1주','1M':'1개월','3M':'3개월','1Y':'1년','3Y':'3년','5Y':'5년','10Y':'10년','ALL':'1990~'};
+
+/* ---------- 공통 렌더 도우미 ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function h(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+const css=n=>getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(n).trim();
+function niceTicks(lo,hi,n){const span=hi-lo||1;const step0=span/n;const mag=Math.pow(10,Math.floor(Math.log10(step0)));const err=step0/mag;const step=(err>=7.5?10:err>=3.5?5:err>=1.5?2:1)*mag;
+  const a=Math.ceil(lo/step)*step,out=[];for(let x=a;x<=hi+step*1e-9;x+=step)out.push(Math.round(x/step)*step);return {ticks:out,step};}
+const sgn=(x,d=0)=>x==null?'–':(x>0?'+':x<0?'−':'±')+Math.abs(x).toFixed(d);
+const cls=x=>x==null||Math.abs(x)<0.5?'flat':x>0?'up':'down';
+const fmtV=(id,x)=>x==null?'–':SER[id].unit==='%'?x.toFixed(2):x.toFixed(0);
+const unitTxt=id=>SER[id].unit==='%'?'%':'bp';
+
+const tip=document.getElementById('tip');
+function showTip(evt,title,rows){
+  tip.replaceChildren();tip.appendChild(h('div','t',title));
+  rows.forEach(r=>{const row=h('div','r');const n=h('span','n');if(r.color){const k=h('span','key');k.style.background=r.color;if(r.dash)k.style.background=`repeating-linear-gradient(90deg,${r.color} 0 4px,transparent 4px 6px)`;n.appendChild(k);}
+    n.appendChild(document.createTextNode(r.label));row.appendChild(n);row.appendChild(h('b',r.cls||'',r.value));tip.appendChild(row);});
+  tip.style.opacity=1;
+  const pad=14,w=tip.offsetWidth,hh=tip.offsetHeight;let x=evt.clientX+pad,y=evt.clientY+pad;
+  if(x+w>innerWidth-8)x=evt.clientX-w-pad; if(y+hh>innerHeight-8)y=evt.clientY-hh-pad;
+  tip.style.left=x+'px';tip.style.top=y+'px';
+}
+const hideTip=()=>{tip.style.opacity=0;};
+
+function segButtons(container,items,labelFn,get,set){
+  const c=document.getElementById(container);c.replaceChildren();
+  items.forEach(it=>{const b=h('button',null,labelFn(it));b.type='button';b.setAttribute('aria-pressed',get()===it);b.onclick=()=>{set(it);render();};c.appendChild(b);});
+}
+function lineKey(color,dash){const s=el('svg',{width:18,height:10});el('line',{x1:1,x2:17,y1:5,y2:5,stroke:color,'stroke-width':2,'stroke-linecap':'round','stroke-dasharray':dash||''},s);return s;}
+function rectKey(color){const s=el('svg',{width:12,height:12});el('rect',{x:1,y:1,width:10,height:10,rx:2,fill:color},s);return s;}
+
+/* ---------- 헤더·필터 ---------- */
+function renderMeta(){
+  const m=document.getElementById('meta');m.replaceChildren();
+  const a=h('div');a.append('기준일 ');a.appendChild(h('b',null,`${DATES[S.i]} (${dow(DATES[S.i])})`));
+  const b=h('div',null,`최신 데이터 ${DATES[N-1]} · 생성 ${D.generated}`);
+  m.append(a,b);
+  const inp=document.getElementById('asof');inp.min=DATES[0];inp.max=DATES[N-1];inp.value=DATES[S.i];
+  segButtons('f-period',PERIODS,p=>PLABEL[p],()=>S.period,v=>S.period=v);
+  segButtons('f-lookback',LOOKBACKS,p=>PLABEL[p],()=>S.lookback,v=>S.lookback=v);
+  const j=cmpIdx(S.i,S.period);
+  document.getElementById('f-hint').textContent=j>=0?`비교 시점: ${DATES[j]} (${dow(DATES[j])})`:'';
+}
+
+/* ---------- KPI ---------- */
+function renderKpis(){
+  const box=document.getElementById('kpis');box.replaceChildren();
+  const j=cmpIdx(S.i,S.period);
+  [['10Y','10Y 국채'],['2Y','2Y 국채'],['2s10s','2s10s'],['5s30s','5s30s'],['3m10y','3m10y'],['fly25','2s5s10s Fly']].forEach(([id,label])=>{
+    const v=SER[id].vals[S.i],c=chgBp(id,S.i,j),st=stats(id,S.i,S.lookback);
+    const t=h('div','kpi');t.tabIndex=0;t.title='클릭하면 시계열 차트에 표시';
+    t.onclick=()=>{S.tsKey=id;render();document.getElementById('ts-chart').scrollIntoView({behavior:'smooth',block:'center'});};
+    t.appendChild(h('div','k',label));
+    const vv=h('div','v',fmtV(id,v));vv.appendChild(h('small',null,unitTxt(id)));t.appendChild(vv);
+    const d=h('div','d');const l=h('span',cls(c),`${sgn(c)}bp`);l.title=`${PLABEL[S.period]} 변화`;
+    d.append(l,h('span','flat',st?`백분위 ${st.pct.toFixed(0)}%`:'–'));t.appendChild(d);
+    const pb=h('div','pbar');pb.title=`${PLABEL[S.lookback]} 백분위`;if(st){const m=h('i');m.style.left=`calc(${st.pct}% - 1.5px)`;pb.appendChild(m);}t.appendChild(pb);
+    box.appendChild(t);
+  });
+}
+
+/* ---------- 곡선 비교 ---------- */
+const CURVES=[{p:'0',label:'기준일',color:'--s1',w:2.5},{p:'1W',label:'1주 전',color:'--s2',dash:'6 3'},{p:'1M',label:'1개월 전',color:'--s3',dash:'2 3'},{p:'1Y',label:'1년 전',color:'--s4',dash:'8 3 2 3'}];
+function drawSegBands(g,x,step,top,bottom,labels){
+  const order=['Front','Belly','Long'],fills={Front:'--seg-front',Belly:'--seg-belly',Long:'--seg-long'};
+  order.forEach(k=>{const ts=SEG[k];const i0=TEN.indexOf(ts[0]),i1=TEN.indexOf(ts[ts.length-1]);
+    const x0=x(i0)-step/2,x1=x(i1)+step/2;el('rect',{x:x0,y:top,width:x1-x0,height:bottom-top,fill:css(fills[k])},g);
+    if(labels) el('text',{x:(x0+x1)/2,y:top+12,'text-anchor':'middle',class:'seglabel'},g,k.toUpperCase());});
+}
+function renderCurve(){
+  const box=document.getElementById('curve-chart');box.replaceChildren();
+  const W=box.clientWidth||600,H=300,m={l:44,r:62,t:8,b:26};
+  const idx=CURVES.map(c=>c.p==='0'?S.i:cmpIdx(S.i,c.p));
+  const lines=CURVES.map((c,k)=>({...c,i:idx[k],vals:TEN.map(t=>idx[k]>=0?D.yields[t][idx[k]]:null)}));
+  const lg=document.getElementById('curve-legend');lg.replaceChildren();
+  lines.forEach(L=>{const it=h('span','it'+(S.curveOff.has(L.p)?' off':''));it.appendChild(lineKey(css(L.color),L.dash));it.append(`${L.label} ${L.i>=0?DATES[L.i].slice(2):''}`);
+    if(L.p!=='0')it.onclick=()=>{S.curveOff.has(L.p)?S.curveOff.delete(L.p):S.curveOff.add(L.p);renderCurve();};lg.appendChild(it);});
+  const vis=lines.filter(L=>!S.curveOff.has(L.p));
+  const all=vis.flatMap(L=>L.vals).filter(v=>v!=null);
+  let lo=Math.min(...all),hi=Math.max(...all);const pad=(hi-lo)*.12||.2;lo-=pad;hi+=pad;
+  const {ticks}=niceTicks(lo,hi,5);lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);
+  const step=(W-m.l-m.r)/TEN.length,x=i=>m.l+step*(i+.5),y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'수익률곡선 비교 차트'},box);
+  drawSegBands(svg,x,step,m.t,H-m.b,true);
+  const ax=el('g',{class:'axis'},svg);
+  ticks.forEach(t=>{el('line',{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),class:'gridline'},ax);el('text',{x:m.l-8,y:y(t)+4,'text-anchor':'end'},ax,t.toFixed(2));});
+  TEN.forEach((t,i)=>el('text',{x:x(i),y:H-8,'text-anchor':'middle'},ax,t));
+  [...vis].reverse().forEach(L=>{
+    let d='',pen=false;L.vals.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?'L':'M')+x(i)+','+y(v);pen=true;});
+    el('path',{d,fill:'none',stroke:css(L.color),'stroke-width':L.w||2,'stroke-dasharray':L.dash||'','stroke-linejoin':'round','stroke-linecap':'round'},svg);
+    if(L.p==='0') L.vals.forEach((v,i)=>{if(v!=null)el('circle',{cx:x(i),cy:y(v),r:3.5,fill:css(L.color),stroke:css('--surface'),'stroke-width':2},svg);});
+  });
+  // 직접 라벨: 오른쪽 끝 (겹침 방지)
+  const ends=vis.map(L=>({L,v:L.vals[TEN.length-1]})).filter(e=>e.v!=null).sort((a,b)=>y(a.v)-y(b.v));
+  let last=-1e9;ends.forEach(e=>{let yy=Math.max(y(e.v)+4,last+13);last=yy;el('text',{x:W-m.r+8,y:yy,class:'dlabel'+(e.L.p==='0'?' strong':'')},svg,`${e.L.p==='0'?'현재':e.L.p} ${e.v.toFixed(2)}`);});
+  // 호버
+  const cross=el('line',{y1:m.t,y2:H-m.b,stroke:css('--axis'),'stroke-width':1,opacity:0},svg);
+  const hit=el('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.t-m.b,fill:'transparent'},svg);
+  hit.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;const i=Math.max(0,Math.min(TEN.length-1,Math.floor((px-m.l)/step)));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('opacity',1);
+    const cur=lines[0].vals[i];
+    showTip(e,`${TEN[i]} · ${segOf(TEN[i])}`,vis.map(L=>{const v=L.vals[i];const dv=(L.p!=='0'&&v!=null&&cur!=null)?` (${sgn((cur-v)*100)}bp)`:'';return {label:L.label,color:css(L.color),dash:!!L.dash,value:v==null?'–':v.toFixed(2)+'%'+dv};}));});
+  hit.addEventListener('pointerleave',()=>{cross.setAttribute('opacity',0);hideTip();});
+}
+
+/* ---------- 만기별 변화 막대 ---------- */
+function renderChanges(){
+  const box=document.getElementById('chg-chart');box.replaceChildren();
+  const j=cmpIdx(S.i,S.period);
+  document.getElementById('chg-title').textContent=`만기별 금리 변화 · ${PLABEL[S.period]}`;
+  document.getElementById('chg-sub').textContent=j>=0?`${DATES[j]} → ${DATES[S.i]} (bp) · 점선 = 구간 평균`:'';
+  const lg=document.getElementById('chg-legend');lg.replaceChildren();
+  [['--up','금리 상승 (채권 약세)'],['--down','금리 하락 (채권 강세)']].forEach(([c,t])=>{const it=h('span','it');it.style.cursor='default';it.appendChild(rectKey(css(c)));it.append(t);lg.appendChild(it);});
+  const ch=TEN.map(t=>chgBp(t,S.i,j));
+  const W=box.clientWidth||520,H=300,m={l:40,r:10,t:20,b:26};
+  const vals=ch.filter(v=>v!=null);let lo=Math.min(0,...vals),hi=Math.max(0,...vals);if(hi-lo<4){hi+=2;lo-=2;}
+  const pad=(hi-lo)*.15;lo=lo<0?lo-pad:lo;hi=hi>0?hi+pad:hi;
+  const {ticks}=niceTicks(lo,hi,5);lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);
+  const step=(W-m.l-m.r)/TEN.length,x=i=>m.l+step*(i+.5),y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'만기별 금리 변화 막대 차트'},box);
+  drawSegBands(svg,x,step,m.t,H-m.b,false);
+  const ax=el('g',{class:'axis'},svg);
+  ticks.forEach(t=>{el('line',{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),class:t===0?'baseline':'gridline'},ax);el('text',{x:m.l-8,y:y(t)+4,'text-anchor':'end'},ax,(t>0?'+':'')+t);});
+  TEN.forEach((t,i)=>el('text',{x:x(i),y:H-8,'text-anchor':'middle'},ax,t));
+  // 구간 평균 (점선)
+  Object.keys(SEG).forEach(k=>{const vs=SEG[k].map(t=>ch[TEN.indexOf(t)]).filter(v=>v!=null);if(!vs.length)return;const avg=vs.reduce((a,b)=>a+b,0)/vs.length;
+    const i0=TEN.indexOf(SEG[k][0]),i1=TEN.indexOf(SEG[k][SEG[k].length-1]);
+    el('line',{x1:x(i0)-step/2+3,x2:x(i1)+step/2-3,y1:y(avg),y2:y(avg),stroke:css('--ink2'),'stroke-width':1,'stroke-dasharray':'3 3'},svg);
+    el('text',{x:x(i0)-step/2+4,y:m.t-6,class:'seglabel'},svg,`${k.toUpperCase()} 평균 ${sgn(avg,1)}`);});
+  const bw=Math.min(28,step*.56),z=y(0);
+  ch.forEach((v,i)=>{if(v==null)return;const yy=y(v),hgt=Math.abs(yy-z);const up=v>0;const r=Math.min(4,hgt);
+    const x0=x(i)-bw/2;let d;
+    if(hgt<0.5){d=`M${x0},${z}h${bw}`;} else if(up){d=`M${x0},${z}V${yy+r}Q${x0},${yy} ${x0+r},${yy}H${x0+bw-r}Q${x0+bw},${yy} ${x0+bw},${yy+r}V${z}Z`;}
+    else{d=`M${x0},${z}V${yy-r}Q${x0},${yy} ${x0+r},${yy}H${x0+bw-r}Q${x0+bw},${yy} ${x0+bw},${yy-r}V${z}Z`;}
+    const p=el('path',{d,fill:css(v>=0?'--up':'--down'),stroke:hgt<0.5?css('--muted'):'none'},svg);
+    el('text',{x:x(i),y:up?yy-5:yy+13,'text-anchor':'middle',class:'dlabel'},svg,sgn(v));
+    const hit=el('rect',{x:x(i)-step/2,y:m.t,width:step,height:H-m.t-m.b,fill:'transparent'},svg);
+    hit.addEventListener('pointermove',e=>{p.setAttribute('opacity',.8);const a=D.yields[TEN[i]][S.i],b=D.yields[TEN[i]][j];
+      showTip(e,`${TEN[i]} · ${segOf(TEN[i])} · ${PLABEL[S.period]}`,[{label:'변화',value:sgn(v)+'bp',cls:cls(v)},{label:DATES[S.i],value:a==null?'–':a.toFixed(2)+'%'},{label:DATES[j],value:b==null?'–':b.toFixed(2)+'%'}]);});
+    hit.addEventListener('pointerleave',()=>{p.removeAttribute('opacity');hideTip();});
+  });
+}
+
+/* ---------- Summary 표 ---------- */
+function renderSummary(){
+  const tb=document.getElementById('summary');tb.replaceChildren();
+  const thead=h('thead'),hr=h('tr');
+  const cols=['항목','수준',...PERIODS.map(p=>'Δ'+p),`${PLABEL[S.lookback]} 최저`,`${PLABEL[S.lookback]} 최고`,`${PLABEL[S.lookback]} 백분위`];
+  cols.forEach((c,k)=>{const th=h('th',null,c);if(k>=2&&k<2+PERIODS.length&&PERIODS[k-2]===S.period)th.className='sel-col';hr.appendChild(th);});
+  thead.appendChild(hr);tb.appendChild(thead);
+  const body=h('tbody');
+  const idxs=PERIODS.map(p=>cmpIdx(S.i,p));
+  const addGroup=t=>{const tr=h('tr','grp');const td=h('td',null,t);td.colSpan=cols.length;tr.appendChild(td);body.appendChild(tr);};
+  const addRow=(id,label,sub)=>{
+    const tr=h('tr','row'+(S.tsKey===id?' sel':''));tr.onclick=()=>{S.tsKey=id;render();};
+    const n=h('td','name');n.appendChild(h('b',null,label));if(sub)n.appendChild(h('span',null,sub));tr.appendChild(n);
+    tr.appendChild(h('td',null,fmtV(id,SER[id].vals[S.i])+(SER[id].unit==='%'?'%':'')));
+    idxs.forEach((j,k)=>{const c=chgBp(id,S.i,j);const td=h('td',cls(c)+(PERIODS[k]===S.period?' sel-col':''),sgn(c));tr.appendChild(td);});
+    const st=stats(id,S.i,S.lookback);
+    tr.appendChild(h('td',null,st?fmtV(id,st.min):'–'));tr.appendChild(h('td',null,st?fmtV(id,st.max):'–'));
+    const pt=h('td');if(st){const pb=h('span','pbar sm');const mk=h('i');mk.style.left=`calc(${st.pct}% - 1.5px)`;pb.appendChild(mk);pt.appendChild(pb);pt.append(` ${st.pct.toFixed(0)}%`);}else pt.textContent='–';
+    tr.appendChild(pt);body.appendChild(tr);
+  };
+  Object.keys(SEG).forEach(k=>{addGroup(`금리 · ${k.toUpperCase()} (%, 변화는 bp)`);SEG[k].forEach(t=>addRow(t,t));});
+  addGroup('커브 기울기 (bp)');SPREADS.filter(s=>s.kind==='slope').forEach(s=>addRow(s.id,s.name,s.desc));
+  addGroup('곡률 · Butterfly (bp)');SPREADS.filter(s=>s.kind==='fly').forEach(s=>addRow(s.id,s.name,s.desc));
+  tb.appendChild(body);
+}
+
+/* ---------- 국면 판정 ---------- */
+function regimeOf(s,dShort,dLong,dSpread){
+  if(dSpread==null) return {t:'–',c:''};
+  if(s.kind==='fly'){ if(Math.abs(dSpread)<1) return {t:'변화 미미',c:''}; return dSpread>0?{t:`${s.body} Cheapening`,c:'rs'}:{t:`${s.body} Richening`,c:'bs'}; }
+  if(Math.abs(dSpread)<1) return {t:'Parallel',c:''};
+  if(dShort!=null&&dLong!=null&&Math.abs(dShort)>=1&&Math.abs(dLong)>=1&&Math.sign(dShort)!==Math.sign(dLong))
+    return {t:(dSpread>0?'Steepening':'Flattening')+' Twist',c:''};
+  const avg=(dShort+dLong)/2, bull=avg<0;
+  return dSpread>0?{t:(bull?'Bull':'Bear')+' Steepener',c:bull?'bs':'rs'}:{t:(bull?'Bull':'Bear')+' Flattener',c:bull?'bf':'rf'};
+}
+function renderRegime(){
+  const j=cmpIdx(S.i,S.period);
+  document.getElementById('reg-sub').textContent=`${PLABEL[S.period]} · ${j>=0?DATES[j]:''} → ${DATES[S.i]} (bp)`;
+  const tb=document.getElementById('regime');tb.replaceChildren();
+  const thead=h('thead'),hr=h('tr');['스프레드','Δ단기','Δ장기','Δ스프레드','판정',`${PLABEL[S.lookback]} 백분위`].forEach(c=>hr.appendChild(h('th',null,c)));thead.appendChild(hr);tb.appendChild(thead);
+  const body=h('tbody');
+  SPREADS.forEach(s=>{
+    const tr=h('tr','row'+(S.tsKey===s.id?' sel':''));tr.onclick=()=>{S.tsKey=s.id;render();};
+    const n=h('td','name');n.appendChild(h('b',null,s.name));tr.appendChild(n);
+    const ds=s.short?chgBp(s.short,S.i,j):null,dl=s.long?chgBp(s.long,S.i,j):null,dsp=chgBp(s.id,S.i,j);
+    tr.appendChild(h('td',s.kind==='fly'?'flat':cls(ds),s.kind==='fly'?'·':sgn(ds)));
+    tr.appendChild(h('td',s.kind==='fly'?'flat':cls(dl),s.kind==='fly'?'·':sgn(dl)));
+    tr.appendChild(h('td',cls(dsp),sgn(dsp)));
+    const r=regimeOf(s,ds,dl,dsp);const td=h('td');td.appendChild(h('span','tag '+r.c,r.t));tr.appendChild(td);
+    const st=stats(s.id,S.i,S.lookback);const ptxt=st?`${st.pct.toFixed(0)}%${st.pct>=90?' · 역사적 고점권':st.pct<=10?' · 역사적 저점권':''}`:'–';
+    tr.appendChild(h('td',null,ptxt));body.appendChild(tr);
+  });
+  tb.appendChild(body);
+}
+
+/* ---------- 구간 요약 ---------- */
+function renderSegments(){
+  const tb=document.getElementById('segments');tb.replaceChildren();
+  const thead=h('thead'),hr=h('tr');['구간','만기','평균 수준',...PERIODS.map(p=>'Δ'+p),'구간 기울기'].forEach(c=>{const th=h('th',null,c);if(c==='Δ'+S.period)th.className='sel-col';hr.appendChild(th);});thead.appendChild(hr);tb.appendChild(thead);
+  const body=h('tbody');const idxs=PERIODS.map(p=>cmpIdx(S.i,p));
+  const segSlope={Front:['3M','2Y'],Belly:['2Y','5Y','10Y'],Long:['10Y','30Y']};
+  Object.keys(SEG).forEach(k=>{
+    const tr=h('tr');const n=h('td','name');n.appendChild(h('b',null,k));tr.appendChild(n);
+    tr.appendChild(h('td',null,`${SEG[k][0]}–${SEG[k][SEG[k].length-1]}`));
+    const lv=SEG[k].map(t=>D.yields[t][S.i]).filter(v=>v!=null);tr.appendChild(h('td',null,lv.length?(lv.reduce((a,b)=>a+b,0)/lv.length).toFixed(2)+'%':'–'));
+    idxs.forEach((j,q)=>{const cs=SEG[k].map(t=>chgBp(t,S.i,j)).filter(v=>v!=null);const a=cs.length?cs.reduce((x,y)=>x+y,0)/cs.length:null;tr.appendChild(h('td',cls(a)+(PERIODS[q]===S.period?' sel-col':''),sgn(a,1)));});
+    const ss=segSlope[k],y=t=>D.yields[t][S.i];
+    let txt;if(k==='Belly'){const a=y('5Y')-y('2Y'),b=y('10Y')-y('5Y');txt=`2s5s ${sgn(a*100)} / 5s10s ${sgn(b*100)}`;}else{const a=y(ss[1])-y(ss[0]);txt=`${ss[0]}→${ss[1]} ${sgn(a*100)}`;}
+    tr.appendChild(h('td',null,txt+'bp'));body.appendChild(tr);
+  });
+  tb.appendChild(body);
+}
+
+/* ---------- 시계열 ---------- */
+function renderTS(){
+  const sel=document.getElementById('ts-key');
+  if(!sel.options.length){
+    const g1=h('optgroup');g1.label='금리 (%)';TEN.forEach(t=>{const o=h('option',null,t+' 국채');o.value=t;g1.appendChild(o);});
+    const g2=h('optgroup');g2.label='스프레드 (bp)';SPREADS.forEach(s=>{const o=h('option',null,`${s.name} (${s.desc})`);o.value=s.id;g2.appendChild(o);});
+    sel.append(g1,g2);sel.onchange=()=>{S.tsKey=sel.value;render();};
+  }
+  sel.value=S.tsKey;
+  segButtons('ts-range',['1Y','3Y','5Y','10Y','ALL'],p=>p==='ALL'?'전체':p,()=>S.tsRange,v=>S.tsRange=v);
+  segButtons('ts-fomc',[true,false],v=>v?'FOMC 표시':'숨김',()=>S.fomc,v=>S.fomc=v);
+  const id=S.tsKey,ser=SER[id],unit=ser.unit;
+  const st=stats(id,S.i,S.lookback);
+  document.getElementById('ts-title').textContent=`시계열 · ${ser.spec?ser.spec.name+' ('+ser.spec.desc+')':ser.name}`;
+  document.getElementById('ts-sub').textContent=st?`음영 = ${PLABEL[S.lookback]} 조회 기간의 10~90 백분위 구간, 점선 = 중앙값 · 현재 ${fmtV(id,ser.vals[S.i])}${unitTxt(id)}, 백분위 ${st.pct.toFixed(0)}%`:'';
+  const lg=document.getElementById('ts-legend');lg.replaceChildren();
+  const it1=h('span','it');it1.style.cursor='default';it1.appendChild(lineKey(css('--s1')));it1.append(ser.spec?ser.spec.name:ser.name);lg.appendChild(it1);
+  const it2=h('span','it');it2.style.cursor='default';it2.appendChild(rectKey(css('--band')));it2.append(`${PLABEL[S.lookback]} 10–90 백분위`);lg.appendChild(it2);
+  if(S.fomc){const it3=h('span','it');it3.style.cursor='default';it3.appendChild(lineKey(css('--muted'),'2 2'));it3.append('FOMC 결정일');lg.appendChild(it3);}
+
+  const box=document.getElementById('ts-chart');box.replaceChildren();
+  const W=box.clientWidth||900,H=320,m={l:48,r:16,t:10,b:26};
+  const end=S.i,start=S.tsRange==='ALL'?0:Math.max(0,idxOnOrBefore(shiftMs(DMS[end],S.tsRange)));
+  const xs=[],vs=[];for(let k=start;k<=end;k++){xs.push(k);vs.push(ser.vals[k]);}
+  const nn=vs.filter(v=>v!=null);if(!nn.length){box.textContent='해당 기간 데이터 없음';return;}
+  let lo=Math.min(...nn),hi=Math.max(...nn);if(st){lo=Math.min(lo,st.p10);hi=Math.max(hi,st.p90);}if(unit==='bp'){lo=Math.min(lo,0);hi=Math.max(hi,0);}
+  const pad=(hi-lo)*.06||1;lo-=pad;hi+=pad;
+  const {ticks}=niceTicks(lo,hi,5);
+  const t0=DMS[start],t1=DMS[end];
+  const x=ms=>m.l+(W-m.l-m.r)*((ms-t0)/((t1-t0)||1)),y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'시계열 차트'},box);
+  const ax=el('g',{class:'axis'},svg);
+  ticks.forEach(t=>{if(t<lo||t>hi)return;el('line',{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),class:(unit==='bp'&&t===0)?'baseline':'gridline'},ax);el('text',{x:m.l-8,y:y(t)+4,'text-anchor':'end'},ax,unit==='%'?t.toFixed(2):String(t));});
+  // x 눈금: 연/월
+  const spanY=(t1-t0)/(365.25*864e5);const y0=new Date(t0).getUTCFullYear(),y1=new Date(t1).getUTCFullYear();
+  const yStep=spanY>20?5:spanY>8?2:1;
+  if(spanY>2.5){for(let yr=y0+1;yr<=y1;yr++){if(yr%yStep)continue;const ms=Date.UTC(yr,0,1);if(ms<t0||ms>t1)continue;el('line',{x1:x(ms),x2:x(ms),y1:H-m.b,y2:H-m.b+4,class:'baseline'},ax);el('text',{x:x(ms),y:H-8,'text-anchor':'middle'},ax,String(yr));}}
+  else{const mStep=spanY>1.5?6:3;const d=new Date(t0);d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
+    for(;d.getTime()<=t1;d.setUTCMonth(d.getUTCMonth()+1)){if(d.getUTCMonth()%mStep)continue;const ms=d.getTime();el('line',{x1:x(ms),x2:x(ms),y1:H-m.b,y2:H-m.b+4,class:'baseline'},ax);
+      el('text',{x:x(ms),y:H-8,'text-anchor':'middle'},ax,`${String(d.getUTCFullYear()).slice(2)}.${String(d.getUTCMonth()+1).padStart(2,'0')}`);}}
+  // 백분위 밴드
+  if(st){el('rect',{x:m.l,y:y(st.p90),width:W-m.l-m.r,height:Math.max(0,y(st.p10)-y(st.p90)),fill:css('--band')},svg);
+    el('line',{x1:m.l,x2:W-m.r,y1:y(st.p50),y2:y(st.p50),stroke:css('--ink2'),'stroke-width':1,'stroke-dasharray':'4 4',opacity:.6},svg);
+    el('text',{x:W-m.r-4,y:y(st.p90)-4,'text-anchor':'end',class:'dlabel'},svg,`P90 ${fmtV(id,st.p90)}`);
+    el('text',{x:W-m.r-4,y:y(st.p10)+12,'text-anchor':'end',class:'dlabel'},svg,`P10 ${fmtV(id,st.p10)}`);}
+  // FOMC
+  if(S.fomc){FOMC.forEach(s=>{const ms=Date.parse(s+'T00:00:00Z');if(ms<t0||ms>t1)return;el('line',{x1:x(ms),x2:x(ms),y1:m.t,y2:H-m.b,stroke:css('--muted'),'stroke-width':1,'stroke-dasharray':'2 3',opacity:.55},svg);});}
+  // 라인
+  let d='',pen=false;xs.forEach((k,q)=>{const v=vs[q];if(v==null){pen=false;return;}d+=(pen?'L':'M')+x(DMS[k]).toFixed(1)+','+y(v).toFixed(1);pen=true;});
+  el('path',{d,fill:'none',stroke:css('--s1'),'stroke-width':2,'stroke-linejoin':'round'},svg);
+  const lv=ser.vals[end];if(lv!=null){el('circle',{cx:x(DMS[end]),cy:y(lv),r:4,fill:css('--s1'),stroke:css('--surface'),'stroke-width':2},svg);}
+  // 호버
+  const cross=el('line',{y1:m.t,y2:H-m.b,stroke:css('--axis'),'stroke-width':1,opacity:0},svg);
+  const dot=el('circle',{r:4,fill:css('--s1'),stroke:css('--surface'),'stroke-width':2,opacity:0},svg);
+  const hit=el('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.t-m.b,fill:'transparent'},svg);
+  hit.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;const ms=t0+(px-m.l)/(W-m.l-m.r)*(t1-t0);
+    let k=idxOnOrBefore(ms);if(k<start)k=start;if(k<end&&Math.abs(DMS[k+1]-ms)<Math.abs(DMS[k]-ms))k++;
+    const v=ser.vals[k];cross.setAttribute('x1',x(DMS[k]));cross.setAttribute('x2',x(DMS[k]));cross.setAttribute('opacity',1);
+    if(v!=null){dot.setAttribute('cx',x(DMS[k]));dot.setAttribute('cy',y(v));dot.setAttribute('opacity',1);}else dot.setAttribute('opacity',0);
+    const isF=FOMC.includes(DATES[k]);
+    const rows=[{label:ser.spec?ser.spec.name:ser.name,color:css('--s1'),value:v==null?'–':fmtV(id,v)+unitTxt(id)}];
+    if(ser.spec){Object.keys(ser.spec.legs).forEach(t=>{const yv=D.yields[t][k];rows.push({label:t,value:yv==null?'–':yv.toFixed(2)+'%'});});}
+    const c1=chgBp(id,k,k-1);rows.push({label:'전일 대비',value:sgn(c1)+'bp',cls:cls(c1)});
+    showTip(e,`${DATES[k]} (${dow(DATES[k])})${isF?' · FOMC':''}`,rows);});
+  hit.addEventListener('pointerleave',()=>{cross.setAttribute('opacity',0);dot.setAttribute('opacity',0);hideTip();});
+  hit.addEventListener('click',e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;const ms=t0+(px-m.l)/(W-m.l-m.r)*(t1-t0);const k=idxOnOrBefore(ms);if(k>=0){S.i=k;render();}});
+  hit.style.cursor='crosshair';
+}
+
+/* ---------- 전체 렌더 ---------- */
+function render(){renderMeta();renderKpis();renderCurve();renderChanges();renderSummary();renderRegime();renderSegments();renderTS();}
+document.getElementById('asof').addEventListener('change',e=>{const ms=Date.parse(e.target.value+'T00:00:00Z');if(isNaN(ms))return;const k=idxOnOrBefore(ms);S.i=k<0?0:k;render();});
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120);});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+render();
+})();
+</script>
+</body>
+</html>

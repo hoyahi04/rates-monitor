@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor · 점수 규칙표</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --page:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --acc:#eb6834; --accent:#147b79; --hover:rgba(11,11,11,.04); --zone:rgba(11,11,11,.05);
+  --pos:#1c5cab; --neg:#b42318; --now:rgba(235,104,52,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --acc:#d95926; --accent:#3fb5b2; --hover:rgba(255,255,255,.05); --zone:rgba(255,255,255,.06);
+    --pos:#86b6ef; --neg:#f08a8a; --now:rgba(217,89,38,.20);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page)}
+.viz-root{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:13.5px;line-height:1.55;min-height:100vh;padding:24px 28px 56px;word-break:keep-all}
+.wrap{max-width:1120px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-top:4px solid var(--ink);padding-top:14px;margin-bottom:10px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+.meta{font-size:12px;color:var(--ink2);text-align:right}
+.meta b{color:var(--ink)}
+.lead{font-size:14px;color:var(--ink2);margin:0 0 16px;max-width:760px}
+.lead b{color:var(--ink)}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin:26px 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sec-title span{font-weight:500;letter-spacing:0;color:var(--muted);font-size:11.5px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px;min-width:0;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 2px;letter-spacing:-.2px}
+.card .sub{font-size:12px;color:var(--ink2);margin:0 0 8px}
+.card ul{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink2)}
+.card ul b{color:var(--ink)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g2 .card{margin-bottom:0}
+/* 흐름 */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:6px}
+.step{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:12px 14px}
+.step .n{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--accent)}
+.step .t{font-size:16px;font-weight:650;letter-spacing:-.3px;margin:1px 0 4px}
+.step .d{font-size:12px;color:var(--ink2)}
+.arrow{display:flex;align-items:center;color:var(--muted);font-size:20px}
+/* 이번 달 */
+.nowbox{background:var(--surface);border:1px solid var(--ring);border-left:4px solid var(--ink);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.nowbox .k{font-size:11px;color:var(--ink2);font-weight:600;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.chip{border:1px solid var(--ring);border-radius:8px;padding:6px 10px;min-width:104px;background:var(--page)}
+.chip .l{font-size:11px;color:var(--ink2)}
+.chip .v{font-size:20px;font-weight:650;letter-spacing:-.5px;line-height:1.2;font-variant-numeric:tabular-nums}
+.chip .v small{font-size:11.5px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:5px}
+.chips .sep{display:flex;align-items:center;color:var(--muted);font-size:18px;padding:0 2px}
+.nowbox .res{margin-top:10px;font-size:14px}
+.nowbox .res b{font-weight:650}
+/* 표 */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;color:var(--muted);font-weight:600;text-align:left;padding:6px 10px;border-bottom:1px solid var(--axis);white-space:nowrap}
+td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;white-space:nowrap}
+td.nw{white-space:nowrap}
+td.name{font-weight:650;white-space:nowrap}
+td .hint{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
+td.grp{font-weight:650;white-space:nowrap;border-right:1px solid var(--grid)}
+tr.now td{background:var(--now)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--acc);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:1px;white-space:nowrap}
+.pending{display:inline-block;font-size:10.5px;font-weight:700;color:var(--ink2);border:1px solid var(--axis);border-radius:4px;padding:0 6px;margin-left:8px;vertical-align:1px;white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:var(--hover);padding:1px 5px;border-radius:3px;color:var(--ink2);white-space:nowrap}
+.p{color:var(--pos);font-weight:650}.m{color:var(--neg);font-weight:650}
+.note{border-left:3px solid var(--ink);background:var(--hover);border-radius:0 6px 6px 0;padding:8px 12px;font-size:12.5px;margin-top:10px;color:var(--ink2)}
+.note b{color:var(--ink)}
+.err{font-size:12.5px;color:var(--ink2)}
+@media (max-width:900px){.g2{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{justify-content:center;transform:rotate(90deg);height:18px}}
+@media (max-width:720px){.viz-root{padding:14px}.meta{text-align:left}}
+@media print{.viz-root{padding:0;background:#fff}.card,.step,.nowbox{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">RATES MONITOR · MACRO · 점수표</div>
+    <h1>점수 규칙표</h1>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+<p class="lead">매월 마지막 거래일 종가에 판정하고 <b>다음 달에 적용</b>합니다. 그날까지 공개된 값만 씁니다. 월별 결과는 <code>scoreboard.csv</code>에 있고, 아래 표의 열 이름이 그 파일의 열입니다.</p>
+
+<div class="flow">
+  <div class="step"><div class="n">1단계</div><div class="t">신호 5개</div><div class="d">담당 섹션마다 −1 / 0 / +1 점수 하나</div></div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="step"><div class="n">2단계</div><div class="t">커브 뷰 3개</div><div class="d">점수를 더해 수준 · 기울기 · 곡률</div></div>
+  <div class="arrow" aria-hidden="true">→</div>
+  <div class="step"><div class="n">3단계</div><div class="t">포지션 4개</div><div class="d">Duration · Slope · Curvature · Carry</div></div>
+</div>
+
+<div class="sec-title">이번 달 적용 <span id="now-span"></span></div>
+<div class="nowbox" id="now"><div class="err">scoreboard.js가 없습니다. 이 폴더에서 <code>python3 scoreboard.py</code>를 실행하면 이번 달 판정이 표시됩니다.</div></div>
+
+<div class="sec-title">1단계 · 신호별 점수 <span>조건에 해당하지 않으면 0</span></div>
+<div class="card">
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>신호</th><th>재는 것</th><th>+1</th><th>−1</th><th>+1의 방향</th><th>열</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="name">정책 경로</td><td>시장이 가격한 2년 평균 정책금리 − 점도표 2년 평균</td><td><span class="p">+25bp 이상</span><span class="hint">시장이 연준보다 높게 가격</span></td><td><span class="m">−25bp 이하</span></td><td>금리 하락, 스티프닝</td><td><code>s1_policy</code></td></tr>
+      <tr><td>2</td><td class="name">성장·고용</td><td>고용 투표 + 실업률 투표의 부호</td><td><span class="p">둔화</span></td><td><span class="m">확장</span></td><td>금리 하락</td><td><code>s2_growth</code></td></tr>
+      <tr><td>3</td><td class="name">인플레이션</td><td>Core PCE 3개월 연율 − 12개월 상승률</td><td><span class="p">−0.3%p 이하</span><span class="hint">물가 둔화</span></td><td><span class="m">+0.3%p 이상</span><span class="hint">재가속</span></td><td>금리 하락</td><td><code>s3_inflation</code></td></tr>
+      <tr><td>4</td><td class="name">수급</td><td>장기물 순공급의 가속 ÷ 민간 보유 잔액</td><td><span class="p">+0.56% 이상</span><span class="hint">공급 가속</span></td><td><span class="m">−0.09% 이하</span><span class="hint">공급 감속</span></td><td>스티프닝</td><td><code>s4_supply</code></td></tr>
+      <tr><td>5</td><td class="name">유동성·변동성</td><td>MOVE · 리스크 심리 · 자금 사정의 3년 백분위</td><td><span class="p">셋 다 안정</span></td><td><span class="m">MOVE 백분위 90 초과</span><span class="hint">스트레스</span></td><td>벨리 불릿 허용 (−1은 브레이크)</td><td><code>s5_liquidity_vol</code></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h2>2번 성장·고용의 두 투표</h2>
+    <p class="sub">두 투표를 더해 부호를 점수로 씁니다. 서로 반대면 0입니다.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>투표</th><th>계산</th><th>둔화 (+1)</th><th>확장 (−1)</th></tr></thead>
+      <tbody>
+        <tr><td class="name">고용</td><td>고용 증가 3개월 평균 − 12개월 평균</td><td class="nw">−5만 명 이하</td><td class="nw">+5만 명 이상</td></tr>
+        <tr><td class="name">실업률</td><td>실업률 3개월 평균의 3개월 변화</td><td class="nw">+0.2%p 이상</td><td class="nw">−0.2%p 이하</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>5번 유동성·변동성의 세 축</h2>
+    <p class="sub">세 축을 직전 3년 분포의 백분위로 잽니다.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>축</th><th>측정</th><th>기준</th></tr></thead>
+      <tbody>
+        <tr><td class="name">금리 변동성</td><td>그 달 MOVE 최고값의 백분위</td><td>90 초과면 −1</td></tr>
+        <tr><td class="name">리스크 심리</td><td>VIX 월중 최고값과 Baa − 10년 스프레드 백분위의 평균</td><td>50 미만이어야 +1 가능</td></tr>
+        <tr><td class="name">유동성</td><td>SOFR − 준비금 금리의 20영업일 평균</td><td>+5bp 초과면 자금 경보</td></tr>
+      </tbody>
+    </table></div>
+    <ul><li><b>+1</b>: 금리 변동성 50 미만, 리스크 심리 50 미만, 자금 경보 꺼짐을 모두 충족</li></ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h2>나머지 신호의 계산 기준</h2>
+  <ul style="margin-top:4px">
+    <li><b>1번 정책 경로</b>: 시장 쪽은 2년 국채 금리를 익일물 금리 단위로 환산한 대용치입니다(선물 과거 자료 없음). 연준 쪽은 직전 점도표 중간값을 현재 정책금리에서 각 연말까지 직선으로 이은 경로의 2년 평균입니다.</li>
+    <li><b>2번 성장·고용</b>: 고용보고서의 발표 당시 수치를 씁니다(사후 개정치 아님).</li>
+    <li><b>3번 인플레이션</b>: 그날까지 발표된 Core PCE를 발표 당시 수치 그대로 씁니다. 전월분은 다음 달 말에 발표됩니다.</li>
+    <li><b>4번 수급</b>: 장기물 순공급 = 만기 20·30년 국채 잔액 증감 − 연준의 보유 증감. 가속 = (최근 3개월 합 − 직전 12개월의 3개월 평균) ÷ 민간 보유 잔액. 문턱값은 2015~2020년 신호 분포의 상위·하위 1/3 지점입니다.</li>
+  </ul>
+</div>
+
+<div class="sec-title">2단계 · 커브 뷰 <span>1~3번을 하나로 합쳐 같은 매크로 뷰를 여러 전략에 중복으로 싣지 않습니다</span></div>
+<div class="card">
+  <div class="tablewrap"><table>
+    <thead><tr><th>커브 뷰</th><th>계산</th><th>범위</th><th>양수의 뜻</th><th>열</th></tr></thead>
+    <tbody>
+      <tr><td class="name">수준</td><td>1번 + 2번 + 3번</td><td class="nw">−3 ~ +3</td><td>금리 하락 예상</td><td><code>view_level</code></td></tr>
+      <tr><td class="name">기울기</td><td>1번 + 4번</td><td class="nw">−2 ~ +2</td><td>스티프닝 예상</td><td><code>view_slope</code></td></tr>
+      <tr><td class="name">곡률</td><td>5번이 +1 <b>그리고</b> Fly z-score ≥ +1</td><td class="nw">충족 / 미충족</td><td>벨리 강세 예상</td><td><code>view_curvature</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>Fly</b> = 2 × 5년 − 2년 − 10년 (bp, 재무부 CMT 금리)</li>
+    <li><b>Fly z-score</b> = 판정일의 Fly가 직전 3년 일별 분포에서 몇 표준편차인가 (<code>fly_z_3y</code>) <span class="pending">룩백 미확정</span></li>
+  </ul>
+</div>
+
+<div class="sec-title">3단계 · 포지션 <span>주황색 줄이 이번 달에 해당하는 조건입니다</span></div>
+<div class="card">
+  <div class="tablewrap"><table id="pos">
+    <thead><tr><th>전략</th><th>조건</th><th>포지션</th><th>열</th></tr></thead>
+    <tbody>
+      <tr data-k="dur" data-v="0.5"><td class="grp" rowspan="5">Duration</td><td class="nw">수준 +2 이상</td><td>액티브 듀레이션 <b>+0.5년</b></td><td rowspan="5"><code>duration_active_yr</code></td></tr>
+      <tr data-k="dur" data-v="0.25"><td class="nw">수준 +1</td><td><b>+0.25년</b></td></tr>
+      <tr data-k="dur" data-v="0"><td class="nw">수준 0</td><td>0 (벤치마크와 같음)</td></tr>
+      <tr data-k="dur" data-v="-0.25"><td class="nw">수준 −1</td><td><b>−0.25년</b></td></tr>
+      <tr data-k="dur" data-v="-0.5"><td class="nw">수준 −2 이하</td><td><b>−0.5년</b></td></tr>
+      <tr data-k="slope" data-v="steepener"><td class="grp" rowspan="3">Curve Slope</td><td class="nw">기울기 +2</td><td><b>스티프너</b>: 1–3y 확대, 20y+ 축소 (DV01 중립)</td><td rowspan="3"><code>slope_position</code></td></tr>
+      <tr data-k="slope" data-v="flattener"><td class="nw">기울기 −2</td><td><b>플래트너</b>: 1–3y 축소, 20y+ 확대 (DV01 중립)</td></tr>
+      <tr data-k="slope" data-v="none"><td class="nw">그 외</td><td>없음</td></tr>
+      <tr data-k="curv" data-v="1"><td class="grp" rowspan="2">Curve Curvature</td><td class="nw">곡률 충족</td><td><b>불릿</b>: 5–7y 확대, 1–3y · 10–20y 축소 (DV01 중립)</td><td rowspan="2"><code>curvature_position</code></td></tr>
+      <tr data-k="curv" data-v="0"><td class="nw">미충족</td><td>없음</td></tr>
+      <tr data-k="carry" data-v="on"><td class="grp">Carry &amp; Rolldown</td><td class="nw">항상</td><td>버킷 안에서 carry+roll 상위 종목</td><td><code>carry_rolldown</code></td></tr>
+      <tr data-k="brake" data-v="1"><td class="grp">브레이크 <span class="pending">제안</span></td><td class="nw">5번이 −1</td><td>벨리 불릿 청산, 모든 액티브 포지션 <b>절반</b></td><td><code>brake</code> <code>size_multiplier</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul><li>브레이크를 적용한 듀레이션은 <code>duration_active_yr_with_brake</code> 열에 따로 있습니다.</li></ul>
+</div>
+
+<div class="sec-title">확정되지 않은 것</div>
+<div class="card">
+  <div class="tablewrap"><table>
+    <thead><tr><th>항목</th><th>지금 점수표에서 쓰는 값</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Fly z-score 룩백</td><td>3년</td><td>1년 기준 값도 <code>fly_z_1y</code> 열에 있습니다</td></tr>
+      <tr><td class="name">브레이크</td><td>별도 열로 계산만 해 둠</td><td>5번 섹션의 제안입니다. 팀 규칙에 넣을지 미정입니다</td></tr>
+      <tr><td class="name">버킷별 액티브 비중 한도</td><td>규칙표에 없음</td><td>±5%p와 ±10%p 중 미정입니다</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="sec-title">알아 둘 점</div>
+<div class="grid g2">
+  <div class="card">
+    <h2>이 규칙은 검증된 전략이 아닙니다</h2>
+    <ul style="margin-top:4px">
+      <li><b>문턱값은 모두 백테스트 전에 정했습니다.</b> 결과를 보고 바꾸지 않습니다.</li>
+      <li>다섯 신호 모두 다음 달 금리 방향 적중률이 48~52%였습니다. 5번만 변동 크기를 맞혔습니다.</li>
+      <li>12월 모의운용에서 기록하며 지켜볼 가설입니다.</li>
+      <li>각 신호의 정의와 백테스트는 섹션 폴더의 <code>notes.md</code>에 있습니다.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>포지션 발동 빈도</h2>
+    <p class="sub" id="freq-sub">2015년 1월 이후 포지션이 잡힌 달 수</p>
+    <div class="tablewrap"><table id="freq"><tbody><tr><td class="err">scoreboard.js가 있으면 표시됩니다.</td></tr></tbody></table></div>
+  </div>
+</div>
+</div>
+</div>
+
+<script src="scoreboard.js"></script>
+<script>
+"use strict";
+(function(){
+const S = window.MACRO_SCOREBOARD;
+if(!S) return;
+const $ = s => document.querySelector(s);
+const c = S.current, o = S.current_obs || {};
+const sc = v => v>0 ? '+'+v : v<0 ? '−'+Math.abs(v) : '0';
+const sg = (v,d) => v==null ? '–' : (v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d);
+const ym = s => s.slice(0,4)+'년 '+(+s.slice(5,7))+'월';
+const alarm = o.funding_alarm==null ? '자료 없음' : o.funding_alarm ? '켜짐' : '꺼짐';
+
+$('#meta').innerHTML=`판정일 <b>${c.decision_date}</b> → <b>${ym(c.apply_month+'-01')}</b> 적용<br>점수표 생성 ${S.generated}`;
+$('#now-span').textContent=`${c.decision_date} 판정 · 아래 값은 scoreboard.py를 다시 실행하면 갱신됩니다`;
+
+const sigs=[
+  ['1 정책 경로', c.s1_policy, `경로 괴리 ${sg(o.path_gap_bp,0)}bp`],
+  ['2 성장·고용', c.s2_growth, `고용 ${sg(o.nfp_gap_k/10,1)}만 명, 실업률 ${sg(o.unrate_chg,2)}%p`],
+  ['3 인플레이션', c.s3_inflation, `${sg(o.momentum_gap,2)}%p`],
+  ['4 수급', c.s4_supply, `공급 가속 ${sg(o.supply_accel_pct,2)}%`],
+  ['5 유동성·변동성', c.s5_liquidity_vol, `변동성 ${o.vol_pct==null?'–':o.vol_pct.toFixed(0)}, 심리 ${o.risk_pct==null?'–':o.risk_pct.toFixed(0)}, 경보 ${alarm}`]
+];
+const chip=(l,v,s)=>`<div class="chip"><div class="l">${l}</div><div class="v">${v}${s?`<small>${s}</small>`:''}</div></div>`;
+const durTxt = c.duration_active_yr ? `액티브 듀레이션 <b>${sg(c.duration_active_yr,2)}년</b>` : '액티브 듀레이션 <b>0</b>';
+const slopeTxt = {steepener:'Curve Slope <b>스티프너</b>', flattener:'Curve Slope <b>플래트너</b>', none:'Curve Slope 없음'}[c.slope_position];
+const curvWhy = c.view_curvature ? '' : (c.s5_liquidity_vol!==1 ? ` (5번이 ${sc(c.s5_liquidity_vol)}이라 미충족)` : ' (Fly z-score가 +1 미만)');
+$('#now').innerHTML=`<div class="k">신호 점수</div><div class="chips">${sigs.map(s=>chip(s[0], sc(s[1]), s[2])).join('')}</div>`
+  +`<div class="k" style="margin-top:12px">커브 뷰</div><div class="chips">`
+  +chip('수준 = 1 + 2 + 3', sc(c.view_level))+chip('기울기 = 1 + 4', sc(c.view_slope))
+  +chip('곡률', c.view_curvature?'충족':'미충족', `Fly z ${sg(c.fly_z_3y,2)}`)+`</div>`
+  +`<div class="res"><b>포지션.</b> ${durTxt} · ${slopeTxt} · ${c.view_curvature?'Curve Curvature <b>불릿</b>':'Curve Curvature 없음'+curvWhy} · Carry &amp; Rolldown 유지`
+  +(c.brake?` · <b>브레이크 켜짐</b> (제안 규칙 적용 시 포지션 절반, 듀레이션 ${sg(c.duration_active_yr_with_brake,3)}년)`:'')+`</div>`;
+
+/* 3단계 표에서 이번 달에 해당하는 줄 표시 */
+const cur={dur:String(c.duration_active_yr), slope:c.slope_position, curv:String(c.view_curvature), carry:'on', brake:String(c.brake)};
+document.querySelectorAll('#pos tbody tr').forEach(tr=>{
+  const k=tr.dataset.k, v=tr.dataset.v;
+  if(parseFloat(v)===parseFloat(cur[k]) || v===cur[k]){ tr.classList.add('now');
+    const cell=tr.querySelector('td:not(.grp)'); if(cell&&k!=='carry') cell.insertAdjacentHTML('beforeend','<span class="tag">이번 달</span>'); }
+});
+
+/* 빈도 */
+const f=S.freq, d=f.duration;
+$('#freq-sub').textContent=`성과월 ${S.split.start} ~ ${S.split.end}, ${f.months}개월 가운데 포지션이 잡힌 달 수`;
+const durOn=f.months-d['0.0'];
+$('#freq').innerHTML=`<thead><tr><th>전략</th><th class="num">달 수</th><th>내역</th></tr></thead><tbody>`
+  +`<tr><td class="name">Duration</td><td class="num">${durOn}</td><td>+0.5년 ${d['0.5']}, +0.25년 ${d['0.25']}, −0.25년 ${d['-0.25']}, −0.5년 ${d['-0.5']}</td></tr>`
+  +`<tr><td class="name">Curve Slope</td><td class="num">${f.slope.steepener+f.slope.flattener}</td><td>스티프너 ${f.slope.steepener}, 플래트너 ${f.slope.flattener}</td></tr>`
+  +`<tr><td class="name">Curve Curvature</td><td class="num">${f.curvature}</td><td>룩백 1년이면 ${f.curvature_if_1y}</td></tr>`
+  +`<tr><td class="name">브레이크</td><td class="num">${f.brake}</td><td>5번이 −1이었던 달</td></tr></tbody>`;
+})();
+</script>
+</body>
+</html>

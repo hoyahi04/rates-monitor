@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab 1 · Yield Curve Monitor — 개념 학습 자료</title>
+<style>
+:root{
+  --ink:#182b3a;--muted:#62717d;--line:#dce3e7;--accent:#147b79;--soft:#eef6f5;--warn:#fff7e8;
+  --grid:#e8edf0;--axis:#9aa7b0;
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--base:#8e9aa3;
+  --up:#e34948;--down:#2a78d6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#edf0f2;color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14.5px;line-height:1.8;word-break:keep-all}
+main{max-width:1020px;margin:48px auto;background:#fff;padding:60px 64px;box-shadow:0 12px 48px #182b3a0b}
+header{border-top:5px solid var(--ink);padding-top:25px;margin-bottom:24px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent)}
+h1{font-size:34px;line-height:1.3;letter-spacing:-1.3px;margin:10px 0 12px}
+h1 span{font-size:22px;font-weight:400;color:var(--muted)}
+.subtitle{color:var(--muted);margin:0}
+h2{font-size:21px;letter-spacing:-.5px;margin:56px 0 14px;padding-top:20px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:baseline}
+h2 b{font-size:12px;color:var(--accent);letter-spacing:.05em}
+h3{font-size:15.5px;margin:28px 0 8px}
+p{margin:8px 0}
+code,.mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;background:#f2f5f6;padding:1px 5px;border-radius:3px}
+nav.toc{background:var(--soft);padding:18px 24px;border-left:3px solid var(--accent);font-size:13px}
+nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:32px}
+nav.toc a{color:var(--ink);text-decoration:none}nav.toc a:hover{color:var(--accent);text-decoration:underline}
+.key{background:var(--soft);border-left:3px solid var(--accent);padding:12px 18px;margin:14px 0;font-size:13.5px}
+.key strong:first-child{color:var(--accent)}
+.caution{background:var(--warn);border-left:3px solid #d99a1e;padding:12px 18px;margin:14px 0;font-size:13px}
+.formula{font-family:"SF Mono",Menlo,Consolas,monospace;background:#f6f8f9;border:1px solid var(--line);padding:12px 16px;margin:12px 0;font-size:13.5px;overflow-x:auto;white-space:pre}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.6;margin:12px 0}
+th{text-align:left;background:var(--ink);color:#fff;padding:9px 12px;font-weight:500}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{border:1px solid var(--line);padding:16px 18px}
+.card h4{margin:0 0 6px;font-size:14px}
+.card p,.card li{font-size:13px}
+ul{padding-left:18px}li{margin:3px 0}li::marker{color:#90a7ab}
+.chart{position:relative;margin:10px 0 4px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-title{font-size:13px;font-weight:700;margin:14px 0 0}
+.chart-sub{font-size:12px;color:var(--muted);margin:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:6px 0}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed}
+.tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);box-shadow:0 4px 14px #182b3a1a;padding:8px 10px;font-size:12px;line-height:1.55;border-radius:4px;opacity:0;transition:opacity .1s;white-space:nowrap;z-index:5}
+.tip b{display:block;margin-bottom:2px}
+.tip .sw{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.small-mult{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.small-mult .card{padding:10px 12px}
+.small-mult h4{font-size:13px;margin:0}
+.small-mult p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.55}
+.regime{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.regime .card h4 span{font-size:11px;color:var(--accent);font-weight:600;margin-left:6px}
+.explorer{border:1px solid var(--accent);background:#fbfefe;padding:18px 22px;margin:16px 0}
+.sliders{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:8px 0 6px}
+.sliders label{font-size:12.5px;display:block}
+.sliders output{font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
+.sliders input{width:100%;accent-color:var(--accent)}
+.readout{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.readout div{background:#fff;border:1px solid var(--line);padding:8px 12px}
+.readout small{display:block;color:var(--muted);font-size:11px}
+.readout strong{font-size:17px;font-variant-numeric:tabular-nums}
+.regime-label{margin-top:10px;font-size:14px;padding:10px 14px;background:var(--soft)}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.presets button{font:inherit;font-size:12px;border:1px solid #cddfdd;background:#fff;color:#225e5c;padding:4px 10px;cursor:pointer}
+.presets button:hover{background:var(--soft)}
+details{border:1px solid var(--line);padding:10px 16px;margin:8px 0}
+details summary{cursor:pointer;font-weight:650;font-size:13.5px}
+details[open] summary{margin-bottom:6px;color:var(--accent)}
+details p{font-size:13px}
+.gloss td:first-child{font-weight:700;white-space:nowrap;color:var(--accent)}
+.foot{margin-top:40px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media(max-width:760px){main{margin:0;padding:30px 20px}.grid2,.regime,.sliders,.readout{grid-template-columns:1fr 1fr}.small-mult{grid-template-columns:1fr 1fr}nav.toc ol{columns:1}}
+@media print{body{background:#fff}main{margin:0;padding:0;box-shadow:none;max-width:none}details{break-inside:avoid}details:not([open]) > *:not(summary){display:block}.explorer{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">STUDY GUIDE · TAB 01</div>
+<h1>Yield Curve Monitor <span>— 개념 학습 자료</span></h1>
+<p class="subtitle">국채금리 · 수익률곡선 · 커브 스프레드 · Steepening/Flattening · 과거 백분위</p>
+</header>
+
+<nav class="toc"><strong>목차</strong>
+<ol>
+<li><a href="#s1">기초: 채권가격·금리·bp·곡선의 종류</a></li>
+<li><a href="#s2">만기별 국채금리(3M~30Y)가 말해주는 것</a></li>
+<li><a href="#s3">수익률곡선의 형태와 이론</a></li>
+<li><a href="#s4">곡선 비교: 현재 vs 1주·1개월·1년 전</a></li>
+<li><a href="#s5">만기별 금리 변화(bp)</a></li>
+<li><a href="#s6">커브 스프레드: 2s10s·5s30s·3m10y</a></li>
+<li><a href="#s7">Butterfly: 2s5s10s</a></li>
+<li><a href="#s8">Steepening / Flattening 4가지 국면</a></li>
+<li><a href="#s9">과거 백분위(Percentile)</a></li>
+<li><a href="#s10">대시보드 구현 시 체크포인트</a></li>
+<li><a href="#s11">셀프 체크 퀴즈</a></li>
+<li><a href="#s12">용어집</a></li>
+</ol></nav>
+
+<p class="caution">이 자료의 차트 수치는 <strong>개념 설명을 위한 가상 예시</strong>입니다. 실제 시장 수치가 아니므로, 대시보드를 만든 뒤 실제 데이터로 같은 계산을 다시 해보는 것을 권장합니다.</p>
+
+<!-- ============ 1 ============ -->
+<h2 id="s1"><b>01</b> 기초: 채권가격·금리·bp·곡선의 종류</h2>
+<h3>금리(수익률)란?</h3>
+<p>국채의 <strong>수익률(yield)</strong>은 지금 가격에 채권을 사서 만기까지 보유할 때 얻는 연환산 수익률(YTM, 만기수익률)입니다. 쿠폰과 원금은 고정되어 있으므로, <strong>가격이 오르면 수익률은 내리고, 가격이 내리면 수익률은 오릅니다.</strong></p>
+<div class="key"><strong>핵심</strong>　채권가격 ↑ ⇔ 금리 ↓ (강세, <em>bull</em>) / 채권가격 ↓ ⇔ 금리 ↑ (약세, <em>bear</em>). Bull·Bear는 <u>채권가격 기준</u>입니다. 금리가 내려가는 게 bull입니다.</div>
+
+<h3>bp(basis point)</h3>
+<p>1bp = 0.01%p. 금리 4.25% → 4.32%면 “+7bp”입니다. 금리 변화와 스프레드는 거의 항상 bp로 표시합니다.</p>
+
+<h3>금리 변화가 가격에 미치는 영향 — Duration</h3>
+<div class="formula">가격 변화율 ≈ − Modified Duration × Δ금리
+예) 10Y 국채 Duration ≈ 8.5 → 금리 +10bp(0.10%) ⇒ 가격 ≈ −0.85%
+    30Y 국채 Duration ≈ 17  → 금리 +10bp            ⇒ 가격 ≈ −1.7%</div>
+<p>같은 bp 변화라도 장기물일수록 가격이 크게 움직입니다. 그래서 “2Y가 10bp 오른 것”과 “30Y가 10bp 오른 것”은 손익 측면에서 무게가 다릅니다. 이 개념은 Tab 6·7의 DV01로 이어집니다.</p>
+
+<h3>미국 국채의 종류</h3>
+<table>
+<thead><tr><th>구분</th><th>만기</th><th>이자</th><th>Tab 1 대상</th></tr></thead>
+<tbody>
+<tr><td>T-Bill</td><td>4주~52주</td><td>할인 발행(쿠폰 없음)</td><td>3M</td></tr>
+<tr><td>T-Note</td><td>2·3·5·7·10년</td><td>반기 쿠폰</td><td>2Y · 5Y · 10Y</td></tr>
+<tr><td>T-Bond</td><td>20·30년</td><td>반기 쿠폰</td><td>20Y · 30Y</td></tr>
+</tbody></table>
+<p><strong>On-the-run</strong>은 가장 최근 발행된 지표물(유동성 최고), <strong>off-the-run</strong>은 그 이전 발행물입니다. 대시보드에서 쓰는 공개 데이터(미 재무부 Daily Par Yield Curve, FRED <code>DGS10</code> 등)는 정확히 “10년 남은 가상의 채권” 금리를 보간해 만든 <strong>CMT(Constant Maturity Treasury)</strong>라는 점을 기억해 두세요.</p>
+
+<h3>Tab 1의 곡선은 어떤 수익률인가? — Par · Spot · Forward</h3>
+<p>Tab 1의 각 점은 <strong>Par Yield</strong>입니다. “만기가 정확히 N년이고, <u>가격이 액면(100)이 되도록 쿠폰이 정해진 가상의 국채</u>”의 YTM이므로 <strong>Par Yield = 그 채권의 YTM = 쿠폰율</strong>입니다. 반기 복리 채권등가수익률(bond-equivalent yield) 기준이고, 3M Bill도 할인율이 아니라 채권등가수익률로 환산된 값이라 쿠폰채와 바로 비교할 수 있습니다.</p>
+<table>
+<thead><tr><th>곡선</th><th>정의</th><th>주 용도</th><th>Rates Monitor</th></tr></thead>
+<tbody>
+<tr><td>Par 곡선</td><td>액면가 쿠폰채의 YTM</td><td>시장 모니터링, 커브 스프레드</td><td>Tab 1 (재무부 CMT, FRED <code>DGS*</code>)</td></tr>
+<tr><td>Spot (Zero) 곡선</td><td>무쿠폰채 수익률 = 각 시점 현금흐름의 할인율</td><td>채권 가격 산정, 현금흐름 할인, KRD</td><td>Tab 6·7 (예: Fed GSW zero curve)</td></tr>
+<tr><td>Forward 곡선</td><td>미래 특정 기간에 대해 지금 고정할 수 있는 내재 금리</td><td>정책 기대, Carry·Roll-down</td><td>Tab 5·6·7</td></tr>
+</tbody></table>
+<h3>예시 — Par에서 Spot·Forward 구하기 (Bootstrapping)</h3>
+<p class="chart-sub">계산을 단순하게 하려고 연 1회 이자, 연 복리로 가정합니다.</p>
+<div class="formula">1Y Par = 4.00%  → 1Y Spot s₁ = 4.00%         (1년 채권은 현금흐름이 1번뿐)
+2Y Par = 4.50%  → 쿠폰 4.5, 가격 100인 2년 채권
+   100 = 4.5 / 1.04 + 104.5 / (1 + s₂)²
+   (1 + s₂)² = 104.5 / (100 − 4.3269) = 1.09226  → 2Y Spot s₂ ≈ 4.51%
+1년 후 1년 Forward f₁,₂ = (1 + s₂)² / (1 + s₁) − 1 = 1.09226 / 1.04 − 1 ≈ 5.03%
+
+결과: Forward 5.03%  &gt;  Spot 4.51%  &gt;  Par 4.50%</div>
+<div class="key"><strong>규칙</strong>　곡선이 <strong>우상향</strong>이면 Forward &gt; Spot &gt; Par, <strong>역전</strong>이면 Forward &lt; Spot &lt; Par 순서가 됩니다. Par 곡선은 중간 쿠폰이 낮은 할인율로 할인되기 때문에 Spot보다 덜 휘어집니다. Par와 Spot의 차이는 수 bp로 작아서 Tab 1의 스프레드·bp 변화·백분위 분석에는 Par를 그대로 쓰면 충분합니다. 하지만 Tab 6·7에서 포지션을 평가하고 Carry·Roll-down과 KRD를 계산할 때는 Spot·Forward 곡선이 필요합니다.</div>
+<div class="caution"><strong>CMT ≠ 실제 종목의 YTM</strong>　CMT는 최근 발행 국채(on-the-run) 호가를 바탕으로 곡선을 맞춰 보간한 <u>가상 채권</u>의 수익률입니다. 시장에서 실제로 거래되는 10Y 지표물의 YTM과 비슷하지만 정확히 같지는 않습니다.</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="s2"><b>02</b> 만기별 국채금리가 말해주는 것</h2>
+<p>각 만기 금리는 “그 기간 동안의 <strong>기대 단기금리 평균</strong> + <strong>기간 프리미엄</strong>”으로 생각할 수 있습니다(Tab 2에서 정식으로 분해). 만기가 짧을수록 Fed 정책에, 길수록 성장·인플레이션·수급·불확실성에 민감합니다.</p>
+<table>
+<thead><tr><th>만기</th><th>주로 반영하는 것</th><th>시장에서 부르는 이름</th></tr></thead>
+<tbody>
+<tr><td>3M</td><td>현재 정책금리(Fed Funds) 및 다음 1~2회 FOMC 기대. 정책금리와 거의 붙어 움직임</td><td>Front end / Bills</td></tr>
+<tr><td>2Y</td><td>향후 2년간 Fed 정책 경로 기대. <strong>통화정책에 가장 민감한 쿠폰 국채</strong></td><td>Front end</td></tr>
+<tr><td>5Y</td><td>정책 경로의 중기 부분 + 경기 사이클. 커브의 “허리”</td><td>Belly</td></tr>
+<tr><td>10Y</td><td>장기 성장·인플레이션 기대 + 기간 프리미엄. 모기지·회사채 가격의 기준</td><td>Benchmark</td></tr>
+<tr><td>20Y</td><td>장기 구간. 2020년 재발행 이후 수요가 상대적으로 약해 30Y보다 금리가 높은 “kink”가 나타나기도 함</td><td>Long end</td></tr>
+<tr><td>30Y</td><td>초장기 인플레이션·재정 우려·기간 프리미엄. 연기금·보험사 수요(ALM)</td><td>Long bond</td></tr>
+</tbody></table>
+<div class="key"><strong>직관</strong>　“Fed가 금리를 올린다” 뉴스엔 앞쪽(3M·2Y)이 먼저 반응하고, “재정적자·국채 공급 증가” 뉴스엔 뒤쪽(10Y·30Y)이 더 크게 반응하는 경향이 있습니다.</div>
+
+<!-- ============ 3 ============ -->
+<h2 id="s3"><b>03</b> 수익률곡선의 형태와 이론</h2>
+<p><strong>수익률곡선(Yield Curve)</strong>은 같은 발행자(미 재무부)의 국채 금리를 만기 순서대로 이은 선입니다. 가로축은 만기, 세로축은 금리입니다.</p>
+<div class="small-mult" id="shapes"></div>
+<p class="chart-sub">가로축의 만기는 등간격으로 표시(실제 기간 비례 아님). 점 위에 마우스를 올리면 값이 표시됩니다.</p>
+
+<h3>곡선 모양을 설명하는 3가지 이론</h3>
+<div class="grid2">
+<div class="card"><h4>① 기대가설 (Expectations Hypothesis)</h4><p>장기금리 = 미래 단기금리 기대의 평균. 곡선이 우상향하면 시장이 금리 상승을, 역전되면 금리 인하를 예상한다는 뜻.</p></div>
+<div class="card"><h4>② 유동성·기간 프리미엄 이론</h4><p>장기채는 위험(금리 변동, 인플레이션)이 크므로 투자자가 추가 보상(term premium)을 요구 → 기대가 평평해도 곡선은 보통 우상향.</p></div>
+<div class="card"><h4>③ 시장분할 / 선호서식지 이론</h4><p>은행은 단기, 연기금은 초장기처럼 투자자마다 선호 만기가 있어 구간별 수급이 금리를 결정. 경매·공급(Tab 3·4) 분석의 근거.</p></div>
+<div class="card"><h4>실무적 결론</h4><p>곡선 = <strong>정책 기대</strong> + <strong>기간 프리미엄</strong> + <strong>구간별 수급</strong>. Tab 1은 결과(모양)를 보여주고, Tab 2~5는 원인을 분해합니다.</p></div>
+</div>
+
+<h3>곡선 움직임의 3요소: Level · Slope · Curvature</h3>
+<p>금리곡선의 일간 변동을 주성분분석(PCA)하면 대체로 세 가지 요인이 대부분을 설명합니다.</p>
+<table>
+<thead><tr><th>요인</th><th>의미</th><th>Tab 1 지표</th></tr></thead>
+<tbody>
+<tr><td>Level (수준)</td><td>전 만기가 같은 방향으로 움직임 (평행이동). 변동의 가장 큰 부분</td><td>각 만기 금리, 10Y</td></tr>
+<tr><td>Slope (기울기)</td><td>단기와 장기가 다르게 움직임 → 가팔라지거나 평평해짐</td><td>2s10s · 5s30s · 3m10y</td></tr>
+<tr><td>Curvature (곡률)</td><td>중기물이 양 끝 대비 다르게 움직임 → 허리가 휘어짐</td><td>2s5s10s Butterfly</td></tr>
+</tbody></table>
+
+<!-- ============ 4 ============ -->
+<h2 id="s4"><b>04</b> 곡선 비교: 현재 vs 1주·1개월·1년 전</h2>
+<p>여러 시점의 곡선을 겹쳐 그리면 “무엇이 움직였는지”가 한눈에 보입니다. 아래는 현재·1개월 전·1년 전 비교 예시입니다(대시보드에서는 1주 전도 함께 표시).</p>
+<p class="chart-title">수익률곡선 비교 (가상 예시, %)</p>
+<div class="legend" id="cmp-legend"></div>
+<div class="chart" id="cmp"></div>
+<h3>읽는 순서</h3>
+<ol>
+<li><strong>Level</strong>: 곡선 전체가 위/아래로 이동했는가? (예시: 1년 전 대비 앞쪽이 크게 하락)</li>
+<li><strong>Slope</strong>: 앞쪽과 뒤쪽 중 어디가 더 움직였는가? (예시: 1년 전엔 3M &gt; 10Y로 역전 → 현재는 우상향으로 정상화 = <em>Bull steepening</em>)</li>
+<li><strong>Curvature</strong>: 5Y가 양옆 대비 튀어나오거나 들어갔는가?</li>
+<li><strong>원인 연결</strong>: 그 사이 FOMC·CPI·경매 등 어떤 이벤트가 있었는가? (Market Event Calendar)</li>
+</ol>
+<div class="key"><strong>비교 기간의 의미</strong>　1주 = 최근 이벤트 반응(단기 노이즈 포함), 1개월 = 추세 전환 여부, 1년 = 금리 사이클(인상기/인하기) 위치 파악.</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="s5"><b>05</b> 만기별 금리 변화(bp)</h2>
+<div class="formula">일간 변화(bp)  = (오늘 금리 − 전 영업일 금리) × 100
+주간 변화(bp)  = (오늘 금리 − 1주 전 영업일 금리) × 100      ※ 금리 단위가 % 일 때</div>
+<p class="chart-title">만기별 일간 금리 변화 (가상 예시, bp)</p>
+<div class="legend"><span><i style="border-color:var(--up);border-top-width:8px;width:10px"></i>금리 상승 (채권 약세)</span><span><i style="border-color:var(--down);border-top-width:8px;width:10px"></i>금리 하락 (채권 강세)</span></div>
+<div class="chart" id="bp"></div>
+<p>위 예시는 2Y·5Y가 장기물보다 더 많이 올랐습니다 → 금리 상승(bear) + 기울기 축소(flattening) = <strong>Bear flattening</strong>의 하루입니다. 매파적 Fed 발언이나 강한 고용지표 직후 흔히 나타나는 패턴입니다.</p>
+<div class="caution"><strong>주의</strong>　금리 상승을 빨간색으로 칠할지 파란색으로 칠할지는 관점 문제입니다(채권 보유자에게 금리 상승 = 손실). 대시보드에서는 범례로 의미를 명시하고 부호(+/−)를 숫자와 함께 표시하세요.</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="s6"><b>06</b> 커브 스프레드: 2s10s · 5s30s · 3m10y</h2>
+<p>커브 스프레드는 <strong>장기 금리 − 단기 금리</strong>로, 곡선의 기울기를 숫자 하나로 요약합니다. 양수면 우상향(정상), 음수면 역전입니다.</p>
+<div class="formula">2s10s  = 10Y − 2Y
+5s30s  = 30Y − 5Y
+3m10y  = 10Y − 3M</div>
+<table>
+<thead><tr><th>스프레드</th><th>무엇을 보나</th><th>특징</th></tr></thead>
+<tbody>
+<tr><td>2s10s</td><td>가장 대표적인 기울기 지표. 정책 기대(2Y) vs 장기 성장·인플레이션(10Y)</td><td>시장 해설에서 “커브”라고 하면 보통 이것. 역전은 경기침체 신호로 자주 인용</td></tr>
+<tr><td>5s30s</td><td>장기 구간의 기울기. 기간 프리미엄·장기 수급·재정 우려</td><td>Fed 정책 영향이 상대적으로 적어 2s10s와 다르게 움직이기도 함 (예: 2s10s 역전 중에도 5s30s는 양수)</td></tr>
+<tr><td>3m10y</td><td>현재 정책금리 수준(3M) vs 장기금리</td><td>NY Fed 경기침체 확률 모형이 사용하는 스프레드. 학술적으로 침체 예측력이 가장 많이 검증됨</td></tr>
+</tbody></table>
+<h3>계산 예시 (§04의 “현재” 곡선 사용)</h3>
+<table>
+<thead><tr><th>만기</th><th class="num">3M</th><th class="num">2Y</th><th class="num">5Y</th><th class="num">10Y</th><th class="num">20Y</th><th class="num">30Y</th></tr></thead>
+<tbody><tr><td>금리(%)</td><td class="num">4.30</td><td class="num">3.90</td><td class="num">3.95</td><td class="num">4.25</td><td class="num">4.82</td><td class="num">4.80</td></tr></tbody></table>
+<div class="formula">2s10s = 4.25 − 3.90 = +0.35%p = +35bp   → 우상향
+5s30s = 4.80 − 3.95 = +0.85%p = +85bp   → 장기 구간이 가파름
+3m10y = 4.25 − 4.30 = −0.05%p = −5bp    → 소폭 역전 (정책금리가 아직 높음)</div>
+<div class="key"><strong>역전(Inversion)의 해석</strong>　단기금리 &gt; 장기금리 = 시장이 “앞으로 Fed가 금리를 내릴 것(경기 둔화)”을 예상. 단, 역전 자체보다 <strong>역전 해소 과정(재가팔라짐, 특히 bull steepening)</strong>이 실제 침체 직전에 나타난 경우가 많다는 점도 함께 알아두세요. 2022년 7월부터 약 2년간 이어진 2s10s 역전은 침체 없이 해소되어, 신호의 한계를 보여준 사례로 자주 언급됩니다.</div>
+
+<!-- ============ 7 ============ -->
+<h2 id="s7"><b>07</b> Butterfly: 2s5s10s</h2>
+<p>Butterfly는 <strong>중간 만기(body, 5Y)가 양 날개(wings, 2Y·10Y) 대비 얼마나 높거나 낮은지</strong>를 측정합니다. 곡선의 “휘어짐(curvature)”을 나타냅니다.</p>
+<div class="formula">2s5s10s Butterfly = 2 × 5Y − 2Y − 10Y
+                  = (5Y − 2Y) − (10Y − 5Y)        ← 2s5s 기울기 − 5s10s 기울기</div>
+<table>
+<thead><tr><th>값</th><th>의미</th><th>상대가치 해석</th></tr></thead>
+<tbody>
+<tr><td>양수 (+)</td><td>5Y 금리가 양 날개 평균보다 높음 → 허리가 위로 볼록</td><td>5Y가 상대적으로 <strong>싸다(cheap)</strong></td></tr>
+<tr><td>음수 (−)</td><td>5Y 금리가 양 날개 평균보다 낮음 → 허리가 아래로 오목</td><td>5Y가 상대적으로 <strong>비싸다(rich)</strong></td></tr>
+</tbody></table>
+<div class="formula">예시: 2 × 3.95 − 3.90 − 4.25 = 7.90 − 8.15 = −0.25%p = −25bp
+→ 5Y가 2Y·10Y 대비 25bp 낮다 → Belly rich</div>
+<div class="caution"><strong>부호 관행 주의</strong>　일부 리서치는 <code>2Y + 10Y − 2×5Y</code>로 반대 부호를 씁니다. 대시보드에 <strong>정의식을 반드시 명시</strong>하세요. 또한 위 식은 단순 50:50 가중이며, Tab 6에서는 DV01 중립·회귀 가중 Butterfly로 발전시킵니다.</div>
+<p><strong>왜 중요한가?</strong>　Fed 정책 기대가 바뀔 때 5Y가 가장 크게 움직이는 경우가 많아(“belly-led”), Butterfly는 정책 기대 변화와 중기물 수급을 포착합니다. 극단값은 평균회귀 매매(Tab 6 Z-score 전략)의 후보가 됩니다.</p>
+
+<!-- ============ 8 ============ -->
+<h2 id="s8"><b>08</b> Steepening / Flattening 4가지 국면</h2>
+<p>스프레드가 커지면 <strong>Steepening</strong>, 작아지면 <strong>Flattening</strong>입니다. 여기에 금리 전체 방향(Bull = 하락, Bear = 상승)을 붙여 4가지 국면으로 분류합니다.</p>
+<div class="legend"><span><i class="dash" style="border-color:var(--base)"></i>변경 전</span><span><i style="border-color:var(--s1)"></i>변경 후</span></div>
+<div class="regime" id="regimes"></div>
+
+<table>
+<thead><tr><th>국면</th><th>움직임</th><th>대표적 원인</th></tr></thead>
+<tbody>
+<tr><td>Bull Steepening</td><td>금리 하락, 단기물이 더 많이 하락</td><td>Fed 금리 인하 기대 확대, 경기 둔화 우려 (인하 사이클 초기)</td></tr>
+<tr><td>Bear Steepening</td><td>금리 상승, 장기물이 더 많이 상승</td><td>기간 프리미엄 상승, 국채 공급 증가·재정 우려, 장기 인플레이션 기대 상승</td></tr>
+<tr><td>Bear Flattening</td><td>금리 상승, 단기물이 더 많이 상승</td><td>Fed 금리 인상·매파적 발언 (예: 2022년 인상 사이클)</td></tr>
+<tr><td>Bull Flattening</td><td>금리 하락, 장기물이 더 많이 하락</td><td>안전자산 선호(flight to quality), 장기 성장·인플레이션 기대 하락, 장기물 수요 증가</td></tr>
+</tbody></table>
+<p>단기와 장기가 <strong>반대 방향</strong>으로 움직이면 “Steepening twist / Flattening twist”라고 부릅니다.</p>
+
+<h3>직접 움직여 보기</h3>
+<div class="explorer">
+<div class="chart-sub">슬라이더로 단기(3M·2Y)·중기(5Y)·장기(10Y·20Y·30Y) 금리 변화를 주면 스프레드와 국면이 자동 분류됩니다. 5Y는 단기·장기 변화의 평균에 “Belly 추가 변화”를 더해 움직입니다.</div>
+<div class="presets">
+<button data-p="-30,0,-10">Bull Steepening</button>
+<button data-p="5,0,30">Bear Steepening</button>
+<button data-p="35,0,10">Bear Flattening</button>
+<button data-p="-5,0,-30">Bull Flattening</button>
+<button data-p="-10,0,10">Twist</button>
+<button data-p="0,15,0">Belly cheapening</button>
+<button data-p="0,0,0">초기화</button>
+</div>
+<div class="sliders">
+<label>단기 변화 (3M·2Y): <output id="o-f">0</output>bp<input type="range" id="r-f" min="-50" max="50" step="1" value="0"></label>
+<label>Belly 추가 변화 (5Y): <output id="o-b">0</output>bp<input type="range" id="r-b" min="-30" max="30" step="1" value="0"></label>
+<label>장기 변화 (10Y·20Y·30Y): <output id="o-l">0</output>bp<input type="range" id="r-l" min="-50" max="50" step="1" value="0"></label>
+</div>
+<div class="legend"><span><i class="dash" style="border-color:var(--base)"></i>변경 전</span><span><i style="border-color:var(--s1)"></i>변경 후</span></div>
+<div class="chart" id="exp"></div>
+<div class="readout">
+<div><small>Δ 2Y</small><strong id="x-2y">0</strong></div>
+<div><small>Δ 10Y</small><strong id="x-10y">0</strong></div>
+<div><small>Δ 2s10s</small><strong id="x-s">0</strong></div>
+<div><small>Δ 2s5s10s Fly</small><strong id="x-f">0</strong></div>
+</div>
+<div class="regime-label" id="x-reg">—</div>
+</div>
+
+<h3>분류 규칙 (대시보드 구현용)</h3>
+<div class="formula">Δs  = Δ(10Y − 2Y)               # 기울기 변화
+ΔL  = (Δ2Y + Δ10Y) / 2           # 평균 수준 변화
+if |Δs| &lt; 임계값(예: 2bp):     "기울기 변화 미미"
+elif Δ2Y와 Δ10Y 부호가 반대:      "Steepening/Flattening Twist"
+else:
+    방향 = "Steepening" if Δs &gt; 0 else "Flattening"
+    성격 = "Bull" if ΔL &lt; 0 else "Bear"</div>
+
+<!-- ============ 9 ============ -->
+<h2 id="s9"><b>09</b> 과거 백분위 (Percentile)</h2>
+<p>“2s10s가 +35bp”라는 숫자만으로는 높은지 낮은지 알기 어렵습니다. <strong>과거 분포 속 위치</strong>를 보여주는 것이 백분위입니다.</p>
+<div class="formula">백분위(%) = (과거 관측치 중 현재 값 이하인 개수 ÷ 전체 관측치 수) × 100</div>
+<h3>예시</h3>
+<p>과거 10개 관측치(bp): <code>−80, −50, −20, 0, 10, 25, 40, 60, 90, 120</code>, 현재 2s10s = +35bp<br>
+→ 35 이하인 값: 6개 → 백분위 = 6/10 × 100 = <strong>60번째 백분위</strong> → 과거 대비 “중간보다 약간 가파른” 수준.</p>
+<div class="grid2">
+<div class="card"><h4>① 수준(level)의 백분위</h4><p>“현재 2s10s는 지난 10년 중 몇 % 위치인가?” → 곡선이 역사적으로 가파른지/평평한지 판단.</p></div>
+<div class="card"><h4>② 변화(change)의 백분위</h4><p>“이번 1개월 Steepening 폭(+40bp)은 과거 1개월 변화 중 몇 % 위치인가?” → 이번 움직임이 이례적인지 판단. Tab 1의 “Steepening/Flattening 및 과거 백분위”는 두 관점을 모두 볼 수 있게 설계하면 좋습니다.</p></div>
+</div>
+<h3>백분위 vs Z-score</h3>
+<table>
+<thead><tr><th></th><th>백분위</th><th>Z-score (Tab 6)</th></tr></thead>
+<tbody>
+<tr><td>계산</td><td>순위 기반</td><td>(현재 − 평균) ÷ 표준편차</td></tr>
+<tr><td>장점</td><td>분포 가정 불필요, 이상치에 강함, 직관적(0~100)</td><td>극단 정도를 연속적으로 표현, 모형·신호에 쓰기 좋음</td></tr>
+<tr><td>단점</td><td>극단 구간에서 차이 구분이 둔함(99 vs 99.9)</td><td>정규분포 가정, 이상치에 민감</td></tr>
+</tbody></table>
+<div class="caution"><strong>룩백 기간 선택이 결과를 바꿉니다.</strong>　1년·5년·10년·전체 기간 중 무엇을 쓰느냐에 따라 같은 값도 10%가 되기도, 80%가 되기도 합니다. 금리 레짐(제로금리기 vs 고금리기)이 다르면 과거 분포가 현재와 맞지 않을 수 있으므로, 대시보드에 <strong>룩백 기간을 선택 옵션</strong>으로 두고 기간을 함께 표시하세요.</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="s10"><b>10</b> 대시보드 구현 시 체크포인트</h2>
+<h3>공개 데이터 소스</h3>
+<table>
+<thead><tr><th>지표</th><th>FRED 시리즈 ID</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>3M · 2Y · 5Y</td><td><code>DGS3MO</code> · <code>DGS2</code> · <code>DGS5</code></td><td>원천: 미 재무부 Daily Par Yield Curve (Fed H.15)</td></tr>
+<tr><td>10Y · 20Y · 30Y</td><td><code>DGS10</code> · <code>DGS20</code> · <code>DGS30</code></td><td>일간, 단위 %</td></tr>
+<tr><td>2s10s · 3m10y</td><td><code>T10Y2Y</code> · <code>T10Y3M</code></td><td>직접 계산값과 일치하는지 검증용</td></tr>
+</tbody></table>
+<h3>실무 체크리스트</h3>
+<ul>
+<li><strong>휴장일·결측</strong>: FRED는 휴장일을 <code>.</code>(결측)으로 제공 → 변화 계산 시 “직전 유효 관측치” 사용.</li>
+<li><strong>“1주 전” 정의</strong>: 5영업일 전 vs 달력상 7일 전(없으면 그 이전 영업일) 중 하나로 통일하고 표기.</li>
+<li><strong>단위</strong>: 원자료 %, 화면 표시는 금리 %(소수 2~3자리), 변화·스프레드는 bp(소수 1자리).</li>
+<li><strong>스프레드 정의 명시</strong>: 특히 Butterfly 부호.</li>
+<li><strong>CMT의 한계</strong>: 보간 금리이므로 실제 매매 가능한 채권 금리와 다를 수 있음(Tab 6 이후 실제 종목 분석 시 유의).</li>
+<li><strong>이벤트 연결</strong>: 큰 변화가 있었던 날을 Market Event Calendar와 연동해 원인을 확인.</li>
+</ul>
+
+<!-- ============ 11 ============ -->
+<h2 id="s11"><b>11</b> 셀프 체크 퀴즈</h2>
+<p class="chart-sub">문제를 풀고 클릭해서 답을 확인하세요.</p>
+<details><summary>Q1. 2Y가 +12bp, 10Y가 +3bp 움직였다. 2s10s 변화와 국면은?</summary><p>2s10s 변화 = 3 − 12 = <strong>−9bp</strong>. 금리 상승(bear) + 기울기 축소 → <strong>Bear Flattening</strong>. 매파적 Fed 신호에 흔한 패턴.</p></details>
+<details><summary>Q2. 2Y가 −15bp, 10Y가 −5bp 움직였다면?</summary><p>2s10s 변화 = −5 − (−15) = <strong>+10bp</strong>. 금리 하락(bull) + 기울기 확대 → <strong>Bull Steepening</strong>. 금리 인하 기대 확대 시 전형적.</p></details>
+<details><summary>Q3. 2Y 4.00%, 5Y 3.80%, 10Y 4.10%일 때 2s5s10s Butterfly는? 5Y는 싼가 비싼가?</summary><p>2×3.80 − 4.00 − 4.10 = 7.60 − 8.10 = <strong>−50bp</strong>. 음수 → 5Y 금리가 날개 대비 낮음 → 5Y가 <strong>비싸다(rich)</strong>.</p></details>
+<details><summary>Q4. 2Y −5bp, 10Y +5bp. 어떻게 분류하나?</summary><p>2s10s +10bp로 가팔라졌지만 단기·장기가 반대 방향 → <strong>Steepening Twist</strong>. 평균 수준 변화는 0이라 bull/bear를 붙이기 어렵습니다.</p></details>
+<details><summary>Q5. 3M 금리가 Fed Funds 금리와 거의 같이 움직이는 이유는?</summary><p>3개월 동안의 기대 단기금리 평균 ≈ 현재 정책금리(+다음 FOMC 기대)이고, 만기가 짧아 기간 프리미엄이 거의 없기 때문입니다.</p></details>
+<details><summary>Q6. 현재 5s30s가 과거 10년 중 95번째 백분위라면 무슨 의미인가? 바로 Flattener를 해야 하나?</summary><p>지난 10년 중 95%의 날보다 장기 구간이 가파르다는 뜻(역사적으로 매우 steep). 하지만 <strong>바로 매매 신호는 아닙니다.</strong> 기간 프리미엄 상승·공급 증가 같은 구조적 원인이면 계속 가팔라질 수 있으므로, Tab 2(분해)·Tab 4(수급)로 원인을 확인하고 Tab 6의 Fair Value 모형과 비교해야 합니다.</p></details>
+<details><summary>Q7. 10Y 국채(Duration 8.5)와 2Y 국채(Duration 1.9)를 같은 금액 보유. 둘 다 금리가 +10bp 오르면 가격 변화는?</summary><p>10Y ≈ −0.85%, 2Y ≈ −0.19%. 같은 bp 변화라도 손익은 약 4.5배 차이 → 커브 트레이드에서 금액이 아니라 <strong>DV01을 맞춰야 하는 이유</strong>(Tab 6·7).</p></details>
+
+<!-- ============ 12 ============ -->
+<h2 id="s12"><b>12</b> 용어집</h2>
+<table class="gloss">
+<tbody>
+<tr><td>Yield / YTM</td><td>만기수익률. 현재 가격으로 사서 만기까지 보유 시 연환산 수익률</td></tr>
+<tr><td>bp</td><td>basis point, 0.01%p</td></tr>
+<tr><td>CMT</td><td>Constant Maturity Treasury. 정확한 만기에 맞춰 보간한 국채 금리</td></tr>
+<tr><td>On/Off-the-run</td><td>최근 발행 지표물 / 이전 발행물</td></tr>
+<tr><td>Front end · Belly · Long end</td><td>단기(~2Y) · 중기(5Y 전후) · 장기(10Y~30Y) 구간</td></tr>
+<tr><td>Bull / Bear</td><td>채권가격 상승(금리 하락) / 채권가격 하락(금리 상승)</td></tr>
+<tr><td>Steepening / Flattening</td><td>장단기 스프레드 확대 / 축소</td></tr>
+<tr><td>Inversion</td><td>단기금리 &gt; 장기금리 (스프레드 음수)</td></tr>
+<tr><td>Butterfly</td><td>중기물 vs 양쪽 만기의 상대 수준. 곡률 지표</td></tr>
+<tr><td>Rich / Cheap</td><td>상대적으로 금리가 낮음(비쌈) / 높음(쌈)</td></tr>
+<tr><td>Term Premium</td><td>장기채 보유 위험에 대한 추가 보상 (Tab 2)</td></tr>
+<tr><td>Duration / DV01</td><td>금리 민감도 / 금리 1bp 변화 시 가격 변화액 (Tab 6·7)</td></tr>
+<tr><td>Percentile</td><td>과거 분포에서 현재 값의 순위 위치(0~100)</td></tr>
+</tbody></table>
+
+<p class="foot">Rates Monitor 연구계획서 Tab 1(Yield Curve Monitor) 학습용 자료 · 차트 수치는 모두 가상 예시 · 다음 단계: Tab 2 Yield Decomposition (실질금리·BEI·Term Premium)</p>
+</main>
+
+<script>
+const M=['3M','2Y','5Y','10Y','20Y','30Y'];
+const C={s1:'#2a78d6',s2:'#eb6834',s3:'#1baf7a',base:'#8e9aa3',up:'#e34948',down:'#2a78d6',grid:'#e8edf0',axis:'#9aa7b0',muted:'#62717d',ink:'#182b3a'};
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function niceRange(vals,pad){let lo=Math.min(...vals),hi=Math.max(...vals);const p=Math.max((hi-lo)*0.15,pad||0.1);return[Math.floor((lo-p)*10)/10,Math.ceil((hi+p)*10)/10]}
+
+function curveChart(host,series,o={}){
+  host.innerHTML='';
+  const W=o.w||640,H=o.h||260,m={t:14,r:o.labelRight?70:16,b:28,l:40};
+  const all=series.flatMap(s=>s.values);
+  const [y0,y1]=o.yr||niceRange(all,0.1);
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':o.aria||'수익률곡선 차트'},host);
+  const x=i=>m.l+(W-m.l-m.r)*(i/(M.length-1));
+  const y=v=>m.t+(H-m.t-m.b)*(1-(v-y0)/(y1-y0));
+  const step=(y1-y0)>1.2?0.5:(y1-y0)>0.6?0.2:0.1;
+  for(let v=Math.ceil(y0/step)*step;v<=y1+1e-9;v+=step){
+    el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:C.grid,'stroke-width':1},svg);
+    const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':o.small?10:11,fill:C.muted},svg);t.textContent=v.toFixed(o.small?1:2);
+  }
+  M.forEach((mm,i)=>{const t=el('text',{x:x(i),y:H-8,'text-anchor':'middle','font-size':o.small?10:11,fill:C.muted},svg);t.textContent=mm});
+  series.forEach(s=>{
+    const d=s.values.map((v,i)=>(i?'L':'M')+x(i)+','+y(v)).join('');
+    el('path',{d,fill:'none',stroke:s.color,'stroke-width':2,'stroke-dasharray':s.dash?'5 4':'none','stroke-linejoin':'round'},svg);
+    s.values.forEach((v,i)=>el('circle',{cx:x(i),cy:y(v),r:o.small?3:4,fill:s.color,stroke:'#fff','stroke-width':2},svg));
+  });
+  if(o.labelRight){
+    const L=series.map(s=>({n:s.name,y:y(s.values[M.length-1])+4})).sort((a,b)=>a.y-b.y);
+    for(let k=1;k<L.length;k++) if(L[k].y-L[k-1].y<13) L[k].y=L[k-1].y+13;
+    L.forEach(l=>{const t=el('text',{x:W-m.r+8,y:l.y,'font-size':11,fill:C.ink},svg);t.textContent=l.n});
+  }
+  // hover layer
+  const tip=document.createElement('div');tip.className='tip';host.appendChild(tip);
+  const cross=el('line',{y1:m.t,y2:H-m.b,stroke:C.axis,'stroke-width':1,'stroke-dasharray':'2 3',opacity:0},svg);
+  const hit=el('rect',{x:m.l-20,y:0,width:W-m.l-m.r+40,height:H,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{
+    const r=svg.getBoundingClientRect(),sx=(ev.clientX-r.left)*W/r.width;
+    const i=Math.max(0,Math.min(M.length-1,Math.round((sx-m.l)/((W-m.l-m.r)/(M.length-1)))));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('opacity',1);
+    tip.innerHTML=`<b>${M[i]}</b>`+series.map(s=>`<div><span class="sw" style="background:${s.color}"></span>${s.name}: ${s.values[i].toFixed(2)}%</div>`).join('')+(o.extraTip?o.extraTip(i):'');
+    tip.style.opacity=1;
+    const px=x(i)*r.width/W, left=px>r.width*0.6?px-tip.offsetWidth-12:px+12;
+    tip.style.left=left+'px';tip.style.top='8px';
+  });
+  hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cross.setAttribute('opacity',0)});
+}
+
+// §03 shapes
+const shapes=[
+ ['정상 (Normal)',[3.0,3.4,3.7,4.0,4.3,4.4],'우상향. 기간 프리미엄 + 완만한 성장 기대. 가장 흔한 형태'],
+ ['평탄 (Flat)',[4.2,4.2,4.15,4.2,4.25,4.2],'장단기 차이 거의 없음. 사이클 전환점(인상 막바지 등)'],
+ ['역전 (Inverted)',[5.4,4.9,4.5,4.3,4.4,4.3],'단기 &gt; 장기. 향후 금리 인하·경기 둔화 기대'],
+ ['험프 (Humped)',[4.0,4.5,4.6,4.4,4.3,4.2],'중기물이 가장 높음. 단기 인상 후 장기 인하 기대 혼재']
+];
+const sh=document.getElementById('shapes');
+shapes.forEach(([n,v,d])=>{const c=document.createElement('div');c.className='card';c.innerHTML=`<h4>${n}</h4><div class="chart"></div><p>${d}</p>`;sh.appendChild(c);
+ curveChart(c.querySelector('.chart'),[{name:n.split(' ')[0],values:v,color:C.s1}],{w:260,h:150,yr:[2.8,5.6],small:true,aria:n+' 수익률곡선'})});
+
+// §04 comparison
+const now=[4.30,3.90,3.95,4.25,4.82,4.80], m1=[4.45,3.80,3.85,4.15,4.70,4.72], y1=[5.30,4.60,4.30,4.30,4.55,4.45];
+const cmpS=[{name:'현재',values:now,color:C.s1},{name:'1개월 전',values:m1,color:C.s2},{name:'1년 전',values:y1,color:C.s3}];
+document.getElementById('cmp-legend').innerHTML=cmpS.map(s=>`<span><i style="border-color:${s.color}"></i>${s.name}</span>`).join('');
+curveChart(document.getElementById('cmp'),cmpS,{labelRight:true,h:280,extraTip:i=>`<div style="color:#62717d;margin-top:3px">1년 변화: ${((now[i]-y1[i])*100>0?'+':'')}${((now[i]-y1[i])*100).toFixed(0)}bp</div>`});
+
+// §05 bp bars
+(function(){
+ const host=document.getElementById('bp'),d=[-1.0,4.5,5.2,3.8,2.9,2.5];
+ const W=640,H=220,m={t:16,r:16,b:28,l:40},lo=-4,hi=8;
+ const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'만기별 일간 금리 변화 막대그래프'},host);
+ const y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo)),bw=(W-m.l-m.r)/M.length;
+ for(let v=lo;v<=hi;v+=2){el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:v===0?C.axis:C.grid,'stroke-width':1},svg);const t=el('text',{x:m.l-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:C.muted},svg);t.textContent=(v>0?'+':'')+v}
+ const tip=document.createElement('div');tip.className='tip';host.appendChild(tip);
+ d.forEach((v,i)=>{
+  const cx=m.l+bw*i+bw/2,w=Math.min(36,bw*0.5),top=y(Math.max(v,0)),h=Math.abs(y(v)-y(0));
+  const r=Math.min(4,h/2);
+  // rounded data-end, square at baseline
+  let path;
+  if(v>=0) path=`M${cx-w/2},${y(0)}V${top+r}Q${cx-w/2},${top} ${cx-w/2+r},${top}H${cx+w/2-r}Q${cx+w/2},${top} ${cx+w/2},${top+r}V${y(0)}Z`;
+  else {const b=y(v);path=`M${cx-w/2},${y(0)}V${b-r}Q${cx-w/2},${b} ${cx-w/2+r},${b}H${cx+w/2-r}Q${cx+w/2},${b} ${cx+w/2},${b-r}V${y(0)}Z`}
+  el('path',{d:path,fill:v>=0?C.up:C.down},svg);
+  const lbl=el('text',{x:cx,y:v>=0?top-5:y(v)+14,'text-anchor':'middle','font-size':11,fill:C.ink,'font-weight':600},svg);lbl.textContent=(v>0?'+':'')+v.toFixed(1);
+  const t=el('text',{x:cx,y:H-8,'text-anchor':'middle','font-size':11,fill:C.muted},svg);t.textContent=M[i];
+  const hit=el('rect',{x:m.l+bw*i,y:0,width:bw,height:H,fill:'transparent'},svg);
+  hit.addEventListener('mousemove',ev=>{const r=svg.getBoundingClientRect();tip.innerHTML=`<b>${M[i]}</b>${v>0?'+':''}${v.toFixed(1)}bp · ${v>=0?'금리 상승':'금리 하락'}`;tip.style.opacity=1;tip.style.left=(cx*r.width/W+14)+'px';tip.style.top='10px'});
+  hit.addEventListener('mouseleave',()=>tip.style.opacity=0);
+ });
+})();
+
+// §08 regimes
+const before=[4.30,4.00,4.00,4.20,4.50,4.55];
+const shift=(f,b,l)=>before.map((v,i)=>{const d=i<=1?f:i===2?(f+l)/2+b:l;return +(v+d/100).toFixed(4)});
+const regs=[
+ ['Bull Steepening','금리↓ · 단기 더 많이↓',shift(-30,0,-10)],
+ ['Bear Steepening','금리↑ · 장기 더 많이↑',shift(5,0,30)],
+ ['Bull Flattening','금리↓ · 장기 더 많이↓',shift(-5,0,-30)],
+ ['Bear Flattening','금리↑ · 단기 더 많이↑',shift(35,0,10)]
+];
+const rg=document.getElementById('regimes');
+regs.forEach(([n,s,v])=>{const c=document.createElement('div');c.className='card';const ds=((v[3]-v[1])-(before[3]-before[1]))*100;
+ c.innerHTML=`<h4>${n}<span>${s}</span></h4><div class="chart"></div><p class="chart-sub">Δ2s10s ${ds>0?'+':''}${ds.toFixed(0)}bp</p>`;rg.appendChild(c);
+ curveChart(c.querySelector('.chart'),[{name:'변경 전',values:before,color:C.base,dash:true},{name:'변경 후',values:v,color:C.s1}],{w:420,h:190,yr:[3.6,5.0],aria:n})});
+
+// explorer
+const rf=document.getElementById('r-f'),rb=document.getElementById('r-b'),rl=document.getElementById('r-l');
+const fmt=v=>(v>0?'+':'')+v.toFixed(1)+'bp';
+function classify(d2,d10){const ds=d10-d2,L=(d2+d10)/2;
+ if(Math.abs(ds)<2) return Math.abs(L)<2?'변화 거의 없음':`기울기 변화 미미 — 거의 평행이동 (${L<0?'Bull':'Bear'}, 평균 ${fmt(L)})`;
+ const dir=ds>0?'Steepening':'Flattening';
+ if(d2*d10<0) return `${dir} Twist — 단기와 장기가 반대 방향`;
+ const nature=L<0?'Bull':'Bear';
+ const why={ 'Bull Steepening':'단기물이 더 많이 하락 → 금리 인하 기대 확대 시 전형적','Bear Steepening':'장기물이 더 많이 상승 → 기간 프리미엄·공급·재정 우려','Bull Flattening':'장기물이 더 많이 하락 → 안전자산 선호·장기 성장 기대 하락','Bear Flattening':'단기물이 더 많이 상승 → Fed 인상·매파적 신호'}[nature+' '+dir];
+ return `<strong>${nature} ${dir}</strong> — ${why}`;
+}
+function update(){
+ const f=+rf.value,b=+rb.value,l=+rl.value;
+ document.getElementById('o-f').textContent=f;document.getElementById('o-b').textContent=b;document.getElementById('o-l').textContent=l;
+ const after=shift(f,b,l);
+ curveChart(document.getElementById('exp'),[{name:'변경 전',values:before,color:C.base,dash:true},{name:'변경 후',values:after,color:C.s1}],{h:240,yr:[3.4,5.2],extraTip:i=>`<div style="color:#62717d;margin-top:3px">변화: ${fmt((after[i]-before[i])*100)}</div>`});
+ const d2=(after[1]-before[1])*100,d10=(after[3]-before[3])*100,d5=(after[2]-before[2])*100;
+ document.getElementById('x-2y').textContent=fmt(d2);document.getElementById('x-10y').textContent=fmt(d10);
+ document.getElementById('x-s').textContent=fmt(d10-d2);document.getElementById('x-f').textContent=fmt(2*d5-d2-d10);
+ let lab=classify(d2,d10);const fly=2*d5-d2-d10;
+ if(Math.abs(fly)>=2) lab+=`<br><span style="font-size:12.5px;color:#62717d">Butterfly ${fmt(fly)} → 5Y가 날개 대비 ${fly>0?'싸짐 (belly cheapening)':'비싸짐 (belly richening)'}</span>`;
+ document.getElementById('x-reg').innerHTML=lab;
+}
+[rf,rb,rl].forEach(r=>r.addEventListener('input',update));
+document.querySelectorAll('.presets button').forEach(btn=>btn.addEventListener('click',()=>{const [f,b,l]=btn.dataset.p.split(',');rf.value=f;rb.value=b;rl.value=l;update()}));
+update();
+</script>
+</body>
+</html>
