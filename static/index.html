@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor</title>
+<style>
+:root{--bg:#f4f5f3;--card:#fcfcfb;--ink:#0b0b0b;--muted:#6b6a66;--line:#e1e0d9;--acc:#147b79}
+@media (prefers-color-scheme:dark){:root{--bg:#0d0d0d;--card:#1a1a19;--ink:#f0efec;--muted:#a3a29c;--line:#2c2c2a;--acc:#3fb5b2}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 16px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:14px;color:var(--muted);font-weight:600;margin:32px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+p.sub{color:var(--muted);margin:0}
+ul{list-style:none;padding:0;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+li+li{border-top:1px solid var(--line)}
+a{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;color:var(--ink);text-decoration:none}
+a:hover{background:rgba(127,127,127,.08)}
+a span{color:var(--muted);font-size:13px}
+a b{color:var(--acc);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>Rates Monitor</h1>
+<p class="sub">미 국채 매크로 신호와 수익률 곡선 모니터 · Y-FoRM PJ2</p>
+
+<h2>수익률 곡선</h2>
+<ul>
+<li><a href="curve/index.html"><b>Tab 1 · Yield Curve Monitor</b><span>1990~ CMT 일별 금리</span></a></li>
+</ul>
+
+<h2>매크로 신호</h2>
+<ul>
+<li><a href="macro/01_policy_path/index.html"><b>01 정책 경로</b><span>수준 · 기울기</span></a></li>
+<li><a href="macro/02_growth_jobs/index.html"><b>02 성장·고용</b><span>수준</span></a></li>
+<li><a href="macro/03_inflation/index.html"><b>03 인플레이션</b><span>수준 · 기울기</span></a></li>
+<li><a href="macro/04_supply_tp/index.html"><b>04 수급·기간 프리미엄</b><span>기울기</span></a></li>
+<li><a href="macro/05_liquidity_vol/index.html"><b>05 유동성·변동성</b><span>곡률</span></a></li>
+<li><a href="macro/scoreboard_rules.html"><b>점수 규칙표</b><span>신호 → 커브 뷰 → 포지션</span></a></li>
+</ul>
+
+<h2>스터디 가이드</h2>
+<ul>
+<li><a href="study/rates-monitor-study-guide-tab1-5.html"><b>Tab 1~5 스터디 가이드</b><span></span></a></li>
+<li><a href="study/tab1-yield-curve-study-guide.html"><b>수익률 곡선 스터디 가이드</b><span></span></a></li>
+</ul>
+</main>
+</body>
+</html>
