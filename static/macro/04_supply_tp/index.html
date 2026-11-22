@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor · Macro 04 수급·기간 프리미엄</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --page:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --acc:#eb6834; --ctx:#b4b2a9;
+  --up:#e34948; --down:#2a78d6; --up-text:#b42318; --down-text:#1c5cab;
+  --wash-hike:rgba(227,73,72,.07); --wash-cut:rgba(42,120,214,.08);
+  --accent:#147b79; --hover:rgba(11,11,11,.04); --zone:rgba(11,11,11,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --acc:#d95926; --ctx:#5d5c57;
+    --up:#e66767; --down:#3987e5; --up-text:#f08a8a; --down-text:#86b6ef;
+    --wash-hike:rgba(230,103,103,.10); --wash-cut:rgba(57,135,229,.11);
+    --accent:#3fb5b2; --hover:rgba(255,255,255,.05); --zone:rgba(255,255,255,.06);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page)}
+.viz-root{background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:13px;line-height:1.5;min-height:100vh;padding:24px 28px 48px;word-break:keep-all}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-top:4px solid var(--ink);padding-top:14px;margin-bottom:14px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+.meta{font-size:12px;color:var(--ink2);text-align:right}
+.meta b{color:var(--ink)}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin:22px 0 8px;display:flex;align-items:baseline;gap:10px}
+.sec-title span{font-weight:500;letter-spacing:0;color:var(--muted);font-size:11.5px}
+/* filter row */
+.filters{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 14px;margin-bottom:14px;position:sticky;top:0;z-index:5}
+.filters label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-right:6px}
+.seg{display:inline-flex;border:1px solid var(--ring);border-radius:7px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:4px 10px;font-size:12px;color:var(--ink2);border-right:1px solid var(--ring)}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--down);outline-offset:-2px}
+.fgroup{display:flex;align-items:center}
+.regkey{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--ink2);margin-left:auto}
+.regkey i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.regkey .hike{background:var(--wash-hike);box-shadow:inset 0 0 0 1px var(--up)}
+.regkey .cut{background:var(--wash-cut);box-shadow:inset 0 0 0 1px var(--down)}
+/* cards */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1.15fr}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px 12px;min-width:0}
+.card h2{font-size:14px;margin:0;letter-spacing:-.2px}
+.card .sub{font-size:11.5px;color:var(--ink2);margin:2px 0 8px}
+section{margin-bottom:14px}
+/* 판정 */
+.verdict{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}
+.vt{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px}
+.vt .k{font-size:11px;color:var(--ink2);font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.vt .k em{font-style:normal;color:var(--muted);font-weight:500}
+.vt .row{display:flex;align-items:center;gap:16px;margin:6px 0 10px}
+.vt .score{font-size:48px;font-weight:650;letter-spacing:-2px;line-height:1;min-width:74px}
+.vt .word{font-size:15px;font-weight:650}
+.vt .calc{font-size:12.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.vt .calc b{color:var(--ink)}
+.vt .to{font-size:12px;color:var(--ink2);margin-top:8px}
+.vt .to b{color:var(--ink)}
+.meter{position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;height:22px;margin-top:4px}
+.meter .z{background:var(--zone);font-size:10.5px;color:var(--muted);display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.meter .z:first-child{border-radius:4px 0 0 4px}.meter .z:last-child{border-radius:0 4px 4px 0}
+.meter .z.on{background:var(--acc);color:#fff;font-weight:650}
+.meter i{position:absolute;top:-4px;width:3px;height:30px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--surface);transform:translateX(-1.5px)}
+.mticks{display:grid;grid-template-columns:1fr 1fr 1fr;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:3px}
+.mticks span:nth-child(2){text-align:center;display:flex;justify-content:space-between;transform:translateX(0)}
+.oneline{background:var(--surface);border:1px solid var(--ring);border-left:4px solid var(--ink);border-radius:10px;padding:10px 14px;font-size:13.5px;margin-bottom:14px}
+.oneline b{font-weight:650}
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 12px}
+.kpi .k{font-size:11px;color:var(--ink2);font-weight:600}
+.kpi .v{font-size:22px;font-weight:650;letter-spacing:-.5px;margin:2px 0}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.kpi .d{font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 6px;color:var(--muted)}
+.kpi .d span{white-space:nowrap}
+.up{color:var(--up-text)} .down{color:var(--down-text)} .flat{color:var(--muted)}
+/* legends & charts */
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:2px 0 4px}
+.legend .it{display:inline-flex;align-items:center;gap:6px}
+.legend .it b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:650}
+.legend .ln{display:inline-block;width:14px;height:2px;border-radius:1px}
+.legend .bx{display:inline-block;width:10px;height:10px;border-radius:2px}
+.legend .dt{display:inline-block;width:9px;height:9px;border-radius:50%}
+.legend .dash{display:inline-block;width:16px;height:0;border-top:1px dashed var(--ink2)}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible;outline:none}
+.chart svg:focus-visible{outline:2px solid var(--down);outline-offset:2px;border-radius:4px}
+.axis text{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.gridline{stroke:var(--grid);stroke-width:1}
+.baseline{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink2);stroke-width:1;stroke-dasharray:4 3}
+.reflabel{fill:var(--ink2);font-size:10.5px;font-weight:600}
+.cross{stroke:var(--axis);stroke-width:1}
+.dlabel{font-size:11px;fill:var(--ink2);font-variant-numeric:tabular-nums}
+.axtitle{fill:var(--muted);font-size:11px}
+.empty{padding:30px 0;color:var(--muted);font-size:12px;text-align:center}
+/* tooltip */
+#tip{position:fixed;pointer-events:none;z-index:50;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 6px 24px rgba(0,0,0,.14);border-radius:8px;padding:8px 10px;font-size:12px;min-width:150px;opacity:0;transition:opacity .08s}
+#tip .t{font-size:11px;color:var(--muted);margin-bottom:4px}
+#tip .r{display:flex;align-items:center;gap:14px;justify-content:space-between}
+#tip .r span.n{color:var(--ink2);display:flex;align-items:center;gap:6px}
+#tip .r b{font-variant-numeric:tabular-nums}
+#tip .key{display:inline-block;width:12px;height:2px;border-radius:1px}
+/* tables */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+th{font-size:11px;color:var(--muted);font-weight:600;text-align:right;padding:6px 8px;border-bottom:1px solid var(--axis);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th.grp{text-align:center;color:var(--ink2);border-bottom:1px solid var(--grid)}
+td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+td small{color:var(--muted);font-size:11px;margin-left:4px}
+tr.sep td{color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;padding-top:12px;border-bottom:1px solid var(--axis);text-align:left}
+td.b,th.b{border-left:1px solid var(--grid)}
+.finding{border-left:3px solid var(--ink);background:var(--hover);border-radius:0 6px 6px 0;padding:8px 12px;font-size:12.5px;margin:10px 0 4px}
+.finding b{font-weight:650}
+.notes{font-size:11.5px;color:var(--ink2);line-height:1.7}
+.notes ul{margin:4px 0 0;padding-left:16px}
+.notes code{font-size:11px;background:var(--hover);padding:0 4px;border-radius:3px}
+.impl{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.impl .card h2{font-size:13px}
+.impl .tagline{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--accent);margin-bottom:2px}
+.impl p{margin:6px 0 0;font-size:12.5px;color:var(--ink2)}
+.impl p b{color:var(--ink)}
+details.tv{margin-top:6px;font-size:11.5px;color:var(--ink2)}
+details.tv summary{cursor:pointer;color:var(--muted);width:max-content}
+details.tv table{margin-top:6px;font-size:12px}
+.err{padding:40px;font-size:14px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.g2,.impl{grid-template-columns:1fr}}
+@media (max-width:720px){.viz-root{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}.verdict{grid-template-columns:1fr}.regkey{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">RATES MONITOR · MACRO · 04</div>
+    <h1>수급·기간 프리미엄</h1>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="sec-title">이번 달 판정 <span>그날까지 공개된 값만 사용 · 점수는 −1 / 0 / +1 · +1은 장기물 공급 부담 증가(스티프닝 쪽)</span></div>
+<div class="verdict" id="verdict"></div>
+<div class="oneline" id="oneline"></div>
+<div class="kpis" id="kpis"></div>
+
+<div class="sec-title">지표 <span>아래 기간 선택은 시계열 차트 4개에 함께 적용됩니다</span></div>
+<div class="filters" role="group" aria-label="시계열 기간">
+  <div class="fgroup"><label>기간</label><div class="seg" id="f-range"></div></div>
+  <div class="regkey" aria-label="배경 음영 범례"><span><i class="hike"></i>금리 인상기</span><span><i class="cut"></i>금리 인하기</span></div>
+</div>
+
+<section class="card">
+  <h2>민간이 받아야 하는 장기물 순공급</h2>
+  <div class="sub">억 달러 · 월별(기준월) · Bonds(발행 만기 20·30년) 잔액 증감 − 연준의 Bonds 보유 증감 · 최근 3개월 평균이 직전 12개월 평균보다 높으면 공급이 빨라지는 중입니다</div>
+  <div class="legend" id="c1-legend"></div>
+  <div class="chart" id="c1"></div>
+  <details class="tv"><summary>표로 보기 (최근 12개월)</summary><div class="tablewrap"><table id="c1-table"></table></div></details>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <h2>입찰 약세와 입찰 당일 30년 금리 변화</h2>
+    <div class="sub" id="c2-sub"></div>
+    <div class="legend" id="c2-legend"></div>
+    <div class="chart" id="c2"></div>
+    <details class="tv"><summary>표로 보기 (최근 12회 입찰)</summary><div class="tablewrap"><table id="c2-table"></table></div></details>
+  </div>
+  <div class="card">
+    <h2>10년 기간 프리미엄과 5s30s</h2>
+    <div class="sub" id="c3-sub"></div>
+    <div class="legend" id="c3-legend"></div>
+    <div class="chart" id="c3"></div>
+    <details class="tv"><summary>표로 보기 (최근 12개월 월말)</summary><div class="tablewrap"><table id="c3-table"></table></div></details>
+  </div>
+</section>
+
+<div class="sec-title">전략 시사점 <span>백테스트 결과를 반영한 사용법</span></div>
+<section class="impl" id="impl"></section>
+
+<div class="sec-title">백테스트 근거 <span id="bt-span"></span></div>
+
+<section class="card">
+  <h2>Q1. 장기물 입찰일에 금리는 얼마나 움직였나 <span style="font-weight:500;color:var(--muted);font-size:12px">· 반응형 검증</span></h2>
+  <div class="sub" id="q1-sub"></div>
+  <div class="grid g2" style="align-items:start">
+    <div>
+      <div class="legend" id="q1-legend"></div>
+      <div class="chart" id="q1"></div>
+    </div>
+    <div>
+      <div class="tablewrap"><table id="q1-table"></table></div>
+      <div class="tablewrap" style="margin-top:14px"><table id="q1b-table"></table></div>
+    </div>
+  </div>
+  <div class="finding" id="q1-finding"></div>
+</section>
+
+<section class="card">
+  <h2>Q2. 공급 압력 점수 뒤에 5s30s는 예상대로 움직였나 <span style="font-weight:500;color:var(--muted);font-size:12px">· 예측형 검증</span></h2>
+  <div class="sub" id="q2-sub"></div>
+  <div class="legend" id="q2-legend"></div>
+  <div class="chart" id="q2"></div>
+  <div class="tablewrap" style="margin-top:8px"><table id="q2-table"></table></div>
+  <div class="finding" id="q2-finding"></div>
+</section>
+
+<section class="card">
+  <h2>Q3. 기간 프리미엄 점수 뒤에 5s30s는 예상대로 움직였나 <span style="font-weight:500;color:var(--muted);font-size:12px">· 예측형 검증</span></h2>
+  <div class="sub" id="q3-sub"></div>
+  <div class="legend" id="q3-legend"></div>
+  <div class="chart" id="q3"></div>
+  <div class="tablewrap" style="margin-top:8px"><table id="q3-table"></table></div>
+  <div class="finding" id="q3-finding"></div>
+</section>
+
+<section class="card notes">
+  <b>데이터·계산 규칙</b>
+  <ul id="rules"></ul>
+</section>
+</div>
+<div id="tip" role="tooltip"></div>
+</div>
+
+<script src="data.js"></script>
+<script src="signals.js"></script>
+<script>
+"use strict";
+(function(){
+const D = window.SUPPLY_DATA, S = window.SUPPLY_SIGNALS;
+if(!D||!S){document.querySelector('.wrap').innerHTML='<div class="err">data.js 또는 signals.js가 없습니다. 이 폴더에서 <code>python3 fetch_data.py</code>를 실행하세요.</div>';return;}
+
+/* ---------- 도구 ---------- */
+const $ = s => document.querySelector(s);
+const ms = s => Date.parse(s.slice(0,10)+'T00:00:00Z');
+const fx = (v,d=2) => v==null ? '–' : v.toFixed(d);
+const sg = (v,d=1) => v==null ? '–' : (v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d);
+const sc = s => s==null ? '?' : s>0 ? '+1' : s<0 ? '−1' : '0';
+const ym = s => s.slice(0,4)+'년 '+(+s.slice(5,7))+'월';
+const eok = bn => bn==null ? '–' : Math.round(bn*10).toLocaleString('en-US').replace('-','−');          /* 십억 달러 → 억 달러 */
+const sgEok = bn => bn==null ? '–' : (bn>0?'+':bn<0?'−':'')+Math.abs(Math.round(bn*10)).toLocaleString('en-US');
+const ratio = (a,b) => a==null||!b ? '–' : (a/b).toFixed(1)+'배';
+const avg = a => a.some(v=>v==null) ? null : a.reduce((x,y)=>x+y,0)/a.length;
+const REG = {hike:'인상기', cut:'인하기', hold:'동결기'};
+const TH = S.thresholds;
+const cur = S.current;
+const h = (tag, cls, text) => { const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+
+function niceTicks(lo, hi, n){
+  if(lo===hi){lo-=1;hi+=1;}
+  const raw=(hi-lo)/n, p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p;
+  const step=(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;
+  const a=Math.floor(lo/step+1e-9)*step, b=Math.ceil(hi/step-1e-9)*step, out=[];
+  for(let v=a; v<=b+step*1e-6; v+=step) out.push(Math.round(v/step)*step);
+  out.step=step; return out;
+}
+const dec = step => { for(let d=0; d<4; d++){ const v=step*Math.pow(10,d); if(Math.abs(v-Math.round(v))<1e-9) return d; } return 4; };
+const tl = (v,d) => v===0 ? '0' : v.toFixed(d).replace('-','−');
+function timeTicks(t0, t1, maxN){
+  const a=new Date(t0), b=new Date(t1);
+  const months=(b.getUTCFullYear()-a.getUTCFullYear())*12+b.getUTCMonth()-a.getUTCMonth();
+  const step=[1,3,6,12,24,60].find(s=>months/s<=maxN)||120, out=[];
+  let k=Math.ceil((a.getUTCFullYear()*12+a.getUTCMonth())/step)*step;
+  for(;;k+=step){ const y=Math.floor(k/12), m=k%12, t=Date.UTC(y,m,1); if(t>t1) break;
+    if(t>=t0) out.push({t, label: step>=12||m===0 ? String(y) : (m+1)+'월'}); }
+  return out;
+}
+function barPath(x, y0, y1, w){
+  const r=Math.min(4, w/2, Math.abs(y1-y0)), s=y1<y0?1:-1;
+  return `M${x},${y0}V${y1+s*r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1+s*r}V${y0}Z`;
+}
+
+/* ---------- 툴팁 ---------- */
+const tip = $('#tip');
+function showTip(x, y, title, rows){
+  tip.replaceChildren(h('div','t',title));
+  rows.forEach(r=>{ const d=h('div','r'), n=h('span','n');
+    if(r.color){ const k=h('span','key'); k.style.background=r.color; n.appendChild(k); }
+    n.appendChild(document.createTextNode(r.name)); d.append(n, h('b',null,r.value)); tip.appendChild(d); });
+  const w=tip.offsetWidth, hh=tip.offsetHeight;
+  tip.style.left=Math.max(8, x+16+w>innerWidth ? x-w-16 : x+16)+'px';
+  tip.style.top=Math.max(8, y+16+hh>innerHeight ? y-hh-12 : y+16)+'px';
+  tip.style.opacity=1;
+}
+const hideTip = () => { tip.style.opacity=0; };
+
+/* ---------- 시계열 차트 (선·막대 공용) ---------- */
+function timeChart(host, o){
+  const W=Math.max(300, host.clientWidth), H=o.h||250, m={l:46,r:14,t:12,b:26};
+  const pw=W-m.l-m.r, ph=H-m.t-m.b, [t0,t1]=o.range;
+  const ser=o.series.map(s=>({...s, pts:s.xs.map((x,i)=>[x,s.ys[i],i]).filter(p=>p[1]!=null&&p[0]>=t0&&p[0]<=t1)}));
+  const cl=v=>o.clamp ? Math.max(o.clamp[0], Math.min(o.clamp[1], v)) : v;   /* 세로축을 자를 때 표시용 값 */
+  let lo=Infinity, hi=-Infinity;
+  ser.forEach(s=>s.pts.forEach(p=>{ const v=cl(p[1]); if(v<lo) lo=v; if(v>hi) hi=v; }));
+  if(!isFinite(lo)||!ser[0].pts.length){ host.innerHTML='<div class="empty">이 기간에 표시할 데이터가 없습니다.</div>'; return; }
+  (o.refs||[]).forEach(r=>{ lo=Math.min(lo,r.y); hi=Math.max(hi,r.y); });
+  if(o.zero){ lo=Math.min(lo,0); hi=Math.max(hi,0); }
+  const tk=niceTicks(lo,hi,5), d=dec(tk.step); lo=tk[0]; hi=tk[tk.length-1];
+  const X=t=>m.l+(t-t0)/(t1-t0)*pw, Y=v=>m.t+(hi-v)/(hi-lo)*ph;
+  let g='';
+  S.regimes.forEach(r=>{ if(r.type==='hold') return; const a=Math.max(ms(r.start),t0), b=Math.min(ms(r.end),t1);
+    if(b>a) g+=`<rect x="${X(a)}" y="${m.t}" width="${X(b)-X(a)}" height="${ph}" fill="var(--wash-${r.type})"/>`; });
+  g+='<g class="axis">';
+  tk.forEach(v=>{ g+=`<line class="${v===0&&o.zero?'baseline':'gridline'}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${tl(v,d)}${o.unit||''}</text>`; });
+  timeTicks(t0,t1,Math.max(3,Math.floor(pw/64))).forEach(t=>{ g+=`<text x="${X(t.t)}" y="${H-6}" text-anchor="middle">${t.label}</text>`; });
+  g+='</g>';
+  ser.forEach(s=>{
+    if(s.kind==='col'){
+      const n=s.pts.length, slot=n>1 ? (X(s.pts[n-1][0])-X(s.pts[0][0]))/(n-1) : 24, bw=Math.max(1.5, Math.min(24, slot-2));
+      s.pts.forEach(p=>{ if(p[1]===0) return; const v=cl(p[1]), x=X(p[0])-bw/2;
+        g+=`<path d="${barPath(x, Y(0), Y(v), bw)}" fill="${s.colorFn(p[2])}"/>`;
+        if(v!==p[1]) g+=`<rect x="${x-1}" y="${Y(v)+(v>0?5:-7)}" width="${bw+2}" height="2" fill="var(--surface)"/>`; });   /* 잘린 막대 표시 */
+    }else{
+      g+=`<path d="${s.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('')}" fill="none" stroke="${s.color}" stroke-width="${s.w||2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+  });
+  (o.refs||[]).forEach(r=>{ g+=`<line class="ref" x1="${m.l}" x2="${W-m.r}" y1="${Y(r.y)}" y2="${Y(r.y)}"/>`+(r.label?`<text class="reflabel" x="${W-m.r-4}" y="${Y(r.y)+(r.below&&Y(r.y)+18<m.t+ph?13:-5)}" text-anchor="end">${r.label}</text>`:''); });
+  ser.forEach(s=>{ if(s.kind!=='col'&&s.pts.length){ const p=s.pts[s.pts.length-1];
+    g+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; } });
+  g+=`<g class="hov" style="display:none"><line class="cross" y1="${m.t}" y2="${m.t+ph}"/>${ser.map(s=>s.kind==='col'?'':`<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join('')}</g>`;
+  g+=`<rect class="hit" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent"/>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" tabindex="0" role="img" aria-label="${o.label}">${g}</svg>`;
+
+  const svg=host.firstChild, hov=svg.querySelector('.hov'), base=ser[0].pts; let idx=base.length-1;
+  function at(i, cy){
+    idx=Math.max(0, Math.min(base.length-1, i)); const p=base[idx], x=X(p[0]);
+    hov.style.display=''; const line=hov.querySelector('line'); line.setAttribute('x1',x); line.setAttribute('x2',x);
+    const dots=hov.querySelectorAll('circle'); let k=0;
+    ser.forEach(s=>{ if(s.kind==='col') return; const v=s.ys[p[2]], c=dots[k++];
+      if(v==null) c.style.display='none'; else { c.style.display=''; c.setAttribute('cx',x); c.setAttribute('cy',Y(v)); } });
+    const rc=svg.getBoundingClientRect(), tipRows=o.tip(p[2]);
+    showTip(rc.left+x*rc.width/W, cy==null ? rc.top+m.t+10 : cy, tipRows.title, tipRows.rows);
+  }
+  svg.querySelector('.hit').addEventListener('pointermove', e=>{
+    const rc=svg.getBoundingClientRect(), t=t0+((e.clientX-rc.left)*W/rc.width-m.l)/pw*(t1-t0);
+    let a=0, b=base.length-1; while(b-a>1){ const c=(a+b)>>1; if(base[c][0]<t) a=c; else b=c; }
+    at(Math.abs(base[a][0]-t)<=Math.abs(base[b][0]-t)?a:b, e.clientY);
+  });
+  const off=()=>{ hov.style.display='none'; hideTip(); };
+  svg.querySelector('.hit').addEventListener('pointerleave', off);
+  svg.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'){at(idx-1);e.preventDefault();} else if(e.key==='ArrowRight'){at(idx+1);e.preventDefault();} else if(e.key==='Escape') off(); });
+  svg.addEventListener('focus', ()=>at(idx)); svg.addEventListener('blur', off);
+}
+
+/* ---------- 머리말 ---------- */
+const TPNAME = S.tp_source==='ACM' ? 'ACM' : 'Kim-Wright';
+$('#meta').innerHTML=`기준일 <b>${S.asof}</b> · 현재 국면 <b>${REG[cur.regime]}</b> (정책금리 상단 ${fx(cur.policy_upper)}%)<br>데이터 생성 ${S.generated} · 재무부 FiscalData, NY Fed, FRED`;
+$('#bt-span').textContent=`성과월 ${S.split.start} ~ ${S.split.end} · 규칙 설정 구간 ${S.split.start.slice(0,4)}~${+S.split.test_start.slice(0,4)-1}, 검증 구간 ${S.split.test_start.slice(0,4)}~ · 문턱값은 금리 결과를 보기 전에 고정`;
+
+/* ---------- 백테스트 판독 ---------- */
+const BS=S.bt.supply, BT=S.bt.tp;
+/* confirmed: 검증 구간과 전체 기간에서 모두 확인 / partial: 검증 구간에서만 / none: 확인 안 됨 */
+function status(bt){ const a=bt.samples[0], t=bt.samples[2];
+  const testOK = t.t!=null && t.t>=2 && t.signal.hit>=55;
+  return testOK && a.t!=null && a.t>=2 ? 'confirmed' : testOK ? 'partial' : 'none'; }
+const stS=status(BS), stT=status(BT);
+
+/* ---------- 판정 ---------- */
+const SIG = {
+  s1:{name:'공급 압력', word:{'1':'공급 부담 증가','0':'중립','-1':'공급 부담 감소'}, zones:['−1 감속','0 중립','+1 가속'],
+      val:cur.pct, lo:TH.supply_lo, hi:TH.supply_hi, unit:'%', d:2, head:'→ 기울기 뷰 (Curve Slope)', dir:{'1':'스티프닝 쪽','0':'기여 없음','-1':'플래트닝 쪽'},
+      calc:`${ym(cur.ref+'-01')}까지 3개월 장기물 순공급 <b>${eok(cur.sum3)}억 달러</b> − 직전 12개월의 3개월 평균 <b>${eok(cur.prev3)}억 달러</b> = <b>${sgEok(cur.accel)}억 달러</b><br>민간 보유 Bonds ${fx(cur.priv/1000,2)}조 달러의 <b>${sg(cur.pct,2)}%</b>`},
+  s2:{name:'기간 프리미엄', word:{'1':'상승','0':'안정','-1':'하락'}, zones:['−1 하락','0 안정','+1 상승'],
+      val:cur.chg, lo:-TH.tp, hi:TH.tp, unit:'bp', d:0, head:'→ 참고 지표', dir:{'1':'스티프닝 쪽','0':'기여 없음','-1':'플래트닝 쪽'},
+      calc:`${TPNAME} 10년 기간 프리미엄 <b>${fx(cur.tp10*100,0)}bp</b>, 3개월 전 ${fx(cur.tp10_prev*100,0)}bp → 변화 <b>${sg(cur.chg,0)}bp</b>`}
+};
+function verdictTile(key, foot){
+  const g=SIG[key], s=cur[key], span=g.hi-g.lo, pos=Math.max(1.5, Math.min(98.5, (g.val-(g.lo-span))/(3*span)*100));
+  const zones=g.zones.map((z,i)=>`<div class="z${i-1===s?' on':''}">${z}</div>`).join('');
+  return `<div class="vt"><div class="k"><span>${g.name} 점수</span><em>${g.head}</em></div>
+    <div class="row"><div class="score">${sc(s)}</div><div><div class="word">${g.word[s]}</div><div class="calc">${g.calc}</div></div></div>
+    <div class="meter" role="img" aria-label="${g.name} ${sg(g.val,g.d)}${g.unit}, 문턱값 ${sg(g.lo,g.d)}${g.unit}과 ${sg(g.hi,g.d)}${g.unit}">${zones}<i style="left:${pos}%"></i></div>
+    <div class="mticks"><span></span><span><span>${sg(g.lo,g.d)}${g.unit}</span><span>${sg(g.hi,g.d)}${g.unit}</span></span><span></span></div>
+    <div class="to">${foot}</div></div>`;
+}
+$('#verdict').innerHTML=verdictTile('s1', `기울기 뷰에 <b>${sc(cur.s1)}점</b> (${SIG.s1.dir[cur.s1]})`)
+  +verdictTile('s2', stT==='confirmed' ? `기울기 뷰에 <b>${sc(cur.s2)}점</b> (${SIG.s2.dir[cur.s2]})` : `팀 점수표에는 넣지 않고 <b>참고 지표</b>로 봅니다`+(cur.s2 ? ` (방향은 ${SIG.s2.dir[cur.s2]})` : ''));
+$('#oneline').innerHTML=`<b>판정 한 줄.</b> 공급 압력 <b>${sc(cur.s1)}</b>(${SIG.s1.word[cur.s1]}), 기간 프리미엄 <b>${sc(cur.s2)}</b>(${SIG.s2.word[cur.s2]}). 기울기 뷰에 ${sc(cur.s1)}점을 냅니다. `
+  +(stS==='none' ? `다만 공급 압력 점수는 백테스트에서 다음 달 기울기를 설명하지 못했습니다(아래 Q2).` : stS==='partial' ? `공급 압력 점수는 검증 구간에서만 확인됐습니다(아래 Q2).` : `공급 압력 점수는 백테스트에서 확인됐습니다(아래 Q2).`);
+
+/* ---------- KPI ---------- */
+const M=D.monthly, DY=D.daily;
+const TPB=(S.tp_source==='ACM' ? DY.acm_tp10 : DY.kw_tp10).map(v=>v==null?null:v*100);   /* bp */
+const SLB=S.slope_daily.map(v=>v==null?null:v*100);                                       /* bp */
+function lastTwo(a){ let i=a.length-1; while(i>=0&&a[i]==null) i--; let j=i-1; while(j>=0&&a[j]==null) j--; return [i,j]; }
+function dailyAgo(a, months){ const [i]=lastTwo(a), t=new Date(ms(DY.dates[i])); t.setUTCMonth(t.getUTCMonth()-months);
+  const cut=t.toISOString().slice(0,10); let j=i; while(j>0&&(DY.dates[j]>cut||a[j]==null)) j--; return [i,j]; }
+function kpi(k, v, unit, sub, delta, dtext){
+  const cls=delta>0?'up':delta<0?'down':'flat';
+  return `<div class="kpi"><div class="k">${k}</div><div class="v">${v}<small>${unit}</small></div><div class="d"><span>${sub}</span><span class="${cls}">${dtext}</span></div></div>`;
+}
+(function(){
+  const dk=(name,arr)=>{ const [i,j]=dailyAgo(arr,3), dl=arr[i]-arr[j]; return kpi(name, fx(arr[i],0), 'bp', DY.dates[i], dl, '3개월 전 대비 '+sg(dl,0)+'bp'); };
+  const [mi,mj]=lastTwo(M.soma_bonds_bn), ds=M.soma_bonds_bn[mi]-M.soma_bonds_bn[mj], db=M.bill_share_pct[mi]-M.bill_share_pct[mj];
+  const a30=cur.last_auctions.find(e=>e.tenor==='30Y')||cur.last_auctions[0], da=a30 ? a30.btc-a30.avg : 0;
+  $('#kpis').innerHTML=dk(`10년 기간 프리미엄 (${TPNAME})`,TPB)+dk('5s30s (30년 − 5년)',SLB)
+    +kpi('장기물 순공급 (3개월)', eok(cur.sum3), '억 달러', '~'+ym(cur.ref+'-01'), cur.accel, '직전 평균 대비 '+sgEok(cur.accel)+'억')
+    +kpi('연준의 Bonds 보유', fx(M.soma_bonds_bn[mi]/1000,2), '조 달러', ym(M.dates[mi]), ds, '전월 대비 '+sgEok(ds)+'억')
+    +kpi('단기채(Bills) 비중', fx(M.bill_share_pct[mi],1), '%', ym(M.dates[mi]), db, '전월 대비 '+sg(db,2)+'%p')
+    +(a30 ? kpi(`${a30.tenor.replace('Y','년')} 입찰 응찰률`, fx(a30.btc,2), '배', a30.date, da, '직전 6회 평균 대비 '+sg(da,2)) : '');
+})();
+
+/* ---------- 범례 ---------- */
+function legend(sel, items){ $(sel).innerHTML=items.map(it=>it.kind==='none' ? `<span class="it" style="color:var(--muted)">${it.name}</span>` : `<span class="it"><span class="${it.kind||'ln'}"${it.color?` style="background:${it.color}"`:''}></span>${it.name}${it.value!=null?` <b>${it.value}</b>`:''}</span>`).join(''); }
+
+/* ---------- 시계열 4개 ---------- */
+const MX=M.dates.map(ms), DX=DY.dates.map(ms), SX=S.monthly.date.map(ms);
+const NET=M.long_net_bn.map(v=>v==null?null:v*10);                                  /* 억 달러 */
+const MA3=NET.map((_,i)=>i<2?null:avg(NET.slice(i-2,i+1)));                          /* 신호의 앞 항: 최근 3개월 평균 */
+const PREV12=NET.map((_,i)=>i<14?null:avg(NET.slice(i-14,i-2)));                     /* 신호의 뒤 항: 그 앞 12개월 평균 */
+const lastT=Math.max(DX[DX.length-1], ms(S.asof));
+const RANGES=[{id:'2015',label:'2015~',t0:ms('2015-01-01')},{id:'5y',label:'최근 5년',t0:lastT-5*365.25*864e5},{id:'2y',label:'최근 2년',t0:lastT-2*365.25*864e5},{id:'all',label:'전체',t0:MX[0]}];
+let rangeId='2015';
+$('#f-range').innerHTML=RANGES.map(r=>`<button type="button" data-id="${r.id}" aria-pressed="${r.id===rangeId}">${r.label}</button>`).join('');
+$('#f-range').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; rangeId=b.dataset.id;
+  $('#f-range').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x===b)); drawSeries(); });
+
+const C={acc:'var(--acc)', ink:'var(--ink)', ctx:'var(--ctx)'};
+const CLAMP=2;   /* 공급 압력 차트의 세로축 한계(%). 넘는 달은 잘라 그리고 막대 끝에 틈을 둔다 */
+$('#c3-sub').textContent=`bp · 일별 · 기간 프리미엄(${TPNAME} 모형)은 장기채를 들고 가는 대가로 투자자가 요구하는 추가 수익입니다. 5s30s는 30년 금리 − 5년 금리입니다`;
+function drawSeries(){
+  const range=[RANGES.find(r=>r.id===rangeId).t0, lastT];
+  const li=lastTwo(NET)[0];
+  legend('#c1-legend',[{name:'월 순공급',color:C.ctx,kind:'bx',value:eok(NET[li]/10)+'억'},{name:'최근 3개월 평균',color:C.acc,value:eok(MA3[li]/10)+'억'},{name:'그 앞 12개월 평균',color:C.ink,value:eok(PREV12[li]/10)+'억'}]);
+  timeChart($('#c1'),{range, h:280, unit:'', zero:true, label:'민간이 받아야 하는 장기물 순공급: 월별 막대와 3개월·12개월 평균',
+    series:[{kind:'col',xs:MX,ys:NET,colorFn:()=>C.ctx},{name:'그 앞 12개월 평균',color:C.ink,xs:MX,ys:PREV12},{name:'최근 3개월 평균',color:C.acc,xs:MX,ys:MA3}],
+    tip:i=>({title:ym(M.dates[i])+' (기준월)', rows:[{name:'Bonds 잔액 증감',value:sgEok(M.bonds_chg_bn[i])+'억'},{name:'연준 보유 증감',value:sgEok(M.soma_bonds_chg_bn[i])+'억'},{name:'민간 순공급',color:C.ctx,value:sgEok(M.long_net_bn[i])+'억'},
+      {name:'최근 3개월 평균',color:C.acc,value:MA3[i]==null?'–':sgEok(MA3[i]/10)+'억'},{name:'그 앞 12개월 평균',color:C.ink,value:PREV12[i]==null?'–':sgEok(PREV12[i]/10)+'억'}]})});
+
+  const di=lastTwo(TPB)[0];
+  legend('#c3-legend',[{name:'10년 기간 프리미엄',color:C.acc,value:fx(TPB[di],0)+'bp'},{name:'5s30s',color:C.ink,value:fx(SLB[di],0)+'bp'}]);
+  timeChart($('#c3'),{range, h:300, unit:'', zero:true, label:'10년 기간 프리미엄과 5s30s',
+    series:[{name:'5s30s',color:C.ink,w:1.25,xs:DX,ys:SLB},{name:'10년 기간 프리미엄',color:C.acc,w:1.5,xs:DX,ys:TPB}],
+    tip:i=>({title:DY.dates[i], rows:[{name:'10년 기간 프리미엄',color:C.acc,value:fx(TPB[i],0)+'bp'},{name:'5s30s',color:C.ink,value:fx(SLB[i],0)+'bp'}]})});
+
+  const sm=S.monthly, on=k=>i=>sm[k][i] ? C.acc : C.ctx;
+  legend('#q2-legend',[{name:'신호 발생 (점수 ±1)',color:C.acc,kind:'bx'},{name:'신호 없음 (점수 0)',color:C.ctx,kind:'bx'},{name:`문턱값 ${sg(TH.supply_lo,2)}% / ${sg(TH.supply_hi,2)}% · 위로 넘으면 +1(공급 가속), 아래로 넘으면 −1(공급 감속)`,kind:'dash'},{name:`±${CLAMP}%를 넘는 달은 잘라 표시 (끝에 틈)`,kind:'none'}]);
+  timeChart($('#q2'),{range, h:220, unit:'%', zero:true, clamp:[-CLAMP,CLAMP], label:'공급 압력: 장기물 순공급의 가속 이력',
+    series:[{kind:'col',xs:SX,ys:sm.pct,colorFn:on('s1')}],
+    refs:[{y:TH.supply_hi},{y:TH.supply_lo}],
+    tip:i=>({title:`${sm.date[i]} 판정 → ${sm.month[i]} 적용`, rows:[{name:`가속 (잔액 통계 ${sm.ref[i]}까지)`,value:sg(sm.pct[i],2)+'%'},{name:'최근 3개월 순공급',value:eok(sm.sum3[i])+'억'},{name:'직전 12개월의 3개월 평균',value:eok(sm.prev3[i])+'억'},{name:'점수',value:sc(sm.s1[i])},{name:'다음 달 5s30s',value:sm.d5s30s[i]==null?'진행 중':sg(sm.d5s30s[i],0)+'bp'},{name:'국면',value:REG[sm.regime[i]]}]})});
+  legend('#q3-legend',[{name:'신호 발생 (점수 ±1)',color:C.acc,kind:'bx'},{name:'신호 없음 (점수 0)',color:C.ctx,kind:'bx'},{name:`문턱값 ±${TH.tp}bp · 위로 넘으면 +1(상승), 아래로 넘으면 −1(하락)`,kind:'dash'}]);
+  timeChart($('#q3'),{range, h:220, unit:'', zero:true, label:'기간 프리미엄: 10년 기간 프리미엄의 3개월 변화 이력',
+    series:[{kind:'col',xs:SX,ys:sm.chg,colorFn:on('s2')}],
+    refs:[{y:TH.tp},{y:-TH.tp}],
+    tip:i=>({title:`${sm.date[i]} 판정 → ${sm.month[i]} 적용`, rows:[{name:'기간 프리미엄 3개월 변화',value:sg(sm.chg[i],0)+'bp'},{name:'점수',value:sc(sm.s2[i])},{name:'다음 달 5s30s',value:sm.d5s30s[i]==null?'진행 중':sg(sm.d5s30s[i],0)+'bp'},{name:'국면',value:REG[sm.regime[i]]}]})});
+}
+
+/* ---------- 산점도: 입찰 약세 vs Δ30y ---------- */
+const ERA={A:{color:C.ctx}, B:{color:C.acc}, all:{}};
+S.event_stats.by_era.forEach(e=>{ if(ERA[e.key]) Object.assign(ERA[e.key], e); });
+const proxy=S.event_source!=='tail', UNIT=S.event_unit;
+const UX = proxy ? {per:'응찰률 0.1 부족당', axis:'입찰 약세 (직전 6회 평균 응찰률 − 이번 응찰률) · 오른쪽일수록 수요가 약함', xd:2}
+                 : {per:'tail 1bp당', axis:'tail (낙찰금리 − 입찰 직전 WI 금리, bp) · 오른쪽일수록 수요가 약함', xd:1};
+const TEN = t => t.replace('Y','년');
+$('#c2-sub').textContent=(proxy ? '입찰 약세 = 같은 만기 직전 6회 평균 응찰률 − 이번 응찰률 (tail을 받기 전까지 쓰는 대용치)' : '입찰 약세 = tail (낙찰금리 − 입찰 직전 WI 금리)')+` · 세로축은 입찰 당일 30년 금리 변화(bp) · 10·20·30년 입찰 ${S.events.length}건`;
+function fit(ev){ const n=ev.length, mx=ev.reduce((a,e)=>a+e.weak,0)/n, my=ev.reduce((a,e)=>a+e.d30,0)/n;
+  const sxx=ev.reduce((a,e)=>a+(e.weak-mx)**2,0), b=ev.reduce((a,e)=>a+(e.weak-mx)*(e.d30-my),0)/sxx; return {a:my-b*mx, b}; }
+function drawScatter(){
+  const host=$('#c2'), ev=S.events, W=Math.max(300,host.clientWidth), H=300, m={l:46,r:14,t:12,b:40}, pw=W-m.l-m.r, ph=H-m.t-m.b;
+  const xt=niceTicks(Math.min(...ev.map(e=>e.weak)), Math.max(...ev.map(e=>e.weak)), 6), yt=niceTicks(Math.min(...ev.map(e=>e.d30)), Math.max(...ev.map(e=>e.d30)), 5);
+  const x0=xt[0], x1=xt[xt.length-1], y0=yt[0], y1=yt[yt.length-1], X=v=>m.l+(v-x0)/(x1-x0)*pw, Y=v=>m.t+(y1-v)/(y1-y0)*ph;
+  let g='<g class="axis">';
+  yt.forEach(v=>{ g+=`<line class="${v===0?'baseline':'gridline'}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${v===0?'0':sg(v,0)}</text>`; });
+  xt.forEach(v=>{ g+=`<text x="${X(v)}" y="${H-m.b+16}" text-anchor="middle">${v===0?'0':sg(v,dec(xt.step))}</text>`; });
+  g+=`<line class="baseline" x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${m.t+ph}"/><text class="axtitle" x="${m.l+pw/2}" y="${H-4}" text-anchor="middle">${UX.axis}</text></g>`;
+  ['A','B'].forEach(k=>{ ev.forEach((e,i)=>{ if(e.era===k) g+=`<circle data-i="${i}" cx="${X(e.weak)}" cy="${Y(e.d30)}" r="4" fill="${ERA[k].color}" stroke="var(--surface)" stroke-width="1.5"/>`; }); });
+  ['A','B'].forEach(k=>{ const sub=ev.filter(e=>e.era===k); if(sub.length<3) return; const f=fit(sub), a=Math.min(...sub.map(e=>e.weak)), b=Math.max(...sub.map(e=>e.weak));
+    g+=`<line x1="${X(a)}" y1="${Y(f.a+f.b*a)}" x2="${X(b)}" y2="${Y(f.a+f.b*b)}" stroke="${k==='A'?'var(--ink2)':ERA[k].color}" stroke-width="2" stroke-linecap="round"/>`; });
+  g+=`<circle class="hl" r="7" fill="none" stroke="var(--ink)" stroke-width="2" style="display:none"/><rect class="hit" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent"/>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="입찰 약세와 입찰 당일 30년 금리 변화 산점도">${g}</svg>`;
+  const svg=host.firstChild, hl=svg.querySelector('.hl');
+  svg.querySelector('.hit').addEventListener('pointermove', e=>{
+    const rc=svg.getBoundingClientRect(), px=(e.clientX-rc.left)*W/rc.width, py=(e.clientY-rc.top)*H/rc.height; let best=-1, bd=30*30;
+    ev.forEach((p,i)=>{ const d=(X(p.weak)-px)**2+(Y(p.d30)-py)**2; if(d<bd){bd=d;best=i;} });
+    if(best<0){ hl.style.display='none'; hideTip(); return; }
+    const p=ev[best]; hl.style.display=''; hl.setAttribute('cx',X(p.weak)); hl.setAttribute('cy',Y(p.d30));
+    showTip(e.clientX, e.clientY, `${p.date} · ${TEN(p.tenor)} ${p.reopen?'재발행':'신규'}`, [{name:'낙찰금리',value:fx(p.hy,3)+'%'},{name:'응찰률',value:fx(p.btc)+'배'},{name:'직전 6회 평균',value:fx(p.avg)+'배'},
+      ...(p.tail==null?[]:[{name:'tail',value:sg(p.tail,1)+'bp'}]),{name:'딜러 배정 비중',value:fx(p.dealer,1)+'%'},{name:'30년 금리',value:sg(p.d30,0)+'bp'},{name:'10년 금리',value:sg(p.d10,0)+'bp'},{name:'5s30s',value:sg(p.dsl,0)+'bp'}]);
+  });
+  svg.querySelector('.hit').addEventListener('pointerleave', ()=>{ hl.style.display='none'; hideTip(); });
+}
+legend('#c2-legend',['A','B'].map(k=>({name:`${ERA[k].label} · ${UX.per}`, color:ERA[k].color, kind:'dt', value:sg(ERA[k].slope30,1)+'bp'})));
+
+/* ---------- Q1 연도별 막대 ---------- */
+$('#q1-sub').textContent=`왼쪽: 연도별 30년 금리의 하루 평균 변동폭(bp, 절댓값) · 오른쪽 위: ${UX.per} 금리 변화 · 오른쪽 아래: 분기 환매(QRA) 발표일의 변동폭`;
+legend('#q1-legend',[{name:'10·20·30년 입찰일',color:C.acc,kind:'bx'},{name:'그 외 거래일',color:C.ctx,kind:'bx'}]);
+function drawYears(){
+  const host=$('#q1'), ys=S.event_stats.by_year, W=Math.max(300,host.clientWidth), H=240, m={l:36,r:8,t:18,b:24}, pw=W-m.l-m.r, ph=H-m.t-m.b;
+  const tk=niceTicks(0, Math.max(...ys.map(y=>Math.max(y.abs_on,y.abs_off))), 4), hi=tk[tk.length-1], Y=v=>m.t+(hi-v)/hi*ph;
+  const band=pw/ys.length, bw=Math.max(3, Math.min(24, (band-8)/2-1)), top=ys.reduce((a,y)=>y.abs_on>a.abs_on?y:a);
+  let g='<g class="axis">';
+  tk.forEach(v=>{ g+=`<line class="${v===0?'baseline':'gridline'}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${v}</text>`; });
+  ys.forEach((y,i)=>{ const cx=m.l+band*(i+.5);
+    g+=`<rect class="bandbg" data-i="${i}" x="${m.l+band*i}" y="${m.t}" width="${band}" height="${ph}" fill="transparent"/>`
+      +`<path d="${barPath(cx-bw-1, Y(0), Y(y.abs_on), bw)}" fill="var(--acc)" pointer-events="none"/><path d="${barPath(cx+1, Y(0), Y(y.abs_off), bw)}" fill="var(--ctx)" pointer-events="none"/>`
+      +`<text x="${cx}" y="${H-6}" text-anchor="middle">${band>=40?y.year:"'"+String(y.year).slice(2)}</text>`;
+    if(y===top) g+=`<text class="dlabel" x="${cx-bw/2-1}" y="${Y(y.abs_on)-5}" text-anchor="middle">${fx(y.abs_on,1)}</text>`; });
+  g+='</g>';
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="연도별 장기물 입찰일과 그 외 거래일의 30년 금리 평균 변동폭">${g}</svg>`;
+  host.querySelectorAll('.bandbg').forEach(r=>{ const y=ys[+r.dataset.i];
+    r.addEventListener('pointermove', e=>{ r.setAttribute('fill','var(--hover)');
+      showTip(e.clientX, e.clientY, `${y.year}년 (입찰일 ${y.n}일)`, [{name:'입찰일',color:'var(--acc)',value:fx(y.abs_on)+'bp'},{name:'그 외 거래일',color:'var(--ctx)',value:fx(y.abs_off)+'bp'},{name:'배율',value:ratio(y.abs_on,y.abs_off)}]); });
+    r.addEventListener('pointerleave', ()=>{ r.setAttribute('fill','transparent'); hideTip(); }); });
+}
+
+/* ---------- 표 ---------- */
+(function(){
+  const cell=(v,t)=>`${sg(v,1)}bp<small>t ${fx(t,1)}</small>`;
+  const row=e=>`<tr><td>${e.label}</td><td>${e.n}</td><td class="b">${cell(e.slope10,e.t10)}</td><td>${cell(e.slope30,e.t30)}</td><td>${cell(e.slopesl,e.tsl)}</td>`
+    +(e.abs_on==null ? '<td class="b">–</td><td>–</td><td>–</td>' : `<td class="b">${fx(e.abs_on)}bp</td><td>${fx(e.abs_off)}bp</td><td>${ratio(e.abs_on,e.abs_off)}</td>`)+'</tr>';
+  $('#q1-table').innerHTML=`<thead><tr><th rowspan="2">구간</th><th rowspan="2">입찰 수</th><th class="grp b" colspan="3">${UX.per}</th><th class="grp b" colspan="3">30년 금리 하루 변동폭 (평균)</th></tr><tr><th class="b">10년</th><th>30년</th><th>5s30s</th><th class="b">입찰일</th><th>그 외</th><th>배율</th></tr></thead>`
+    +`<tbody>${S.event_stats.by_era.map(row).join('')}<tr class="sep"><td colspan="8">만기별 (전체 기간)</td></tr>${S.event_stats.by_tenor.map(row).join('')}</tbody>`;
+  const fk=S.event_stats.fomc_known;
+  const qrow=q=>`<tr><td>${q.label}</td><td>${q.all.n}</td><td class="b">${fx(q.all.on30)}bp</td><td>${fx(q.all.off30)}bp</td><td class="b">${fx(q.all.onsl)}bp</td><td>${fx(q.all.offsl)}bp</td><td>${ratio(q.all.onsl,q.all.offsl)}</td>`
+    +(fk ? `<td class="b">${q.nofomc.n}</td><td>${ratio(q.nofomc.onsl,q.nofomc.offsl)}</td>` : '')+'</tr>';
+  $('#q1b-table').innerHTML=`<thead><tr><th rowspan="2">분기 환매 발표일</th><th rowspan="2">발표 수</th><th class="grp b" colspan="2">30년 금리 변동폭</th><th class="grp b" colspan="3">5s30s 변동폭</th>${fk?'<th class="grp b" colspan="2">FOMC와 겹친 날 제외</th>':''}</tr>`
+    +`<tr><th class="b">발표일</th><th>그 외</th><th class="b">발표일</th><th>그 외</th><th>배율</th>${fk?'<th class="b">발표 수</th><th>5s30s 배율</th>':''}</tr></thead><tbody>${S.event_stats.qra.map(qrow).join('')}</tbody>`;
+})();
+function btTable(sel, bt, names){
+  const hit=g=>g.hit==null?'–':`${g.hit}%<small>${g.hits}/${g.n}</small>`, mean=g=>g.mean==null?'–':sg(g.mean,1);
+  const row=s=>{ const [p,z,n]=s.by; return `<tr><td>${s.label}${s.start?`<small>${s.start}~${s.end}</small>`:''}</td><td>${s.n}</td>`
+    +`<td class="b">${p.n}</td><td>${mean(p)}</td><td>${hit(p)}</td><td class="b">${z.n}</td><td>${mean(z)}</td><td class="b">${n.n}</td><td>${mean(n)}</td><td>${hit(n)}</td>`
+    +`<td class="b">${s.signal.hit==null?'–':s.signal.hit+'%'}<small>${s.signal.hits}/${s.signal.n}</small></td><td>${s.base}%</td><td>${sg(s.spread,1)}<small>t ${fx(s.t,2)}</small></td></tr>`; };
+  $(sel).innerHTML=`<thead><tr><th rowspan="2">구간</th><th rowspan="2">달 수</th><th class="grp b" colspan="3">점수 +1 (${names[0]})</th><th class="grp b" colspan="2">점수 0</th><th class="grp b" colspan="3">점수 −1 (${names[1]})</th><th class="grp b" colspan="3">종합</th></tr>`
+    +`<tr><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">달</th><th>평균 bp</th><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">신호 적중률</th><th>기준선</th><th>(+1)−(−1) bp</th></tr></thead>`
+    +`<tbody>${bt.samples.map(row).join('')}<tr class="sep"><td colspan="13">국면별 (전체 기간)</td></tr>${bt.regimes.map(row).join('')}</tbody>`;
+}
+btTable('#q2-table', BS, ['공급 가속','공급 감속']);
+btTable('#q3-table', BT, ['상승','하락']);
+$('#q2-sub').textContent='막대: 매월 말 판정한 장기물 순공급의 가속(민간 보유 Bonds 대비 %), 그날까지 공개된 잔액 통계 기준 · 표: 판정 다음 달의 5s30s(30년 − 5년) 변화. 적중 = +1 뒤 확대, −1 뒤 축소';
+$('#q3-sub').textContent='막대: 매월 말 판정한 10년 기간 프리미엄의 3개월 변화(bp) · 표: 판정 다음 달의 5s30s 변화. 적중 = +1 뒤 확대, −1 뒤 축소';
+
+/* ---------- 결과 해석 (숫자에서 자동 생성) ---------- */
+const Y0=S.split.start.slice(0,4), Y1=S.split.test_start.slice(0,4);
+function findingText(bt, st){
+  const a=bt.samples[0], tr=bt.samples[1], t=bt.samples[2];
+  if(st==='confirmed') return `<b>예측형으로 확인됩니다.</b> 검증 구간에서 신호 적중률 ${t.signal.hit}% (${t.signal.hits}/${t.signal.n}), +1과 −1 뒤의 5s30s 평균 차이 ${sg(t.spread,1)}bp (t = ${fx(t.t,2)})이고, 전체 기간에서도 t = ${fx(a.t,2)}입니다.`;
+  if(st==='partial') return `<b>검증 구간에서만 확인됩니다.</b> ${Y1}년 이후에는 신호 적중률 ${t.signal.hit}% (${t.signal.hits}/${t.signal.n}), +1과 −1 뒤의 5s30s 평균 차이 ${sg(t.spread,1)}bp (t = ${fx(t.t,2)})였습니다. `
+    +`그러나 설정 구간(${Y0}~${+Y1-1})에서는 적중률 ${tr.signal.hit}% (${tr.signal.hits}/${tr.signal.n}), 차이 ${sg(tr.spread,1)}bp (t = ${fx(tr.t,2)})로 나타나지 않았고, 전체 기간으로는 t = ${fx(a.t,2)}입니다(보통 |t| ≥ 2를 기준으로 봅니다). 한 국면에서만 나타난 관계일 수 있습니다.`;
+  return `<b>예측력은 확인되지 않았습니다.</b> 신호가 나온 ${a.signal.n}개월 중 ${a.signal.hits}개월(${a.signal.hit}%)만 방향이 맞았습니다. `
+    +`+1과 −1 뒤의 5s30s 평균 차이는 ${sg(a.spread,1)}bp로 ${a.spread>0?'방향은 가설과 같지만':'방향도 가설과 다르고'} 우연과 구분되지 않습니다(t = ${fx(a.t,2)}, 보통 |t| ≥ 2를 기준으로 봅니다). `
+    +`검증 구간(${Y1}~)의 적중률은 ${t.signal.hit}% (${t.signal.hits}/${t.signal.n})입니다.`;
+}
+const eA=ERA.A, eB=ERA.B, eAll=ERA.all, sm_=BT.same_month, Q=S.event_stats.qra.find(q=>q.key==='all');
+const sd30=eAll.slope30*eAll.sd/UNIT, slopeFlat=Math.abs(eAll.tsl)<2;
+$('#q1-finding').innerHTML=(eAll.t30>=2 ? `<b>방향은 반응형으로 확인되지만 크기가 작습니다.</b> ` : `<b>반응이 뚜렷하지 않습니다.</b> `)
+  +`${proxy?'응찰률이 직전 6회 평균보다 0.1 낮으면':'tail이 1bp 커지면'} 입찰 당일 30년 금리가 ${sg(eAll.slope30,1)}bp, 10년 금리가 ${sg(eAll.slope10,1)}bp 움직였습니다(전체, t ${fx(eAll.t30,1)}, ${fx(eAll.t10,1)}). `
+  +`${eA.label}에는 30년 ${sg(eA.slope30,1)}bp(t ${fx(eA.t30,1)}), ${eB.label}에는 ${sg(eB.slope30,1)}bp(t ${fx(eB.t30,1)})였습니다. `
+  +`입찰 약세 1 표준편차(${proxy?'응찰률 '+fx(eAll.sd,2):fx(eAll.sd,1)+'bp'})가 30년 금리 약 ${fx(sd30,1)}bp에 해당하고, 입찰일의 30년 금리 변동폭(${fx(eAll.abs_on,1)}bp)은 평소(${fx(eAll.abs_off,1)}bp)의 ${ratio(eAll.abs_on,eAll.abs_off)}입니다. `
+  +(slopeFlat ? `5s30s는 ${sg(eAll.slopesl,1)}bp로 우연과 구분되지 않아(t ${fx(eAll.tsl,1)}), 약한 입찰은 기울기가 아니라 장기 금리 수준을 움직였습니다. ` : `5s30s도 ${sg(eAll.slopesl,1)}bp 움직였습니다(t ${fx(eAll.tsl,1)}). `)
+  +`분기 환매 발표일 ${Q.all.n}회의 5s30s 변동폭은 평소의 ${ratio(Q.all.onsl,Q.all.offsl)}였고`+(S.event_stats.fomc_known?`, FOMC와 겹친 날을 빼면 ${ratio(Q.nofomc.onsl,Q.nofomc.offsl)}입니다(${Q.nofomc.n}회).`:'.')
+  +(proxy?' 응찰률은 tail의 대용치라서 반응은 실제보다 작게 나왔을 가능성이 큽니다.':'');
+const py=BS.test_plus_years||[], pyN=py.reduce((a,y)=>a+y.n,0);
+$('#q2-finding').innerHTML=findingText(BS, stS)
+  +(py.length&&py[0].n/pyN>=0.6 ? ` 검증 구간의 +1 ${pyN}개월 중 ${py[0].n}개월이 ${py[0].year}년에 몰려 있어, 사실상 한 번의 사건을 본 결과입니다. 2020년 연준의 대량 매입으로 순공급이 급감했다가 되돌아온 구간이 신호 전체를 좌우합니다.` : '');
+$('#q3-finding').innerHTML=findingText(BT, stT)+` 같은 달 안에서 보면 기간 프리미엄이 10bp 오를 때 10년 금리는 ${sg(sm_.slope_10y,1)}bp 움직였고(t ${fx(sm_.t_10y,1)}) 5s30s는 ${sg(sm_.slope_5s30s,1)}bp 움직였습니다(t ${fx(sm_.t_5s30s,1)}). 기간 프리미엄은 주로 금리 수준과 함께 움직이고, 기울기와의 관계는 그보다 훨씬 약합니다.`;
+
+/* ---------- 전략 시사점 ---------- */
+(function(){
+  const a=BS.samples[0], t=BS.samples[2], tt=BT.samples[2], tr=BT.samples[1];
+  $('#impl').innerHTML=
+   `<div class="card"><div class="tagline">기울기 뷰 · CURVE SLOPE</div><h2>공급 압력 ${sc(cur.s1)}점을 냅니다</h2>
+      <p>${stS==='confirmed' ? '백테스트에서 예측력이 확인되어 정책 경로 점수와 같은 가중치로 씁니다.' : `다만 이 점수로 Slope 포지션을 잡을 근거는 약합니다. 신호 적중률이 전체 <b>${a.signal.hit}%</b>, 검증 구간 <b>${t.signal.hit}%</b>였습니다.`}</p>
+      <p>${stS==='confirmed' ? '' : '팀 규칙에서 기울기 뷰가 ±2가 되려면 정책 경로와 수급 점수가 같은 방향이어야 합니다. 근거가 약한 점수가 정책 경로 신호를 거르는 셈이라, 이 조건을 유지할지 팀 논의가 필요합니다.'}</p></div>`
+  +`<div class="card"><div class="tagline">참고 지표 · 기간 프리미엄</div><h2>기간 프리미엄 ${sc(cur.s2)}점은 ${stT==='confirmed'?'기울기 뷰 후보입니다':'참고 지표로 둡니다'}</h2>
+      <p>${stT==='none' ? `기간 프리미엄 변화는 다음 달 5s30s를 설명하지 못했습니다(적중률 <b>${BT.samples[0].signal.hit}%</b>).` : `${Y1}년 이후에는 다음 달 5s30s 방향을 맞혔습니다(적중률 <b>${tt.signal.hit}%</b>, t ${fx(tt.t,2)}).`+(stT==='partial' ? ` 그러나 ${Y0}~${+Y1-1}년에는 맞히지 못했습니다(<b>${tr.signal.hit}%</b>).` : '')}</p>
+      <p>${stT==='none' ? '금리 수준과 함께 움직이는 지표라서 수준 뷰를 확인하는 용도로만 봅니다.' : '결과를 본 뒤에 팀 점수를 이 신호로 바꾸면 과최적화입니다. 실시간 모의운용에서 두 점수를 함께 기록해 비교한 뒤 결정하는 것을 제안합니다.'}</p></div>`
+  +`<div class="card"><div class="tagline">시나리오 · RISK</div><h2>약한 입찰은 장기 금리 상승 위험입니다</h2>
+      <p>${proxy?'응찰률이 평균보다 0.1 낮으면':'tail 1bp당'} 30년 금리 <b>${sg(eB.slope30,1)}bp</b>, 10년 금리 <b>${sg(eB.slope10,1)}bp</b> (${eB.label} 평균). ${Math.abs(eB.tsl)<2 ? `5s30s는 ${sg(eB.slopesl,1)}bp로 거의 그대로여서 중장기 금리가 함께 오릅니다.` : `5s30s도 ${sg(eB.slopesl,1)}bp 움직입니다.`}</p>
+      <p>운용 페이지 Risk 섹션의 “입찰 부진” 시나리오 입력값으로 쓰고, 10·20·30년 입찰이 있는 주에는 액티브 듀레이션을 점검합니다. 반응 크기가 작아 포지션의 근거로는 쓰지 않습니다.</p></div>`;
+})();
+
+/* ---------- 표로 보기 ---------- */
+(function(){
+  const [li]=lastTwo(M.long_net_bn); let r='';
+  for(let i=li;i>li-12&&i>=0;i--) r+=`<tr><td>${ym(M.dates[i])}</td><td>${sgEok(M.bonds_chg_bn[i])}</td><td>${sgEok(M.soma_bonds_chg_bn[i])}</td><td>${sgEok(M.long_net_bn[i])}</td><td>${eok(M.gross_20y_bn[i])}</td><td>${eok(M.gross_30y_bn[i])}</td><td>${fx(M.bill_share_pct[i],1)}</td></tr>`;
+  $('#c1-table').innerHTML=`<thead><tr><th>기준월</th><th>Bonds 잔액 증감 (억 달러)</th><th>연준 보유 증감</th><th>민간 순공급</th><th>20년 발행</th><th>30년 발행</th><th>단기채 비중 (%)</th></tr></thead><tbody>${r}</tbody>`;
+  r=''; S.events.slice(-12).reverse().forEach(e=>{ r+=`<tr><td>${e.date}</td><td>${TEN(e.tenor)}${e.reopen?'':' 신규'}</td><td>${fx(e.hy,3)}</td><td>${fx(e.btc)}</td><td>${fx(e.avg)}</td><td>${fx(e.dealer,1)}</td><td>${sg(e.d30,0)}</td><td>${sg(e.dsl,0)}</td></tr>`; });
+  $('#c2-table').innerHTML=`<thead><tr><th>입찰일</th><th>만기</th><th>낙찰금리 (%)</th><th>응찰률 (배)</th><th>직전 6회 평균</th><th>딜러 비중 (%)</th><th>30년 (bp)</th><th>5s30s (bp)</th></tr></thead><tbody>${r}</tbody>`;
+  r=''; const sm=S.monthly; for(let i=sm.date.length-1;i>=sm.date.length-12&&i>=0;i--){ const d=sm.date[i]; let j=DY.dates.length-1; while(j>0&&DY.dates[j]>d) j--;
+    r+=`<tr><td>${d}</td><td>${fx(sm.tp10[i]*100,0)}</td><td>${sg(sm.chg[i],0)}</td><td>${fx(SLB[j],0)}</td></tr>`; }
+  $('#c3-table').innerHTML=`<thead><tr><th>월말</th><th>10년 기간 프리미엄 (bp)</th><th>3개월 변화 (bp)</th><th>5s30s (bp)</th></tr></thead><tbody>${r}</tbody>`;
+})();
+
+/* ---------- 계산 규칙 ---------- */
+$('#rules').innerHTML=[
+  `출처: 재무부 FiscalData(입찰 결과, 월말 잔액 통계 MSPD), TreasuryDirect(최근 입찰 보충), NY Fed(연준 보유 종목별 자료, ACM 기간 프리미엄), FRED(정책금리 상단 <code>DFEDTARU</code>), 수익률은 운용 페이지와 같은 재무부 CMT 금리입니다.`,
+  `판정 시점: 매월 마지막 거래일 종가. 잔액 통계는 다음 달 초에 발표되므로 월말 판정에는 <b>전월 말 값까지만</b> 씁니다. 맨 위 판정은 기준일 현재 공개된 값입니다.`,
+  `장기물 순공급 = Bonds(발행 만기 20·30년) 잔액 증감 − 연준의 Bonds 보유 증감. 연준 보유는 주 1회 기준이라 월말과 최대 6일 어긋납니다.`,
+  `공급 압력 = [최근 3개월 순공급 합 − 직전 12개월의 3개월 평균] ÷ 민간 보유 Bonds 잔액. 공급의 수준은 분기 환매 발표로 예고되어 이미 가격에 있다고 보고 속도 변화만 봅니다. 문턱값 ${sg(TH.supply_lo,2)}% / ${sg(TH.supply_hi,2)}%는 설정 구간(${Y0}~${+Y1-1}) 신호 분포의 하위·상위 1/3이며, 금리 결과를 보지 않고 정했습니다.`,
+  `기간 프리미엄 = ${TPNAME} 10년 기간 프리미엄의 3개월 변화. +${TH.tp}bp 이상 +1, −${TH.tp}bp 이하 −1. 모형 추정치라서 과거 값이 재추정으로 조금씩 바뀔 수 있습니다.`,
+  `적중률은 50%와 ‘기준선’(점수와 무관하게 그 방향으로 움직인 달의 비율)과 비교해 읽습니다. t는 +1과 −1 뒤 평균의 차이를 표본 오차로 나눈 값입니다.`,
+  `Q1의 입찰 약세: ${proxy ? 'tail(낙찰금리 − 입찰 직전 WI 금리)이 없어 <b>같은 만기 직전 6회 평균 응찰률 − 이번 응찰률</b>을 대용치로 썼습니다. <code>auction_wi.csv</code>의 <code>wi_yield</code> 열에 Bloomberg의 입찰 직전 WI 금리를 채우고 <code>python3 analyze.py</code>를 실행하면 tail 기준으로 바뀝니다.' : '낙찰금리 − Bloomberg의 입찰 직전 WI 금리(tail)입니다.'} 금리 변화는 입찰 당일 종가 − 전일 종가라서 같은 날의 다른 뉴스가 섞여 있습니다.`,
+  `분기 환매 발표일은 2·5·8·11월 10년 신규물의 입찰 공고일로 잡았습니다. 수요일 발표라 FOMC 결정일과 자주 겹칩니다.`,
+  `국면: 같은 방향의 연속된 금리 변경을 한 사이클(첫 변경일~마지막 변경일)로 묶고 그 사이를 동결기로 둡니다. 사후 분류라서 신호 계산에는 쓰지 않고 결과를 나눠 볼 때만 씁니다.`,
+  `데이터 갱신: <code>python3 fetch_data.py</code> (분석까지 함께 실행)`
+].map(t=>`<li>${t}</li>`).join('');
+
+/* ---------- 그리기 ---------- */
+function drawAll(){ drawSeries(); drawScatter(); drawYears(); }
+drawAll();
+let rt; addEventListener('resize', ()=>{ clearTimeout(rt); rt=setTimeout(drawAll, 120); });
+})();
+</script>
+</body>
+</html>
