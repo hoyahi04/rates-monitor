@@ -1,0 +1,134 @@
+/* 6. 포트폴리오·리스크 — 내 북은 어떤가: 포지션·거래 내역, 익스포저, 성과 귀인, 리스크·시나리오 */
+(function () {
+  'use strict';
+  const { h, F, ok } = UI;
+  const SLOPE = { none: '', steepener: '스티프너', flattener: '플래트너' }, CURV = { none: '', bullet: '불릿' };
+  const posTxt = (p) => {
+    if (!p) return '–';
+    const [d, sl, cv] = Array.isArray(p) ? p : [p.dur, p.slope, p.curv];
+    const parts = [d ? `Duration ${F.s(d, 2)}년` : 'Duration 중립', SLOPE[sl], CURV[cv]].filter(Boolean);
+    return parts.join(' · ');
+  };
+
+  window.DeskViews.book = function (ctx) {
+    const D = ctx.D, B = D.book, S = B.stats, R = B.risk, st = ctx.st;
+    const kv = (items) => h('dl', { cls: 'kv' }, items.map(([k, v, u, cls]) => h('div', null, h('dt', null, k), h('dd', { cls: cls || null }, v, u ? h('small', null, u) : null))));
+
+    // ── 요약 타일 ──
+    const ex = (k) => B.perf[k].ex_bp;
+    const tiles = h('div', { cls: 'tiles c12' },
+      UI.tile({ lab: '순자산 (NAV)', val: F.usd(B.nav), note: `벤치마크 ${F.usd(B.nav_bm)}`, hero: true }),
+      UI.tile({ lab: '오늘 손익', val: F.usdS(B.pnl_d1_usd), note: `북 ${F.s(B.perf.d1.p, 2)}% · 벤치마크 ${F.s(B.perf.d1.b, 2)}%` }),
+      UI.tile({ lab: '이번 달 초과수익', val: F.s(ex('mtd'), 1), unit: 'bp', note: `북 ${F.s(B.perf.mtd.p, 2)}%` }),
+      UI.tile({ lab: '올해 초과수익', val: F.s(ex('ytd'), 0), unit: 'bp', note: `북 ${F.s(B.perf.ytd.p, 2)}%` }),
+      UI.tile({ lab: `${B.start.slice(0, 4)}년 말 이후`, val: F.s(ex('itd'), 0), unit: 'bp', note: `연 ${F.s(S.excess_ann_bp, 1)}bp · 정보비율 ${F.n(S.ir, 2)}` }),
+      UI.tile({ lab: '듀레이션 (북 / 벤치마크)', val: F.n(B.dur_p, 2), unit: `/ ${F.n(B.dur_b, 2)}년`, note: `차이 ${F.s(B.active_dur, 2)}년` }),
+      UI.tile({ lab: 'DV01', val: F.usd(B.dv01), unit: '/ bp', note: `벤치마크 ${F.usd(B.dv01_b)} · CS01 $0` }));
+
+    // ── 성과 ──
+    const ser = B.series, i0 = UI.cut(ser.dates, st.period), xd = ser.dates.slice(i0);
+    const base = ser.excess_bp[i0];
+    const perfCard = UI.card({ id: 'perf', span: 'c8', title: '벤치마크 대비 누적 초과수익', cap: `bp · ${xd[0]}부터 · 0보다 위면 벤치마크를 앞섬`,
+      body: UI.line({ x: xd, series: [{ name: '누적 초과수익', color: 'var(--s1)', values: ser.excess_bp.slice(i0).map((v) => v - base) }], h: 330, zero: true, legend: false, unit: 'bp', tipFmt: (v) => F.s(v, 1), aria: '누적 초과수익' }),
+      alt: () => UI.seriesTable(xd, [{ name: '북 NAV', values: ser.nav_p.slice(i0), fmt: (v) => F.usd(v) }, { name: '벤치마크 NAV', values: ser.nav_b.slice(i0), fmt: (v) => F.usd(v) },
+        { name: '누적 초과수익 (bp)', values: ser.excess_bp.slice(i0).map((v) => v - base), fmt: (v) => F.s(v, 1) }], 36),
+      foot: `전체 기간 연 수익률은 북 ${F.n(S.ann_p, 2)}%, 벤치마크 ${F.n(S.ann_b, 2)}%입니다. 가장 크게 밀린 폭은 북 ${F.n(S.mdd_p, 1)}% (${S.mdd_p_from} ~ ${S.mdd_p_to}), 벤치마크 ${F.n(S.mdd_b, 1)}%입니다. 거래비용은 0으로 두었습니다.` });
+    const yearCard = UI.card({ span: 'c4', title: '연도별 성과', cap: '%, 초과수익은 bp', flush: true,
+      body: UI.table([{ label: '연도', align: 'l', get: (y) => y.year, fmt: (v, y) => v + (y.partial ? ' (진행 중)' : '') }, { label: '북', get: (y) => y.ret_p, fmt: (v) => F.s(v, 2) },
+        { label: '벤치마크', get: (y) => y.ret_b, fmt: (v) => F.s(v, 2) }, { label: '초과', get: (y) => y.excess_bp, fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 40) }],
+        { rows: B.years.slice().reverse(), dense: true }) });
+
+    // ── 포지션 ──
+    const pos = B.positions.filter((p) => ctx.matOk(p.ttm));
+    const settle = BondMath.ymd(BondMath.nextBusinessDay(B.asof));
+    const posCard = UI.card({ id: 'blotter', span: 'c12', title: '보유 포지션', cap: `${B.asof} 평가 · ${F.md(B.decision_date)} 리밸런싱 · ${posTxt(B.position)} · 줄을 누르면 채권 상세`, flush: true,
+      body: UI.table([{ label: '구간', align: 'l', get: (p) => p.label }, { label: '종목', align: 'l', get: (p) => p.maturity, fmt: (_, p) => `모형 국채 ${F.n(p.coupon, 3)}% ${p.maturity}` },
+        { label: '액면', get: (p) => p.par, fmt: (v) => F.usd(v) }, { label: '가격', get: (p) => p.price, fmt: (v) => F.n(v, 3) }, { label: '시장가치', get: (p) => p.mv, fmt: (v) => F.usd(v) },
+        { label: '비중', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }, { label: '벤치마크 비중', get: (p) => p.w_b, fmt: (v) => F.n(v, 1) + '%' },
+        { label: 'YTM', get: (p) => p.ytm, fmt: (v) => F.n(v, 2) + '%' }, { label: '듀레이션', get: (p) => p.mdur, fmt: (v) => F.n(v, 2) },
+        { label: '벤치마크 듀레이션', get: (p) => p.dur_b, fmt: (v) => F.n(v, 2) }, { label: 'DV01', get: (p) => p.dv01, fmt: (v) => F.usd(v) },
+        { label: '듀레이션 기여 차이', title: '비중 × 듀레이션의 북과 벤치마크 차이 (년)', get: (p) => p.active, fmt: (v) => F.s(v, 3), heat: (v) => UI.heat(v, 0.1) }],
+        { rows: pos, dense: true, onRow: (p) => ctx.openBond({ title: `모형 국채 ${F.n(p.coupon, 3)}% ${p.maturity}`, sub: `${p.label} 구간 · 실제 종목이 아닌 모형 채권`, coupon: p.coupon, maturity: p.maturity, settle, ytm: p.ytm,
+            tags: ['모형 종목'], source: '가격은 그날 재무부 par 금리 곡선에서 읽은 금리로 계산했습니다.' }),
+          foot: pos.length === B.positions.length ? ['합계', '', '', '', F.usd(B.nav), '100%', '100%', '', F.n(B.dur_p, 2), F.n(B.dur_b, 2), F.usd(B.dv01), F.s(B.active_dur, 3)] : null }),
+      foot: B.model_note + ` 비중은 벤치마크와 같게 두고, 구간 안에서 만기를 옮겨 포지션을 만듭니다. 듀레이션 차이는 오늘 금리로 다시 계산한 값이라 리밸런싱일의 ${F.s(B.rule_active_dur, 2)}년과 조금 다릅니다. 평균 매입가와 실현·미실현 손익은 실제 종목으로 바꾼 뒤에 채울 수 있습니다.` });
+
+    // ── 거래 내역 ──
+    const rb = B.rebalances.slice().reverse();
+    let showAll = false;
+    const rbSlot = h('div');
+    const drawRb = () => rbSlot.replaceChildren(UI.table([{ label: '날짜', align: 'l', get: (x) => x.date }, { label: '적용 월', align: 'l', get: (x) => x.month },
+      { label: '바꾸기 전', align: 'l', get: (x) => x.date, fmt: (_, x) => posTxt(x.frm) }, { label: '바꾼 뒤', align: 'l', get: (x) => x.date, fmt: (_, x) => posTxt(x.to) },
+      { label: '이유', align: 'l', get: (x) => x.why }, { label: '그달 초과수익', get: (x) => x.ex, fmt: (v, x) => F.s(v, 1) + (x.partial ? ' (진행 중)' : ''), heat: (v) => UI.heat(v, 25) }],
+      { rows: showAll ? rb : rb.slice(0, 10), dense: true }));
+    drawRb();
+    const more = h('button', { cls: 'mini', type: 'button', 'aria-pressed': 'false' }, `전체 ${rb.length}건`);
+    more.addEventListener('click', () => { showAll = !showAll; more.setAttribute('aria-pressed', String(showAll)); drawRb(); });
+    const rbCard = UI.card({ id: 'trades', span: 'c12', title: '거래 내역 (리밸런싱)', cap: `${S.years.toFixed(0)}년 동안 ${S.n_rebal}번 · 바꾼 이유는 모두 점수 변화`, flush: true, tools: [more], body: rbSlot,
+      foot: '규칙이 낸 포지션을 매달 마지막 영업일 종가에 그대로 실행한 기록입니다. 재량 거래는 없습니다.' });
+
+    // ── 익스포저 ──
+    const expCard = UI.card({ id: 'exposure', span: 'c6', title: '익스포저', cap: '만기 구간별 DV01 (달러 / bp)',
+      body: [UI.bars({ cats: B.positions.map((p) => p.label), h: 210, unit: '', tipFmt: (v) => F.usd(v), aria: '구간별 DV01',
+        series: [{ name: '북', color: 'var(--s1)', values: B.positions.map((p) => p.dv01) }, { name: '벤치마크', color: 'var(--s-mute)', values: B.positions.map((p) => p.dv01_b) }] }),
+        kv([['DV01 차이', F.usdS(B.dv01 - B.dv01_b), '/ bp'], ['CS01 (신용)', '$0', '국채만 보유'], ['통화', 'USD 100%', '환 위험 없음']])],
+      alt: () => UI.table([{ label: '구간', align: 'l', get: (p) => p.label }, { label: '북 DV01', get: (p) => p.dv01, fmt: (v) => F.n(v, 0) }, { label: '벤치마크 DV01', get: (p) => p.dv01_b, fmt: (v) => F.n(v, 0) },
+        { label: '차이', get: (p) => p.dv01 - p.dv01_b, fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 100) }], { rows: B.positions, dense: true }),
+      foot: '모형 채권이 구간마다 하나라 구간별 DV01이 곧 핵심 만기별 듀레이션(KRD)입니다.' });
+
+    // ── 성과 귀인 ──
+    const cum = B.cum, cx = cum.month.map((m) => m + '-01'), c0 = UI.cut(cx, st.period);
+    const reb = (arr) => { const b0 = c0 > 0 ? arr[c0 - 1] : 0; return arr.slice(c0).map((v) => v - b0); };
+    const attrCard = UI.card({ id: 'attribution', span: 'c6', title: '성과 귀인', cap: '초과수익을 전략별로 나눈 누적 (bp)',
+      body: [UI.line({ x: cx.slice(c0), h: 210, zero: true, unit: 'bp', tipFmt: (v) => F.s(v, 1), aria: '전략별 누적 기여',
+        series: [{ name: 'Duration (수준)', color: 'var(--s1)', values: reb(cum.dur) }, { name: 'Curve Slope (기울기)', color: 'var(--s2)', values: reb(cum.slope) }, { name: 'Curve Curvature (곡률)', color: 'var(--s3)', values: reb(cum.curv) }] }),
+        UI.table([{ label: '요인', align: 'l', get: (x) => x[0] }, { label: '2015년 이후 (bp)', get: (x) => x[1], fmt: (v) => (ok(v) ? F.s(v, 0) : '–'), heat: (v) => UI.heat(v, 50) }, { label: '설명', align: 'l', get: (x) => x[2] }],
+          { rows: [['Duration', S.c_dur, `포지션을 든 ${S.hit.dur[1]}개월 중 ${S.hit.dur[0]}개월 적중`], ['Curve Slope', S.c_slope, `${S.hit.slope[1]}개월 중 ${S.hit.slope[0]}개월 적중`],
+                   ['Curve Curvature', S.c_curv, `${S.hit.curv[1]}개월 중 ${S.hit.curv[0]}개월 적중`], ['Carry·roll-down', null, '벤치마크와 같은 구간 비중이라 따로 나누지 않음'],
+                   ['스프레드', 0, '국채만 보유'], ['FX', 0, 'USD만 보유'], ['거래비용', 0, '0으로 가정']], dense: true })],
+      foot: '뒤진 것은 대부분 Duration에서 나왔습니다.' });
+
+    // ── 월별 초과수익 ──
+    const byY = {};
+    for (const m of B.months) { const y = m.month.slice(0, 4); (byY[y] = byY[y] || {})[Number(m.month.slice(5))] = m; }
+    const yrs = Object.keys(byY).sort().reverse(), yearEx = Object.fromEntries(B.years.map((y) => [y.year, y.excess_bp]));
+    const monCols = [{ label: '연도', align: 'l', get: (y) => y }];
+    for (let k = 1; k <= 12; k++) monCols.push({ label: k + '월', get: (y) => (byY[y][k] ? byY[y][k].ex : null), fmt: (v) => (ok(v) ? F.s(v, 0) : ''), heat: (v) => UI.heat(v, 25) });
+    monCols.push({ label: '연간', get: (y) => yearEx[y], fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 40) });
+    const monCard = UI.card({ id: 'months', span: 'c12', title: '월별 초과수익', cap: '벤치마크 대비 bp', flush: true, tools: [UI.scaleKey('뒤짐', '앞섬')],
+      body: UI.table(monCols, { rows: yrs, dense: true }),
+      foot: `${S.months}개월 가운데 포지션이 있던 ${S.months_active}개월 중 ${S.months_win}개월을 앞섰습니다. 가장 좋았던 달 ${S.best.month} (${F.s(S.best.excess_bp, 0)}bp), 가장 나빴던 달 ${S.worst.month} (${F.s(S.worst.excess_bp, 0)}bp).` });
+
+    // ── 리스크 ──
+    const te = R.te_exante_bp, bud = R.budget, V = R.var;
+    const riskCard = UI.card({ id: 'risk', span: 'c5', title: '리스크', cap: '추적오차와 VaR',
+      body: [kv([['추적오차 (사전)', F.n(te, 0), 'bp / 년'], ['예산', `${bud[0]}~${bud[1]}`, 'bp'], ['예산 하단 대비', F.n(te / bud[0] * 100, 0), '% 사용'],
+                 ['실현 (1년)', F.n(S.te_1y_bp, 0), 'bp'], ['실현 (3년)', F.n(S.te_3y_bp, 0), 'bp'], ['실현 (전체)', F.n(S.te_all_bp, 0), 'bp'],
+                 ['1일 VaR 95%', F.usd(V.d1_95_usd), `${F.n(V.d1_95_pct, 2)}%`], ['1일 VaR 99%', F.usd(V.d1_99_usd), `${F.n(V.d1_99_pct, 2)}%`], ['상대 VaR 95%', F.n(V.rel_95_bp, 1), 'bp / 일'],
+                 ['연 변동성', F.n(V.vol_ann_pct, 2), '%'], ['가장 나빴던 하루', F.n(V.worst_day, 2), '%'], ['규칙상 최대 추적오차', F.n(R.te_max_bp, 0), 'bp']]),
+             h('p', { cls: 'note' }, `VaR는 최근 3년(${V.n}영업일) 일별 손익을 크기순으로 늘어놓고 5%, 1% 자리의 값을 읽은 것입니다. 상대 VaR는 벤치마크 대비 하루 손실입니다. 규칙이 낼 수 있는 가장 큰 포지션에서도 추적오차가 예산 하단에 못 미칩니다.`)] });
+    const scenCard = UI.card({ id: 'scenario', span: 'c7', title: '시나리오', cap: '금리가 한 번에 움직이면', flush: true,
+      body: [UI.table([{ label: '평행 이동', align: 'l', get: (x) => x.bp, fmt: (v) => F.bp(v) }, { label: '북 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v), heat: (v) => UI.heat(v, 700000) },
+        { label: '북 수익률', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%' }, { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 25) }],
+        { rows: R.parallel, dense: true }),
+        h('div', { style: 'height:10px' }),
+        UI.table([{ label: '커브 모양 변화', align: 'l', get: (x) => x.label }, { label: '벤치마크 대비', get: (x) => x.bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 15) }],
+          { rows: R.scenarios.filter((x) => !x.label.startsWith('평행')), dense: true })],
+      foot: '듀레이션만으로 계산한 근사입니다 (볼록성과 그동안 받는 이자는 뺌).' });
+    const stressCard = UI.card({ id: 'stress', span: 'c12', title: '스트레스 테스트', cap: '과거 국면의 금리 변화를 지금 북에 그대로 적용하면', flush: true,
+      body: UI.table([{ label: '국면', align: 'l', get: (x) => x.label }, { label: '기간', align: 'l', get: (x) => x.from, fmt: (_, x) => `${x.from} ~ ${x.to}` },
+        { label: '2년', get: (x) => x.d2, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) }, { label: '10년', get: (x) => x.d10, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) },
+        { label: '30년', get: (x) => x.d30, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) },
+        { label: '북 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v) }, { label: '북', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%', heat: (v) => UI.heat(v, 9) },
+        { label: '벤치마크', get: (x) => x.b_pct, fmt: (v) => F.s(v, 2) + '%' }, { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 30) }],
+        { rows: R.stress, dense: true }),
+      foot: '금리 변화 색은 오름이 빨강이고, 손익 색은 이익이 빨강입니다. 듀레이션만으로 계산한 근사라 금리가 크게 움직인 국면에서는 손실이 실제보다 조금 크게 나옵니다.' });
+
+    const act = B.active_dur;
+    const title = `북은 벤치마크보다 ${Math.abs(act).toFixed(2)}년 ${act >= 0 ? '길고' : '짧고'} DV01은 ${F.usd(B.dv01)}입니다. ${B.start.slice(0, 4)}년 말 이후 초과수익은 ${F.bp(ex('itd'), 0)}, 올해는 ${F.bp(ex('ytd'), 0)}입니다`;
+    return { title, usOnly: true,
+      sub: '가상 USD 10M을 미국 국채에 규칙대로 운용한 모형 포트폴리오입니다. 벤치마크는 공개 자료로 만든 미국 국채 대용 지수입니다.',
+      tabs: [['perf', '성과'], ['blotter', '포지션'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 귀인'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
+      body: [tiles, perfCard, yearCard, posCard, rbCard, expCard, attrCard, monCard, riskCard, scenCard, stressCard] };
+  };
+})();

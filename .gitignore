@@ -8,3 +8,4 @@ __pycache__/
 # 정적 모니터: 라이선스 자료는 각자 받는다
 static/macro/05_liquidity_vol/MOVE_index_daily_weekly.xlsx
 *.pdf
+static/desk/.env
