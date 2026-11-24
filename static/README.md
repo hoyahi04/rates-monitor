@@ -9,6 +9,7 @@ Streamlit 앱(`app.py`, `pages/`)과 별개로, Python 스크립트가 데이터
 | `macro/0X_*/` | 섹션별 `fetch_data.py` → `analyze.py` → `index.html`, `notes.md` |
 | `macro/scoreboard.py` | 5개 섹션 점수 → `scoreboard.csv`/`.js` (커브 뷰·포지션) |
 | `macro/scoreboard_rules.html` | 점수 규칙표 페이지 |
+| `desk/` | 채권 데스크 대시보드 (홈 + 메뉴 6개). `index.html` 버전 1, `v2.html` 버전 2. 자세한 건 `desk/README.md` |
 | `curve/` | Tab 1 수익률 곡선 모니터 (원래 폴더명 `2. portfolio`). 1990년~ CMT 일별 금리 |
 
 ## 실행
