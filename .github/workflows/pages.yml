@@ -2,7 +2,7 @@ name: Deploy static monitor to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [production]
     paths: ["static/**", "docs/study/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
