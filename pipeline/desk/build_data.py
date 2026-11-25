@@ -19,7 +19,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import bondmath as bm
-from common import (DESK, RAW, ROOT, back, clean, corr, ffill, idx_on_or_before, last_valid, load_js, log, mean,
+from common import (DESK, MODEL, RAW, ROOT, back, clean, corr, ffill, idx_on_or_before, last_valid, load_js, log, mean,
                     now_utc, num, pctile, r, read_json, stdev, write_js, zscore)
 
 START = "2015-01-02"          # 화면에 싣는 시계열의 시작
@@ -114,7 +114,7 @@ def load_inputs():
         I[key + "_d"] = load_js(m / folder / "data.js")
         I[key + "_s"] = load_js(m / folder / "signals.js")
     I["score"] = load_js(m / "scoreboard.js")
-    I["pf"] = load_js(ROOT / "3. dashboard" / "portfolio.js")
+    I["pf"] = load_js(MODEL / "portfolio.js")
     I["extra"] = read_json(RAW / "extra.json", {}) or {}
     kr_path = os.environ.get("DESK_KOREA_JSON") or (RAW / "korea.json")     # 시험할 때만 다른 파일로 바꿔 본다
     I["korea"] = read_json(kr_path, {"status": "no_key"}) or {"status": "no_key"}

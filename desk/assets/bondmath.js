@@ -126,7 +126,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
     if (require.main === module && process.argv[2] === 'check') {       // 파이썬 기준값과 비교
-      const ref = JSON.parse(require('child_process').execFileSync('python3', [require('path').join(__dirname, '..', 'pipeline', 'bondmath.py'), 'json']));
+      const ref = JSON.parse(require('child_process').execFileSync('python3', [require('path').join(__dirname, '..', '..', 'pipeline', 'desk', 'bondmath.py'), 'json']));
       let worst = 0;
       for (const r of ref) {
         const [cpn, mat, stl, px] = r.case;

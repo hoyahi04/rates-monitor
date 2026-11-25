@@ -25,7 +25,7 @@
 - 연준 보유는 주 1회(보통 수요일) 기준이라 월말과 최대 7일 어긋난다 (soma_asof 열이 실제 기준일).
 - Bonds = 발행 만기 20·30년(CUSIP 912810). 연준의 Bonds 보유도 같은 기준으로 종목별 자료에서 합산한다.
 - 입찰 tail(낙찰금리 − 입찰 직전 WI 금리)은 WI가 Bloomberg에만 있어 여기에는 없다.
-- 수익률은 `static/curve/data.js`에 있다 (analyze 단계에서 읽는다).
+- 수익률은 `pipeline/inputs/curve/data.js`에 있다 (analyze 단계에서 읽는다).
 """
 import csv, io, json, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
