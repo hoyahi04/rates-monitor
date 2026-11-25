@@ -3,9 +3,9 @@
 `대시보드.pdf`의 구성(홈 + 메뉴 6개 + 공통 요소 3개)을 공개 자료만으로 만든 화면입니다.
 2페이지 버전(`3. dashboard/`)은 그대로 두었고, 이 폴더는 그 자료를 읽어 쓰는 새 버전입니다.
 
-> **이 레포에서의 위치 (2026-11-24 업로드)**: 로컬 `4. desk/`를 `static/desk/`로 옮겼습니다. 버전 1 화면 파일은 `v1.html` → `index.html`로 이름을 맞췄고,
-> `build_data.py`가 읽는 `2. portfolio`·`1. macro`는 이 레포의 `static/curve`·`static/macro`로 경로를 고쳤습니다.
-> `3. dashboard/`(모형 포트폴리오 `portfolio.js`, `backtest.py`)와 `.github/workflows/daily.yml`은 아직 이 레포에 없어서,
+> **이 저장소에서의 위치**: 화면은 `desk/`, 자료를 만드는 스크립트는 `pipeline/desk/`에 있습니다 (아래 본문의 `4. desk/pipeline`은 `pipeline/desk`로 읽으면 됩니다).
+> `build_data.py`가 읽는 `2. portfolio`·`1. macro`는 `pipeline/inputs/curve`·`pipeline/inputs/macro`, `3. dashboard/portfolio.js`는 `pipeline/model/portfolio.js`입니다.
+> 모형 포트폴리오(`portfolio.js`, `backtest.py`)와 `.github/workflows/daily.yml`은 아직 이 저장소에 없어서,
 > 지금은 올려 둔 `data/desk_data.js`로 화면만 보이고 `build_data.py` 재실행과 매일 자동 갱신은 되지 않습니다.
 
 ## 여는 법
@@ -130,8 +130,8 @@ Bloomberg 자료는 쓰지 않습니다.
 ## 점검
 
 ```
-python3 pipeline/bondmath.py          # 채권 계산식 자체 점검
-node assets/bondmath.js check         # 화면 쪽 계산이 파이썬과 같은 값을 내는지
+python3 pipeline/desk/bondmath.py     # 채권 계산식 자체 점검 (저장소 루트에서)
+node desk/assets/bondmath.js check            # 화면 쪽 계산이 파이썬과 같은 값을 내는지
 ```
 
 화면은 주소 끝에 `?selftest=1`을 붙이면 차트에 마우스를 올리고, 표를 누르고, 필터를 한 바퀴 돌려 본 뒤

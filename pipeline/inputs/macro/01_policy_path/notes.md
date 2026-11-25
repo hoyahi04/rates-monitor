@@ -144,5 +144,5 @@ Bloomberg 터미널에서 아래 중 하나를 2014년부터 일별로 받으면
 | `signals.js`, `signals_monthly.csv` | 월별 점수와 백테스트 결과 | analyze |
 
 - 갱신: `python3 fetch_data.py` (이 폴더에서)
-- 수익률은 `static/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
+- 수익률은 `pipeline/inputs/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
 - `signals_monthly.csv`의 `score_policy` 열이 팀 점수표(수준 뷰·기울기 뷰)에 들어갈 값이다.

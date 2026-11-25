@@ -4,8 +4,10 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DESK = HERE.parent                 # 4. desk/
-ROOT = DESK.parent                 # static/ (curve/, macro/ 가 있는 곳)
+REPO = HERE.parents[1]             # 저장소 루트
+DESK = REPO / "desk"               # 화면과 화면용 자료
+ROOT = REPO / "pipeline" / "inputs"   # curve/, macro/ 가 있는 곳
+MODEL = REPO / "pipeline" / "model"   # 모형 포트폴리오 (portfolio.js)
 RAW = DESK / "data" / "raw"
 UA = {"User-Agent": "curl/8.7.1"}  # FRED는 브라우저형 UA를 지연/차단함
 UA_BROWSER = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "

@@ -137,6 +137,6 @@
 | `auction_wi.csv` | WI 금리 입력 틀 (`wi_yield`는 직접 입력, 다시 실행해도 보존) | analyze |
 
 - 갱신: `python3 fetch_data.py` (이 폴더에서). ACM 파일을 읽으려면 `xlrd`가 필요하다(`python3 -m pip install --user xlrd`). 없으면 Kim-Wright 기간 프리미엄으로 대신 계산한다.
-- 수익률은 `static/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
+- 수익률은 `pipeline/inputs/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
 - FOMC 날짜는 `01_policy_path/fomc_dates.csv`를 읽는다. 없으면 "FOMC와 겹친 날 제외" 칸만 빠진다.
 - `signals_monthly.csv`의 `score_supply` 열이 팀 점수표(기울기 뷰)에 들어갈 값이다.

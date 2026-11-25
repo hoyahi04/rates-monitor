@@ -1,9 +1,15 @@
-name: Deploy static monitor to GitHub Pages
+name: Deploy to GitHub Pages (production → /, main → /beta/)
 
 on:
   push:
-    branches: [main]
-    paths: ["static/**", "docs/study/**", ".github/workflows/pages.yml"]
+    branches: [main, production]
+    paths:
+      - "desk/**"
+      - "pipeline/inputs/**"
+      - "site/**"
+      - "docs/study/**"
+      - "scripts/build_site.sh"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -23,12 +29,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build site folder
+      - uses: actions/checkout@v4
+        with:
+          ref: production
+          path: _src/production
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _src/main
+      # Pages는 저장소당 사이트가 하나라서, 어느 브랜치가 바뀌든 두 브랜치를 모두 다시 올린다.
+      - name: Build site (production at /, main at /beta/)
         run: |
-          mkdir -p _site/study
-          cp -r static/. _site/
-          cp docs/study/*.html _site/study/
-          find _site -name '*.py' -delete
+          bash scripts/build_site.sh _src/production _site
+          bash scripts/build_site.sh _src/main _site/beta
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

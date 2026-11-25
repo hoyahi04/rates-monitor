@@ -75,7 +75,7 @@
         h('p', { cls: 'note' }, `${F.mon(L.apply_month + '-01')} 잠정 (${F.md(L.decision_date)} 기준): ${L.position_ko}` +
           ((S.changes || []).length ? ' — 바뀐 것: ' + S.changes.map((c) => `${c.name} ${c.from_ko} → ${c.to_ko}`).join(', ') : ' — 그대로')),
         h('p', { cls: 'note' }, '+1은 금리 하락 쪽 신호입니다. 다섯 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 규칙과 근거는 ',
-          h('a', { href: '../1. macro/scoreboard_rules.html' }, '점수 규칙'), ', ', h('a', { href: '../3. dashboard/combined.html' }, '2페이지 버전'), '에 있습니다.')] });
+          h('a', { href: '../macro/scoreboard_rules.html' }, '점수 규칙'), ', ', h('a', { href: '../3. dashboard/combined.html' }, '2페이지 버전'), '에 있습니다.')] });
 
     // 뉴스
     const news = h('ul', { cls: 'list' });

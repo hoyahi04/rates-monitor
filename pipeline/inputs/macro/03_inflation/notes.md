@@ -121,5 +121,5 @@
 | `cpi_consensus.csv` | 컨센서스 입력 틀 (`survey_mom`은 직접 입력, 다시 실행해도 보존) | analyze |
 
 - 갱신: `python3 fetch_data.py` (이 폴더에서)
-- 수익률은 `static/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
+- 수익률은 `pipeline/inputs/curve/data.js`를 읽는다. 위치를 옮기면 `analyze.py` 맨 위 `CURVE_JS` 한 줄을 고친다.
 - `signals_monthly.csv`의 `score_momentum` 열이 팀 점수표(수준 뷰)에 들어갈 값이다.
