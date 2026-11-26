@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>매크로 · 간결한 시안</title>
+<style>
+.deck{
+  --pg:#ffffff; --ink:#111417; --ink2:#4a5057; --mute:#7b8189; --card:#ececec; --line:#d5d7da;
+  --hl:#0a36b5; --hl-ink:#ffffff; --navy:#0b2748; --head:#0a36b5; --ex:#b4530a;
+  --b1:#9fc3ee; --b2:#74a6e3; --b3:#4a86d6; --b4:#2a66c2; --b5:#174a9c; --b6:#0b2f6b; --cash:#b9bcc0;
+  --pos:#12733f; --neg:#7a3fb0;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  .deck{
+    --pg:#111315; --ink:#eef0f2; --ink2:#c2c6cb; --mute:#8d939a; --card:#22262a; --line:#3a3f45;
+    --hl:#2f5fe0; --hl-ink:#ffffff; --navy:#1b3a63; --head:#86a8ff; --ex:#f0a35a;
+    --b1:#0f3f8a; --b2:#1b56b0; --b3:#2f6fce; --b4:#4d8be0; --b5:#7babee; --b6:#abcaf6; --cash:#6b7077;
+    --pos:#5ecb8f; --neg:#c59bef;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+.deck{background:var(--pg);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:15px;line-height:1.5;padding:0 32px 40px;word-break:keep-all}
+.in{max-width:1180px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding:22px 0 0;font-size:13px;color:var(--ink2)}
+.top b{color:var(--ink)}
+.top .tabs a{color:var(--ink2);text-decoration:none;margin-right:14px}
+.top .tabs a[aria-current]{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:2px}
+.slide{padding:44px 0 36px;border-bottom:1px solid var(--line)}
+.slide:last-of-type{border-bottom:0}
+.kick{font-size:13px;color:var(--mute);margin:0 0 6px}
+.slide h2{font-size:30px;line-height:1.25;font-weight:400;letter-spacing:-.5px;margin:0 0 28px;max-width:26em;text-wrap:balance}
+.g{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.box{background:var(--card);border-radius:8px;padding:22px 26px;min-width:0}
+.box h3{font-size:19px;font-weight:500;color:var(--head);margin:0 0 8px}
+.box p{margin:0;color:var(--ink)}
+.box .sm{font-size:13px;color:var(--ink2);margin-top:6px}
+.hl{background:var(--hl);color:var(--hl-ink);border-radius:8px;padding:26px 30px;min-width:0}
+.hl .lab{font-size:17px}
+.hl .big{font-size:60px;font-weight:300;letter-spacing:-1.5px;line-height:1.1;margin:10px 0 12px}
+.hl .big small{font-size:24px;margin-left:4px;font-weight:400}
+.hl p{margin:0;font-size:16px;max-width:26em}
+.num{font-size:34px;font-weight:300;letter-spacing:-.8px;line-height:1.15;margin:4px 0 6px;font-variant-numeric:tabular-nums}
+.num small{font-size:16px;margin-left:3px}
+.tag{display:inline-block;font-size:12px;color:var(--ex);border:1px dashed var(--ex);border-radius:10px;padding:0 8px;margin-left:8px;vertical-align:middle}
+/* 흐름 줄 */
+.flow{display:grid;grid-template-columns:1.25fr 28px 1fr 28px .8fr;gap:10px;align-items:stretch;margin-bottom:12px}
+.flow .box{padding:16px 20px}
+.flow .box h3{font-size:17px;margin-bottom:4px}
+.flow .arr{display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.flow .arr svg{width:26px;height:26px;fill:currentColor}
+.pos{border-radius:8px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:14px;color:#fff;background:var(--hl);font-size:20px;font-weight:500;min-width:0}
+.pos.off{background:var(--navy)}
+.pos span{font-size:12.5px;font-weight:400;opacity:.9;margin-top:2px}
+.fhead{display:grid;grid-template-columns:1.25fr 28px 1fr 28px .8fr;gap:10px;font-size:13px;color:var(--mute);margin-bottom:6px}
+.next{margin-top:18px;font-size:14.5px}
+.next b{color:var(--head);font-weight:600}
+/* 표 */
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th{font-size:12.5px;font-weight:500;color:var(--mute);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+.plus{color:var(--pos)} .minus{color:var(--neg)}
+details{margin-top:18px}
+summary{cursor:pointer;color:var(--head);font-size:14.5px}
+.tw{overflow-x:auto;margin-top:12px}
+svg text{fill:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.cap{font-size:13px;color:var(--ink2);margin:0 0 8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--ink2);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.gauge{position:relative;height:10px;border-radius:5px;background:rgba(255,255,255,.28);margin:20px 0 6px}
+.gauge .band{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.35);border-left:2px solid #fff;border-right:2px solid #fff}
+.gauge .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#fff}
+.gscale{display:flex;justify-content:space-between;font-size:12.5px;opacity:.9}
+.formula{font-size:21px;margin:6px 0 14px}
+.note{font-size:13px;color:var(--mute);margin-top:22px}
+@media (max-width:900px){
+  .deck{padding:0 18px 28px}.slide h2{font-size:24px}.g2,.g3{grid-template-columns:1fr}
+  .flow,.fhead{grid-template-columns:1fr}.fhead,.flow .arr{display:none}.flow{margin-bottom:22px}
+  .hl .big{font-size:46px}
+}
+#hitgrid .pos{font-size:22px}
+@media (max-width:900px){#hitgrid{grid-template-columns:repeat(2,1fr) !important}}
+.itab td small{color:var(--mute);margin-left:3px;font-size:12px}
+.itab tr.grp td{padding-top:20px;border-bottom:1px solid var(--ink2);white-space:normal}
+.itab tr.grp b{font-size:16px;font-weight:500;color:var(--head)}
+.itab .pill{display:inline-block;margin-left:10px;font-size:12.5px;color:#fff;background:var(--hl);border-radius:10px;padding:1px 9px}
+.itab .pill.z{background:var(--navy)}
+.itab .gsub{margin-left:10px;font-size:13px;color:var(--ink2)}
+.itab .gsub a{color:var(--head)}
+.itab tr.star td:first-child{font-weight:600}
+.itab i{font-style:normal;color:var(--hl);font-size:10px}
+.itab td:first-child{padding-left:4px}
+.itab td:first-child{white-space:normal}
+.itab .ko{display:block;font-size:12.5px;font-weight:400;color:var(--mute)}
+.ind{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+.ind .box .num{margin-bottom:2px}
+/* 애니메이션 */
+.box,.pos,.hl{transition:transform .18s ease, box-shadow .18s ease}
+.box:hover,.pos:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.10)}
+.top .tabs a{transition:color .15s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes drawline{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes growx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes spinin{from{opacity:0;transform:rotate(-90deg) scale(.85)}to{opacity:1;transform:none}}
+.anim .slide{animation:rise .5s ease-out both}
+.anim .slide:nth-of-type(2){animation-delay:.08s}.anim .slide:nth-of-type(3){animation-delay:.16s}.anim .slide:nth-of-type(n+4){animation-delay:.24s}
+.anim .chart polyline{stroke-dasharray:1;stroke-dashoffset:1;animation:drawline .9s ease-out .25s forwards}
+.anim .chart rect{transform-box:fill-box;transform-origin:left center;animation:growx .6s ease-out .25s both}
+.anim #donut svg{transform-origin:center;animation:spinin .7s ease-out .2s both}
+.anim .gauge .fill{transform-origin:left center;animation:growx .8s ease-out .3s both}
+.anim .flow .pos{animation:rise .45s ease-out .35s both}
+@media (prefers-reduced-motion:reduce){.box,.pos,.hl{transition:none}.box:hover,.pos:hover{transform:none}}
+</style>
+</head>
+<body class="deck">
+<div class="in" id="app"></div>
+<script src="../inputs/macro/scoreboard.js"></script>
+<script src="macro_indicators.js"></script>
+<script src="anim.js"></script>
+<script>
+"use strict";
+(function(){
+const S=window.MACRO_SCOREBOARD, app=document.getElementById('app');
+if(!S){app.textContent='scoreboard.js가 없습니다. pipeline/inputs/macro 폴더에서 python3 scoreboard.py를 실행하세요.';return;}
+const O=S.official, L=S.live, SEC=S.sections, REC=S.record, IND=window.MACRO_INDICATORS;
+const num=(v,d)=>(v<0?'−':'')+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const chg=(v,d)=>{const r=+v.toFixed(d);return r===0?'0':(r>0?'+':'−')+Math.abs(r).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});};
+const fmt=(v,d)=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d);
+const sv=v=>v>0?'+'+v:v<0?'−'+Math.abs(v):'0';
+const md=s=>s.slice(5), mon=s=>+s.slice(5)+'월';
+const dur=v=>v?((v>0?'+':'−')+Math.abs(v).toFixed(2)+'년'):'중립';
+const slp=p=>p==='steepener'?'스티프너':p==='flattener'?'플래트너':'없음';
+const base='../inputs/macro/';
+const arrow='<div class="arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 8h11V3l9 9-9 9v-5H2z"/></svg></div>';
+const VIEW={level:'수준',slope:'기울기',curvature:'곡률'};
+const sum=parts=>parts.map(p=>`${p.name} ${sv(p.score)}`).join(', ');
+const stateKo=(v,st)=>v.value!==0?'':(st==='conflict'?' · 엇갈림':' · 신호 없음');
+
+let h=`<div class="top"><div class="tabs"><a aria-current="page">매크로</a><a href="index_slim.html">운용</a></div>
+<div>판정일 <b>${O.decision_date}</b> · ${mon(O.apply_month)} 적용 · 잠정 기준 <b>${L.date}</b></div></div>
+
+<section class="slide"><p class="kick">${mon(O.apply_month)} 판정</p>
+<h2>다섯 신호를 합치면 ${mon(O.apply_month)} 포지션은 Duration ${dur(O.duration_active_yr)} 하나입니다</h2>
+<div class="g g2">
+  <div class="hl"><div class="lab">규칙이 낸 포지션</div>
+    <div class="big">${O.duration_active_yr?dur(O.duration_active_yr).replace('년','')+'<small>년</small>':'중립'}</div>
+    <p>Duration${O.duration_active_yr>0?'을 벤치마크보다 길게':O.duration_active_yr<0?'을 벤치마크보다 짧게':' 중립'}. Curve Slope ${slp(O.slope_position)}, Curve Curvature ${O.curvature_position==='bullet'?'불릿':'없음'}, Carry &amp; Rolldown 유지.</p></div>
+  <div class="g" style="grid-template-rows:repeat(3,auto)">
+    <div class="box"><h3>금리 수준</h3><div class="num">${sv(O.level.value)}</div><p class="sm">${sum(O.level.parts)}${stateKo(O.level,O.level.state)}. 플러스면 금리 하락 쪽입니다.</p></div>
+    <div class="box"><h3>기울기</h3><div class="num">${sv(O.slope.value)}</div><p class="sm">${sum(O.slope.parts)}${stateKo(O.slope,O.slope.state)}. ±2일 때만 포지션을 잡습니다.</p></div>
+    <div class="box"><h3>곡률</h3><div class="num">${O.curvature.met?'충족':'미충족'}</div><p class="sm">변동성 점수 ${sv(O.curvature.gate_score)} (+1이어야 함), Fly z-score ${O.curvature.z_3y_ko} (+1 이상이어야 함)</p></div>
+  </div>
+</div></section>
+
+<section class="slide"><p class="kick">신호 5개</p>
+<h2>신호마다 숫자 하나를 문턱과 비교해 −1, 0, +1 가운데 하나를 냅니다</h2>
+<div class="fhead"><div>무엇을 재나</div><div></div><div>${md(O.decision_date)} 판정</div><div></div><div>들어가는 곳</div></div>
+${SEC.map(x=>`<div class="flow">
+  <div class="box"><h3>${x.no}. ${x.name}</h3><p>${x.official.value_ko}</p><p class="sm">${x.th_ko} · <a href="${base}${x.folder}/index.html" style="color:var(--head)">근거 보기</a></p></div>${arrow}
+  <div class="pos${x.official.score?'':' off'}">${sv(x.official.score)}<span>${x.official.word_ko}</span></div>${arrow}
+  <div class="box"><p>${x.feeds.map(f=>VIEW[f]).join(', ')} 뷰</p><p class="sm">${x.role==='gate'?'+1일 때만 곡률 포지션을 허용':'점수를 더함'}</p></div></div>`).join('')}
+</section>
+
+<section class="slide" id="ind-slide"><p class="kick">지표 현황</p>
+<h2>신호가 보는 지표를 최신 값, 직전 값, 1년 전 값으로 나란히 봅니다</h2>
+${IND&&IND.table?`<div class="box" style="padding:10px 22px 14px"><div class="tw" style="margin-top:0"><table class="itab">
+<tr><th>지표</th><th>최신</th><th>직전</th><th>변화</th><th>1년 전</th><th>기준</th></tr>
+${IND.table.map(g=>{const sec=SEC.find(x=>x.key===g.key);
+ return `<tr class="grp"><td colspan="6"><b>${sec.no}. ${sec.name}</b><span class="pill${sec.live.score?'':' z'}">점수 ${sv(sec.live.score)} · ${sec.live.word_ko}</span><span class="gsub">${sec.live.value_ko} · <a href="${base}${sec.folder}/index.html">자세히</a></span></td></tr>`+
+ g.rows.map(r=>`<tr${r.star?' class="star"':''}><td>${r.star?'<i title="점수를 정하는 지표">●</i> ':''}${r.label}<span class="ko">${r.ko}</span></td><td><b>${num(r.value,r.digits)}</b><small>${r.unit}</small></td><td>${r.prev==null?'–':num(r.prev,r.digits)}</td><td>${r.chg==null?'–':chg(r.chg,r.chg_digits)+'<small>'+r.chg_unit+'</small>'}</td><td>${r.yago==null?'–':num(r.yago,r.digits)}</td><td>${r.asof}</td></tr>`).join('')}).join('')}
+</table></div></div>
+<p class="note" style="margin-top:14px"><b style="color:var(--hl)">●</b> 표시가 점수를 정하는 지표입니다. "직전"은 월간 지표면 지난달 발표분, 매일·매주 나오는 지표면 한 달 전 값입니다. "1년 전"도 같은 방식입니다.</p>`:'<p>지표 자료가 없습니다. 이 폴더에서 python3 build.py를 실행하세요.</p>'}
+</section>
+
+<section class="slide"><p class="kick">${mon(L.apply_month)} 잠정</p>
+<h2>${S.changes.length?`${md(L.date)} 기준으로 다시 계산하면 ${S.changes.filter(c=>c.kind==='position').map(c=>`${c.name}이 ${c.from_ko}에서 ${c.to_ko}으로`).join(', ')||'포지션은 그대로'} 바뀝니다`:`${md(L.date)} 기준으로 다시 계산해도 판정은 그대로입니다`}</h2>
+<div class="g g2">
+  <div class="hl"><div class="lab">${mon(L.apply_month)} 잠정 포지션</div>
+    <div class="big">${L.duration_active_yr?dur(L.duration_active_yr).replace('년','')+'<small>년</small>':'중립'}</div>
+    <p>${S.changes.filter(c=>c.kind==='score').map(c=>`${c.name} 점수가 ${c.from_ko}에서 ${c.to_ko}로 바뀌었습니다.`).join(' ')} 월말 종가로 확정되기 전까지는 바뀔 수 있습니다.</p></div>
+  <div class="box"><h3>월말까지 바뀔 수 있는 것</h3>
+  <table><tr><th>신호</th><th>지금</th><th style="text-align:left">남은 변수</th></tr>
+  ${SEC.map(x=>`<tr><td>${x.short}</td><td>${sv(x.live.score)}</td><td style="text-align:left;white-space:normal">${x.live.pending_ko}</td></tr>`).join('')}
+  </table></div>
+</div></section>
+
+<section class="slide"><p class="kick">기록 (${S.split.start} ~ ${S.split.end})</p>
+<h2>점수가 0이 아니었던 달 가운데 다음 달 방향을 맞힌 것은 절반쯤입니다</h2>
+<div class="g" style="grid-template-columns:repeat(5,1fr)" id="hitgrid">
+  ${SEC.map(x=>`<div class="pos off" style="padding:20px 8px"><span style="font-size:14px;margin:0 0 6px">${x.short}</span>${x.record.all.hits}/${x.record.all.n}<span>${x.record.yardstick_ko}</span></div>`).join('')}
+</div>
+<div class="g g3" style="margin-top:18px">
+  ${[['Duration',REC.duration],['Curve Slope',REC.slope],['Curve Curvature',REC.curvature]].map(([n,r])=>`<div class="box"><h3>${n}</h3><div class="num">${r.hits}/${r.on}</div><p class="sm">포지션이 있던 달 중 ${r.yardstick_ko}가 유리하게 움직인 달</p></div>`).join('')}
+</div>
+<details><summary>최근 6개월 판정 보기</summary><div class="tw"><table>
+<tr><th>적용 월</th>${SEC.map(x=>`<th>${x.short}</th>`).join('')}<th>수준</th><th>기울기</th><th>포지션</th><th>10년 금리 변화</th></tr>
+${REC.last6.slice().reverse().map(r=>`<tr><td>${r.apply_month}</td>${SEC.map(x=>`<td>${sv(r[x.key])}</td>`).join('')}<td>${sv(r.view_level)}</td><td>${sv(r.view_slope)}</td><td>${dur(r.duration_active_yr)}${r.slope_position!=='none'?' · '+slp(r.slope_position):''}${r.curvature_position==='bullet'?' · 불릿':''}</td><td>${r.next_d10y_bp==null?'–':sv(r.next_d10y_bp)+'bp'}</td></tr>`).join('')}
+</table></div></details>
+<p class="note">규칙은 가설이고, 맞는지 계속 확인하고 있습니다. 판정은 매달 마지막 영업일에 하고 다음 달에 적용합니다. 변동성 점수가 −1이면 포지션을 절반으로 줄이자는 제안은 팀이 정하기 전이라 넣지 않았습니다.</p>
+</section>`;
+app.innerHTML=h;
+function drawInd(){ if(!IND||app.hidden) return;
+  IND.items.forEach(it=>{const el=document.getElementById('ind-'+it.no); if(!el) return; const w=el.clientWidth; if(!w) return;
+    const hgt=130,Lm=6,Rm=44,T=10,B=20,vals=it.pts.map(p=>p[1]).concat(it.lines.map(l=>l.v));
+    let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.1||1;lo-=pad;hi+=pad;
+    const n=it.pts.length,x=i=>Lm+(w-Lm-Rm)*i/(n-1),y=v=>T+(hgt-T-B)*(1-(v-lo)/(hi-lo));
+    let s=it.lines.map(l=>`<line x1="${Lm}" x2="${w-Rm}" y1="${y(l.v)}" y2="${y(l.v)}" stroke="var(--mute)" stroke-dasharray="4 4"/><text x="${w-Rm+6}" y="${y(l.v)+4}">${l.label}</text>`).join('');
+    if(lo<0&&hi>0) s+=`<line x1="${Lm}" x2="${w-Rm}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>`;
+    s+=`<polyline fill="none" stroke="var(--hl)" stroke-width="2" stroke-linejoin="round" points="${it.pts.map((p,i)=>x(i).toFixed(1)+','+y(p[1]).toFixed(1)).join(' ')}"/>`;
+    s+=`<circle cx="${x(n-1)}" cy="${y(it.value)}" r="4" fill="var(--hl)" stroke="var(--card)" stroke-width="2"/>`;
+    s+=`<text x="${Lm}" y="${hgt-4}">${it.pts[0][0].slice(0,7)}</text><text x="${w-Rm}" y="${hgt-4}" text-anchor="end">${it.asof.slice(0,7)}</text>`;
+    el.innerHTML=`<svg viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${it.name} 최근 3년 추이와 문턱">${s}</svg>`;});
+}
+window.__drawMacro=drawInd; drawInd(); window.__anim&&window.__anim(app); let lwm=innerWidth,tm; addEventListener('resize',()=>{if(innerWidth===lwm)return;lwm=innerWidth;clearTimeout(tm);tm=setTimeout(drawInd,120);});
+})();
+</script>
+</body>
+</html>

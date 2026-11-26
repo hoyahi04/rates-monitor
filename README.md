@@ -15,7 +15,7 @@ pipeline/
   desk/              desk 자료 수집·가공 (fetch_extra, fetch_korea, build_data, bondmath)
   inputs/curve/      재무부 CMT 금리 (공통 입력) + 수익률 곡선 화면
   inputs/macro/      매크로 신호 5개 섹션과 점수표 + 각 화면
-  model/             모형 포트폴리오·백테스트 (아직 없음, model/README.md 참고)
+  model/             모형 포트폴리오·백테스트, 2페이지 대시보드 (model/README.md 참고)
 site/                배포 첫 화면
 decisions/           투자의사결정 기록 (날짜별 1파일)
 docs/                스터디 자료
@@ -32,7 +32,8 @@ archive/streamlit/   예전 Streamlit 앱 (더 쓰지 않음, 보관)
 ```bash
 python3 pipeline/inputs/curve/fetch_data.py
 python3 pipeline/desk/fetch_extra.py
-python3 pipeline/desk/build_data.py      # pipeline/model/portfolio.js 가 있어야 돈다
+python3 pipeline/model/backtest.py       # → pipeline/model/portfolio.js
+python3 pipeline/desk/build_data.py
 ```
 
 ## 점검

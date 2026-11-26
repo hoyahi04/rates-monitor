@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>운용 · 간결한 시안</title>
+<style>
+.deck{
+  --pg:#ffffff; --ink:#111417; --ink2:#4a5057; --mute:#7b8189; --card:#ececec; --line:#d5d7da;
+  --hl:#0a36b5; --hl-ink:#ffffff; --navy:#0b2748; --head:#0a36b5; --ex:#b4530a;
+  --b1:#9fc3ee; --b2:#74a6e3; --b3:#4a86d6; --b4:#2a66c2; --b5:#174a9c; --b6:#0b2f6b; --cash:#b9bcc0;
+  --pos:#12733f; --neg:#7a3fb0;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  .deck{
+    --pg:#111315; --ink:#eef0f2; --ink2:#c2c6cb; --mute:#8d939a; --card:#22262a; --line:#3a3f45;
+    --hl:#2f5fe0; --hl-ink:#ffffff; --navy:#1b3a63; --head:#86a8ff; --ex:#f0a35a;
+    --b1:#0f3f8a; --b2:#1b56b0; --b3:#2f6fce; --b4:#4d8be0; --b5:#7babee; --b6:#abcaf6; --cash:#6b7077;
+    --pos:#5ecb8f; --neg:#c59bef;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+.deck{background:var(--pg);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:15px;line-height:1.5;padding:0 32px 40px;word-break:keep-all}
+.in{max-width:1180px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding:22px 0 0;font-size:13px;color:var(--ink2)}
+.top b{color:var(--ink)}
+.top .tabs a{color:var(--ink2);text-decoration:none;margin-right:14px}
+.top .tabs a[aria-current]{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ink);padding-bottom:2px}
+.slide{padding:44px 0 36px;border-bottom:1px solid var(--line)}
+.slide:last-of-type{border-bottom:0}
+.kick{font-size:13px;color:var(--mute);margin:0 0 6px}
+.slide h2{font-size:30px;line-height:1.25;font-weight:400;letter-spacing:-.5px;margin:0 0 28px;max-width:26em;text-wrap:balance}
+.g{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.box{background:var(--card);border-radius:8px;padding:22px 26px;min-width:0}
+.box h3{font-size:19px;font-weight:500;color:var(--head);margin:0 0 8px}
+.box p{margin:0;color:var(--ink)}
+.box .sm{font-size:13px;color:var(--ink2);margin-top:6px}
+.hl{background:var(--hl);color:var(--hl-ink);border-radius:8px;padding:26px 30px;min-width:0}
+.hl .lab{font-size:17px}
+.hl .big{font-size:60px;font-weight:300;letter-spacing:-1.5px;line-height:1.1;margin:10px 0 12px}
+.hl .big small{font-size:24px;margin-left:4px;font-weight:400}
+.hl p{margin:0;font-size:16px;max-width:26em}
+.num{font-size:34px;font-weight:300;letter-spacing:-.8px;line-height:1.15;margin:4px 0 6px;font-variant-numeric:tabular-nums}
+.num small{font-size:16px;margin-left:3px}
+.tag{display:inline-block;font-size:12px;color:var(--ex);border:1px dashed var(--ex);border-radius:10px;padding:0 8px;margin-left:8px;vertical-align:middle}
+/* 흐름 줄 */
+.flow{display:grid;grid-template-columns:1.25fr 28px 1fr 28px .8fr;gap:10px;align-items:stretch;margin-bottom:12px}
+.flow .box{padding:16px 20px}
+.flow .box h3{font-size:17px;margin-bottom:4px}
+.flow .arr{display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.flow .arr svg{width:26px;height:26px;fill:currentColor}
+.pos{border-radius:8px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:14px;color:#fff;background:var(--hl);font-size:20px;font-weight:500;min-width:0}
+.pos.off{background:var(--navy)}
+.pos span{font-size:12.5px;font-weight:400;opacity:.9;margin-top:2px}
+.fhead{display:grid;grid-template-columns:1.25fr 28px 1fr 28px .8fr;gap:10px;font-size:13px;color:var(--mute);margin-bottom:6px}
+.next{margin-top:18px;font-size:14.5px}
+.next b{color:var(--head);font-weight:600}
+/* 표 */
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th{font-size:12.5px;font-weight:500;color:var(--mute);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+.plus{color:var(--pos)} .minus{color:var(--neg)}
+details{margin-top:18px}
+summary{cursor:pointer;color:var(--head);font-size:14.5px}
+.tw{overflow-x:auto;margin-top:12px}
+svg text{fill:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.cap{font-size:13px;color:var(--ink2);margin:0 0 8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--ink2);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.gauge{position:relative;height:10px;border-radius:5px;background:rgba(255,255,255,.28);margin:20px 0 6px}
+.gauge .band{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.35);border-left:2px solid #fff;border-right:2px solid #fff}
+.gauge .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#fff}
+.gscale{display:flex;justify-content:space-between;font-size:12.5px;opacity:.9}
+.formula{font-size:21px;margin:6px 0 14px}
+.note{font-size:13px;color:var(--mute);margin-top:22px}
+@media (max-width:900px){
+  .deck{padding:0 18px 28px}.slide h2{font-size:24px}.g2,.g3{grid-template-columns:1fr}
+  .flow,.fhead{grid-template-columns:1fr}.fhead,.flow .arr{display:none}.flow{margin-bottom:22px}
+  .hl .big{font-size:46px}
+}
+/* 애니메이션 */
+.box,.pos,.hl{transition:transform .18s ease, box-shadow .18s ease}
+.box:hover,.pos:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.10)}
+.top .tabs a{transition:color .15s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes drawline{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes growx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes spinin{from{opacity:0;transform:rotate(-90deg) scale(.85)}to{opacity:1;transform:none}}
+.anim .slide{animation:rise .5s ease-out both}
+.anim .slide:nth-of-type(2){animation-delay:.08s}.anim .slide:nth-of-type(3){animation-delay:.16s}.anim .slide:nth-of-type(n+4){animation-delay:.24s}
+.anim .chart polyline{stroke-dasharray:1;stroke-dashoffset:1;animation:drawline .9s ease-out .25s forwards}
+.anim .chart rect{transform-box:fill-box;transform-origin:left center;animation:growx .6s ease-out .25s both}
+.anim #donut svg{transform-origin:center;animation:spinin .7s ease-out .2s both}
+.anim .gauge .fill{transform-origin:left center;animation:growx .8s ease-out .3s both}
+.anim .flow .pos{animation:rise .45s ease-out .35s both}
+@media (prefers-reduced-motion:reduce){.box,.pos,.hl{transition:none}.box:hover,.pos:hover{transform:none}}
+</style>
+</head>
+<body class="deck">
+<div class="in" id="app"></div>
+<script src="../inputs/macro/scoreboard.js"></script>
+<script src="portfolio.js"></script>
+<script src="anim.js"></script>
+<script>
+"use strict";
+(function(){
+const P=window.PORTFOLIO, S=window.MACRO_SCOREBOARD, app=document.getElementById('app');
+if(!P){app.textContent='portfolio.js가 없습니다. 이 폴더에서 python3 backtest.py를 실행하세요.';return;}
+const ST=P.stats, NOW=P.now, MK=P.market, RK=P.risk, MO=P.months, RB=P.rebalances;
+const O=S?S.official:null, L=S?S.live:null;
+const sg=(v,d=1)=>{const r=+v.toFixed(d);return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(d);};
+const n=(v,d=2)=>(v<0?'−':'')+Math.abs(v).toFixed(d);
+const cls=v=>v>0.004?'plus':v<-0.004?'minus':'';
+const usd=v=>(v<0?'−':'')+Math.abs(Math.round(v)).toLocaleString('en-US');
+const md=s=>s.slice(5), ym=s=>s.slice(0,4)+'년 '+(+s.slice(5,7))+'월';
+const sv=v=>v>0?'+'+v:v<0?'−'+Math.abs(v):'0';
+const dur=v=>v?sg(v,2)+'년':'중립';
+const posTxt=(d,s,c)=>[d?'Duration '+sg(d,2)+'년':'', s==='steepener'?'스티프너':s==='flattener'?'플래트너':'', c==='bullet'?'불릿':''].filter(Boolean).join(' · ')||'중립';
+const arrow='<div class="arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 8h11V3l9 9-9 9v-5H2z"/></svg></div>';
+const BC=['--b1','--b2','--b3','--b4','--b5','--b6'];
+const cur=MO[MO.length-1], exAll=ST.excess_cum_bp, ahead=exAll>=0;
+
+let h=`<div class="top"><div class="tabs"><a href="macro_slim.html">매크로</a><a aria-current="page">운용</a></div>
+<div>금리 <b>${P.asof}</b> · ${md(P.decision_date)} 판정을 ${+P.apply_month.slice(5)}월에 적용 · 운용 시작 <b>${ST.start}</b></div></div>
+
+<section class="slide"><p class="kick">운용 성과</p>
+<h2>${ST.start.slice(0,4)}년 말 USD 10M으로 시작해 규칙대로 운용한 결과, 벤치마크보다 ${Math.abs(exAll).toFixed(0)}bp ${ahead?'앞섰습니다':'뒤졌습니다'}</h2>
+<div class="g g2">
+  <div class="hl"><div class="lab">순자산 (${md(P.asof)})</div>
+    <div class="big"><small>USD</small> ${(ST.nav/1e6).toFixed(2)}<small>M</small></div>
+    <p>같은 기간 벤치마크는 USD ${(ST.nav_bm/1e6).toFixed(2)}M입니다. 차이는 USD ${usd(ST.nav-ST.nav_bm)}입니다.</p></div>
+  <div class="g" style="grid-template-rows:repeat(3,auto)">
+    <div class="box"><h3>연 수익률</h3><div class="num">${n(ST.ann_p)}<small>%</small></div><p class="sm">벤치마크 ${n(ST.ann_b)}% · ${ST.years.toFixed(1)}년 동안</p></div>
+    <div class="box"><h3>초과수익</h3><div class="num ${cls(exAll)}">${sg(exAll,0)}<small>bp</small></div><p class="sm">누적. 연으로는 ${sg(ST.excess_ann_bp,1)}bp · 1bp는 0.01%입니다</p></div>
+    <div class="box"><h3>지금 포지션</h3><div class="num" style="font-size:26px">${posTxt(cur.dur,cur.slope,cur.curv)}</div><p class="sm">${md(cur.date)}에 리밸런싱 · 이번 달 초과수익 ${sg(cur.excess_bp,1)}bp</p></div>
+  </div>
+</div></section>`;
+
+/* ---------- 1단계: 뷰 ---------- */
+if(O){
+const sc=O;
+const rows=[
+ {nm:'Duration', view:`수준 점수 ${sv(O.level.value)}`, why:O.level.parts.map(p=>`${p.name} ${sv(p.score)}`).join(', '),
+  sig:`10년 금리 ${MK.y10.toFixed(2)}%`, sigs:`판정일 이후 ${sg(MK.d10y,0)}bp`, pos:dur(O.duration_active_yr), on:!!O.duration_active_yr, ps:'점수 1점에 0.25년'},
+ {nm:'Curve Slope', view:`기울기 점수 ${sv(O.slope.value)}`, why:O.slope.parts.map(p=>`${p.name} ${sv(p.score)}`).join(', ')+(O.slope.state==='conflict'?'이 엇갈림':''),
+  sig:`2s10s ${MK.s2s10s.toFixed(0)}bp`, sigs:`판정일 이후 ${sg(MK.d2s10s,0)}bp`, pos:O.slope_position==='none'?'없음':(O.slope_position==='steepener'?'스티프너':'플래트너'), on:O.slope_position!=='none', ps:'±2점일 때만'},
+ {nm:'Curve Curvature', view:`조건 2개 중 ${(O.curvature.gate_met?1:0)+(O.curvature.z_met?1:0)}개 충족`, why:`변동성 점수 ${sv(O.curvature.gate_score)} (${O.curvature.gate_met?'충족':'+1이어야 함'})`,
+  sig:`Fly z-score ${O.curvature.z_3y_ko}`, sigs:`문턱 +1 ${O.curvature.z_met?'위':'아래'} (판정일 값)`, pos:O.curvature_position==='bullet'?'불릿':'없음', on:O.curvature_position==='bullet', ps:'두 조건 모두일 때만'},
+];
+h+=`<section class="slide"><p class="kick">1단계 · 뷰</p>
+<h2>매크로 점수가 뷰가 되고, 뷰가 포지션 크기를 정합니다</h2>
+<div class="fhead"><div>매크로 뷰</div><div></div><div>시장 신호</div><div></div><div>${+O.apply_month.slice(5)}월 포지션</div></div>
+${rows.map(r=>`<div class="flow"><div class="box"><h3>${r.nm}</h3><p>${r.view}</p><p class="sm">${r.why}</p></div>${arrow}
+  <div class="box"><p>${r.sig}</p><p class="sm">${r.sigs}</p></div>${arrow}
+  <div class="pos${r.on?'':' off'}">${r.pos}<span>${r.ps}</span></div></div>`).join('')}
+<p class="next"><b>${+L.apply_month.slice(5)}월 잠정</b> (${md(L.date)} 기준): ${L.position_ko.split(' · ').slice(0,3).join(' · ')}</p>
+</section>`;}
+
+/* ---------- 2단계: 구성 ---------- */
+h+=`<section class="slide"><p class="kick">2단계 · 구성</p>
+<h2>벤치마크에서 출발해, 뷰만큼만 듀레이션을 다르게 가져갑니다</h2>
+<div class="g g2">
+  <div class="hl"><div class="lab">액티브 듀레이션</div>
+    <div class="big">${sg(NOW.active,2)}<small>년</small></div>
+    <p>포트폴리오 ${NOW.dur_p.toFixed(2)}년 − 벤치마크 ${NOW.dur_b.toFixed(2)}년. 벤치마크 수익률은 ${MK.bm_yield.toFixed(2)}%이고, 아무 뷰가 없으면 이 구성을 그대로 듭니다.</p></div>
+  <div class="box"><h3>만기 구간별 액티브 듀레이션</h3><p class="cap">포트폴리오 − 벤치마크 (년) · 어느 만기에 더 실었는지</p><div class="chart" id="act"></div></div>
+</div>
+<div class="box" style="margin-top:18px"><h3>한 장 요약 (${md(NOW.date)} 리밸런싱)</h3>
+<div class="tw"><table>
+<tr><th>만기 구간</th><th>비중</th><th>보유 만기</th><th>벤치마크 만기</th><th>듀레이션 기여</th><th>벤치마크</th><th>액티브</th></tr>
+${NOW.buckets.map((b,i)=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(${BC[i]});margin-right:8px"></i>${b.label}</td><td>${b.w_p.toFixed(1)}%</td><td>${b.mat_p.toFixed(1)}년</td><td>${b.mat_b.toFixed(1)}년</td><td>${b.c_p.toFixed(2)}</td><td>${b.c_b.toFixed(2)}</td><td class="${cls(b.active)}"><b>${sg(b.active,2)}</b></td></tr>`).join('')}
+<tr><td><b>합계</b></td><td>100.0%</td><td></td><td></td><td><b>${NOW.dur_p.toFixed(2)}</b></td><td><b>${NOW.dur_b.toFixed(2)}</b></td><td class="${cls(NOW.active)}"><b>${sg(NOW.active,2)}</b></td></tr>
+</table></div>
+<p class="sm">비중은 벤치마크와 같게 두고, 구간 안에서 만기가 더 길거나 짧은 채권을 들어 듀레이션을 조절합니다.</p></div>
+<details><summary>처음 담은 포트폴리오 보기 (${P.initial.date})</summary><div class="tw"><table>
+<tr><th>만기 구간</th><th>금액 (USD)</th><th>비중</th><th>보유 만기</th><th>쿠폰</th><th>듀레이션 기여</th><th>액티브</th></tr>
+${P.initial.buckets.map(b=>`<tr><td>${b.label}</td><td>${usd(b.usd)}</td><td>${b.w_p.toFixed(1)}%</td><td>${b.mat_p.toFixed(1)}년</td><td>${b.coupon.toFixed(2)}%</td><td>${b.c_p.toFixed(2)}</td><td class="${cls(b.active)}">${sg(b.active,2)}</td></tr>`).join('')}
+</table></div><p class="sm" style="margin-top:8px">첫 달 포지션은 ${posTxt(P.initial.position.dur,P.initial.position.slope,P.initial.position.curv)}였습니다.</p></details>
+</section>`;
+
+/* ---------- 3단계: 추적 ---------- */
+h+=`<section class="slide"><p class="kick">3단계 · 추적</p>
+<h2>수익의 거의 전부는 벤치마크에서 나오고, 규칙이 더하거나 뺀 것은 연 ${Math.abs(ST.excess_ann_bp).toFixed(0)}bp입니다</h2>
+<div class="g g2">
+  <div class="box"><h3>순자산</h3><p class="cap">USD 백만 · 굵은 선 포트폴리오, 가는 선 벤치마크</p><div class="chart" id="nav"></div></div>
+  <div class="box"><h3>벤치마크 대비 누적 초과수익</h3><p class="cap">bp · 아래 눈금은 리밸런싱한 날 (${ST.n_rebal}번)</p><div class="chart" id="exc"></div></div>
+</div>
+<div class="box" style="margin-top:18px"><h3>연도별</h3><div class="tw"><table>
+<tr><th></th>${P.years.map(y=>`<th>${y.year}${y.partial?'*':''}</th>`).join('')}</tr>
+<tr><td>포트폴리오 (%)</td>${P.years.map(y=>`<td>${n(y.ret_p,1)}</td>`).join('')}</tr>
+<tr><td>벤치마크 (%)</td>${P.years.map(y=>`<td>${n(y.ret_b,1)}</td>`).join('')}</tr>
+<tr><td><b>초과수익 (bp)</b></td>${P.years.map(y=>`<td class="${cls(y.excess_bp)}"><b>${sg(y.excess_bp,0)}</b></td>`).join('')}</tr>
+</table></div><p class="sm">* 표시는 ${md(P.asof)}까지입니다.</p></div>
+</section>`;
+
+/* ---------- 리밸런싱 ---------- */
+const rbRow=e=>`<tr><td>${e.date}</td><td style="text-align:left">${e.frm?posTxt(...e.frm)+' → ':''}<b>${posTxt(...e.to)}</b></td><td style="text-align:left;white-space:normal">${e.why}</td><td class="${cls(e.excess_bp)}">${sg(e.excess_bp,1)}${e.partial?'*':''}</td></tr>`;
+const recent=RB.slice(-8).reverse();
+h+=`<section class="slide"><p class="kick">리밸런싱</p>
+<h2>${ST.years.toFixed(0)}년 동안 포지션을 ${ST.n_rebal}번 바꿨고, 바꾼 이유는 전부 점수 변화입니다</h2>
+<div class="box"><h3>최근 리밸런싱</h3><div class="tw"><table>
+<tr><th>날짜</th><th style="text-align:left">바꾼 것</th><th style="text-align:left">이유</th><th>그달 초과수익 (bp)</th></tr>
+${recent.map(rbRow).join('')}
+</table></div>
+<details><summary>${RB.length}건 모두 보기</summary><div class="tw"><table>
+<tr><th>날짜</th><th style="text-align:left">바꾼 것</th><th style="text-align:left">이유</th><th>그달 초과수익 (bp)</th></tr>
+${RB.slice().reverse().map(rbRow).join('')}
+</table></div></details></div>
+<p class="note" style="margin-top:14px">매달 마지막 영업일에 판정하고 그날 종가로 바꿉니다. 포지션이 그대로인 달은 표에 없습니다. * 표시는 진행 중인 달입니다.</p>
+</section>`;
+
+/* ---------- 귀속 ---------- */
+const iL=MO.length-2, mL=MO[iL], H=ST.hit;
+h+=`<section class="slide"><p class="kick">성과 귀속</p>
+<h2>뒤진 것은 Duration 때문입니다. Duration ${sg(ST.c_dur,0)}bp, Slope ${sg(ST.c_slope,0)}bp, Curvature ${sg(ST.c_curv,0)}bp</h2>
+<div class="g g2">
+  <div class="box"><h3>계산 방법</h3>
+    <p class="formula">손익 (bp) ≈ 액티브 듀레이션 (년) × −금리 변화 (bp)</p>
+    <p>${ym(mL.month)}: ${sg(mL.dur,2)}년 × 10년 금리 ${sg(mL.d10y_bp,0)}bp → ${sg(mL.c_dur,1)}bp</p>
+    <p class="sm">길게 가져가면 금리가 내릴 때 벌고 오를 때 잃습니다. 실제 값은 이자와 롤다운까지 넣어 매일 다시 평가한 것이라 단순 곱과 조금 다릅니다.</p></div>
+  <div class="g g3">
+    ${[['Duration',H.dur],['Slope',H.slope],['Curvature',H.curv]].map(([nm,x])=>`<div class="pos off" style="padding:20px 10px"><span style="font-size:14px;margin:0 0 6px">${nm}</span>${x[0]}/${x[1]}<span>번 벌었음</span></div>`).join('')}
+  </div>
+</div>
+<div class="box" style="margin-top:18px"><h3>전략별 누적 기여</h3><p class="cap">${ST.start.slice(0,4)}년 말 이후 (bp) · Carry &amp; Rolldown은 종목을 고르는 전략이라 이 모형에는 없습니다</p><div class="chart" id="bars"></div></div>
+<details><summary>최근 12개월 손익표 보기</summary><div class="tw"><table>
+<tr><th>월</th><th style="text-align:left">포지션</th><th>10년 금리 변화</th><th>Duration</th><th>Slope</th><th>Curvature</th><th>초과수익</th></tr>
+${MO.slice(-12).reverse().map(m=>`<tr><td>${m.month}${m.partial?'*':''}</td><td style="text-align:left">${posTxt(m.dur,m.slope,m.curv)}</td><td>${sg(m.d10y_bp,0)}</td>${[m.c_dur,m.c_slope,m.c_curv].map(v=>`<td class="${cls(v)}">${sg(v,1)}</td>`).join('')}<td class="${cls(m.excess_bp)}"><b>${sg(m.excess_bp,1)}</b></td></tr>`).join('')}
+</table></div></details>
+</section>`;
+
+/* ---------- 개선안 ---------- */
+const AL=P.alt;
+if(AL){const tr=AL.train,te2=AL.test;
+h+=`<section class="slide"><p class="kick">규칙 개선안 (채택 전)</p>
+<h2>Duration을 "${AL.name}"로 바꾸면 같은 기간 ${sg(AL.excess_cum_bp,0)}bp입니다. 다만 아직 우연과 구분되지는 않습니다</h2>
+<div class="g g2">
+  <div class="box"><h3>누적 초과수익 비교</h3><p class="cap">bp · 굵은 선 개선안, 가는 선 지금 규칙 · 세로선 오른쪽이 검증 구간(2021년~)</p><div class="chart" id="altc"></div></div>
+  <div class="box"><h3>구간별 결과</h3><table>
+  <tr><th></th><th>지금 규칙</th><th>개선안</th></tr>
+  <tr><td>규칙을 고른 구간 (2015~2020)</td><td class="${cls(tr.cur.sum_bp)}">${sg(tr.cur.sum_bp,0)}bp</td><td class="${cls(tr.alt.sum_bp)}"><b>${sg(tr.alt.sum_bp,0)}bp</b></td></tr>
+  <tr><td>검증 구간 (2021년~)</td><td class="${cls(te2.cur.sum_bp)}">${sg(te2.cur.sum_bp,0)}bp</td><td class="${cls(te2.alt.sum_bp)}"><b>${sg(te2.alt.sum_bp,0)}bp</b></td></tr>
+  <tr><td>검증 구간에서 이긴 달</td><td>${te2.cur.win}/${te2.cur.on}</td><td>${te2.alt.win}/${te2.alt.on}</td></tr>
+  <tr><td>검증 구간 t값 (2 이상이어야 믿을 만함)</td><td>${n(te2.cur.t)}</td><td>${n(te2.alt.t)}</td></tr>
+  <tr><td>정보비율 (전체 기간)</td><td>${n(ST.ir)}</td><td>${n(AL.ir)}</td></tr>
+  <tr><td>이번 달 Duration</td><td>${dur(cur.dur)}</td><td><b>${dur(AL.now.dur)}</b></td></tr>
+  </table><p class="sm">${AL.rule}</p></div>
+</div>
+<p class="note" style="margin-top:14px">후보 19개를 2015~2020년 자료로 비교해 골랐습니다. 두 구간 모두 플러스이지만 t값이 1에 못 미쳐 통계적으로 확인된 것은 아닙니다. Slope와 Curvature 규칙은 그대로입니다. 비교 내용은 research/duration_rule_study.py에 있습니다.</p>
+</section>`;}
+
+/* ---------- 위험 ---------- */
+const lo=RK.budget[0], hi=RK.budget[1], gmax=120, te=RK.te_exante_bp;
+const scen=RK.scenarios.filter(s=>!/50bp/.test(s.label));
+h+=`<section class="slide"><p class="kick">위험 관리</p>
+<h2>쓰기로 한 위험의 ${Math.round(te/lo*100)}%만 쓰고 있고, 지난 ${ST.years.toFixed(0)}년의 실제 추적오차도 연 ${ST.te_all_bp.toFixed(0)}bp였습니다</h2>
+<div class="g g2">
+  <div class="hl"><div class="lab">추적오차 (지금 포지션으로 추정)</div>
+    <div class="big"><small>연</small> ${te.toFixed(0)}<small>bp</small></div>
+    <p>벤치마크와 수익률이 1년 동안 벌어질 수 있는 폭입니다. 예산은 ${lo}~${hi}bp입니다.</p>
+    <div class="gauge" role="img" aria-label="추적오차 ${te.toFixed(0)}bp, 예산 ${lo}~${hi}bp"><div class="band" style="left:${lo/gmax*100}%;width:${(hi-lo)/gmax*100}%"></div><div class="fill" style="width:${Math.min(1,te/gmax)*100}%"></div></div>
+    <div class="gscale"><span>0</span><span>예산 ${lo}~${hi}</span><span>${gmax}bp</span></div>
+    <p style="margin-top:14px;font-size:14px">규칙이 낼 수 있는 가장 큰 포지션(±0.5년)에서도 ${RK.te_max_bp.toFixed(0)}bp입니다.</p></div>
+  <div class="box"><h3>지나고 보니</h3><table>
+  <tr><th></th><th>포트폴리오</th><th>벤치마크</th></tr>
+  <tr><td>실제 추적오차 (전체 기간)</td><td>${ST.te_all_bp.toFixed(0)}bp</td><td>–</td></tr>
+  <tr><td>실제 추적오차 (최근 3년 / 1년)</td><td>${ST.te_3y_bp.toFixed(0)} / ${ST.te_1y_bp.toFixed(0)}bp</td><td>–</td></tr>
+  <tr><td>정보비율 (초과수익 ÷ 추적오차)</td><td class="${cls(ST.ir)}">${n(ST.ir)}</td><td>–</td></tr>
+  <tr><td>수익률 변동성 (연)</td><td>${ST.vol_p.toFixed(1)}%</td><td>${ST.vol_b.toFixed(1)}%</td></tr>
+  <tr><td>가장 크게 밀린 폭</td><td>${n(ST.mdd_p,1)}%</td><td>${n(ST.mdd_b,1)}%</td></tr>
+  <tr><td>벤치마크보다 가장 크게 뒤진 폭</td><td>${n(ST.mdd_rel_bp,0)}bp</td><td>–</td></tr>
+  <tr><td>벤치마크를 이긴 달</td><td>${ST.months_win}/${ST.months_active}</td><td>–</td></tr>
+  </table><p class="sm">가장 크게 뒤진 구간은 ${ST.mdd_rel_from} ~ ${ST.mdd_rel_to}입니다. 이긴 달은 포지션이 있던 달만 셉니다.</p></div>
+</div>
+<div class="box" style="margin-top:18px"><h3>금리가 움직이면</h3><p class="cap">지금 포지션에서 벤치마크보다 더 벌거나 덜 버는 크기</p>
+<table><tr><th>시나리오</th><th>bp</th><th>USD</th></tr>
+${scen.map(s=>`<tr><td>${s.label}</td><td class="${cls(s.bp)}">${sg(s.bp,1)}</td><td class="${cls(s.bp)}">${s.bp>0?'+':s.bp<0?'−':''}${usd(Math.abs(s.bp)*ST.nav/1e4)}</td></tr>`).join('')}
+</table></div>
+<p class="note">${P.model.note} 벤치마크는 여섯 만기 구간을 공개 자료로 만든 대용 지수 비중(${P.model.bm_weights.map(w=>w.toFixed(0)).join(' / ')}%)으로 든 것이고, 이 비중을 과거에도 그대로 썼습니다. 거래비용은 넣지 않았습니다.</p>
+</section>`;
+app.innerHTML=h;
+
+/* ---------- 차트 ---------- */
+function draw(){
+  const W=id=>{const e=document.getElementById(id);return e?e.clientWidth:0;};
+  function line(id,series,opt){const w=W(id);if(!w)return;const hgt=opt.h||240,Lm=44,Rm=12,T=10,B=24,all=series.flatMap(s=>s.v).concat(opt.ref!=null?[opt.ref]:[]);
+    let lo=Math.min(...all),hi=Math.max(...all);const pad=(hi-lo)*.08||1;lo-=pad;hi+=pad;const N=series[0].v.length,x=i=>Lm+(w-Lm-Rm)*i/(N-1),y=v=>T+(hgt-T-B)*(1-(v-lo)/(hi-lo));
+    let s='';for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;s+=`<line x1="${Lm}" x2="${w-Rm}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width=".6"/><text x="${Lm-6}" y="${y(v)+4}" text-anchor="end">${v.toFixed(opt.d)}</text>`;}
+    if(opt.ref!=null)s+=`<line x1="${Lm}" x2="${w-Rm}" y1="${y(opt.ref)}" y2="${y(opt.ref)}" stroke="var(--ink)" stroke-dasharray="4 4"/>`;
+    (opt.ticks||[]).forEach(t=>{s+=`<line x1="${x(t.i)}" x2="${x(t.i)}" y1="${hgt-B-7}" y2="${hgt-B}" stroke="var(--navy)" stroke-width="1"><title>${t.t}</title></line>`;});
+    series.forEach(q=>{const step=Math.max(1,Math.floor(N/900));let pts='';for(let i=0;i<N;i+=step)pts+=x(i).toFixed(1)+','+y(q.v[i]).toFixed(1)+' ';pts+=x(N-1).toFixed(1)+','+y(q.v[N-1]).toFixed(1);
+      s+=`<polyline fill="none" stroke="${q.c}" stroke-width="${q.w}" stroke-linejoin="round" points="${pts}"/>`;});
+    (opt.xl||[]).forEach(([i,t])=>{s+=`<text x="${x(i)}" y="${hgt-6}" text-anchor="middle">${t}</text>`;});
+    document.getElementById(id).innerHTML=`<svg viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${opt.aria}">${s}</svg>`;}
+  const D=P.series.dates,xl=[];D.forEach((d,i)=>{if(i&&d.slice(0,4)!==D[i-1].slice(0,4)&&(+d.slice(0,4))%2===0)xl.push([i,d.slice(0,4)]);});
+  line('nav',[{v:P.series.nav_b.map(v=>v/1e6),c:'var(--b2)',w:1.4},{v:P.series.nav_p.map(v=>v/1e6),c:'var(--ink)',w:2}],{d:1,aria:'순자산 추이, 포트폴리오와 벤치마크',xl});
+  const idx={};D.forEach((d,i)=>idx[d]=i);
+  line('exc',[{v:P.series.excess_bp,c:'var(--hl)',w:2}],{d:0,ref:0,aria:'벤치마크 대비 누적 초과수익과 리밸런싱 시점',xl,
+    ticks:RB.filter(e=>idx[e.date]!=null).map(e=>({i:idx[e.date],t:e.date+' '+posTxt(...e.to)}))});
+  if(P.alt){const cut=D.findIndex(d=>d>='2021-01-01');line('altc',[{v:P.series.excess_bp,c:'var(--b2)',w:1.4},{v:P.alt.series,c:'var(--hl)',w:2.2}],{d:0,ref:0,aria:'지금 규칙과 개선안의 누적 초과수익',xl,ticks:[]});
+    const el=document.getElementById('altc'),sv2=el&&el.querySelector('svg');if(sv2){const w=el.clientWidth,xx=44+(w-44-12)*cut/(D.length-1);sv2.insertAdjacentHTML('beforeend',`<line x1="${xx}" x2="${xx}" y1="10" y2="216" stroke="var(--mute)" stroke-dasharray="2 3"/>`);}}
+  (function(){const w=W('act');if(!w)return;const rows=NOW.buckets.map((b,i)=>({l:b.label,v:b.active,c:`var(${BC[i]})`})),rh=30,hgt=rows.length*rh+6,Lm=70,Rm=56,mx=Math.max(0.05,...rows.map(r=>Math.abs(r.v)))*1.15,neg=rows.some(r=>r.v<0),x=v=>Lm+(w-Lm-Rm)*(neg?(v+mx)/(2*mx):v/mx);
+    let s=`<line x1="${x(0)}" y1="0" x2="${x(0)}" y2="${hgt}" stroke="var(--line)"/>`;
+    rows.forEach((r,i)=>{const y=i*rh+5,x0=x(0),x1=x(r.v);s+=`<text x="0" y="${y+14}">${r.l}</text><rect x="${Math.min(x0,x1)}" y="${y}" width="${Math.max(2,Math.abs(x1-x0))}" height="19" rx="3" fill="${r.c}"/><text x="${r.v<0?Math.min(x0,x1)-6:Math.max(x0,x1)+6}" y="${y+14}" text-anchor="${r.v<0?'end':'start'}" style="fill:var(--ink)">${sg(r.v,2)}</text>`;});
+    document.getElementById('act').innerHTML=`<svg viewBox="0 0 ${w} ${hgt}" role="img" aria-label="만기 구간별 액티브 듀레이션">${s}</svg>`;})();
+  (function(){const w=W('bars');if(!w)return;const rows=[['Duration',ST.c_dur],['Slope',ST.c_slope],['Curvature',ST.c_curv],['초과수익 합',ST.excess_cum_bp]],rh=38,hgt=rows.length*rh,Lm=100,Rm=60,vals=rows.map(r=>r[1]),mx=Math.max(...vals.map(Math.abs))*1.1,neg=Math.min(...vals)<0,x=v=>Lm+(w-Lm-Rm)*(neg?(v+mx)/(2*mx):v/mx);
+    let s=`<line x1="${x(0)}" y1="0" x2="${x(0)}" y2="${hgt}" stroke="var(--line)"/>`;
+    rows.forEach(([nm,v],i)=>{const y=i*rh+7,x0=x(0),x1=x(v);s+=`<text x="0" y="${y+16}" style="${i===3?'fill:var(--ink);font-weight:600':''}">${nm}</text><rect x="${Math.min(x0,x1)}" y="${y}" width="${Math.max(2,Math.abs(x1-x0))}" height="22" rx="3" fill="${i===3?'var(--ink)':v<0?'var(--neg)':'var(--pos)'}"/><text x="${v<0?Math.min(x0,x1)-6:Math.max(x0,x1)+6}" y="${y+16}" text-anchor="${v<0?'end':'start'}" style="fill:var(--ink)">${sg(v,1)}</text>`;});
+    document.getElementById('bars').innerHTML=`<svg viewBox="0 0 ${w} ${hgt}" role="img" aria-label="전략별 누적 기여">${s}</svg>`;})();
+}
+draw(); let lw=innerWidth,t; addEventListener('resize',()=>{if(innerWidth===lw)return;lw=innerWidth;clearTimeout(t);t=setTimeout(draw,120);});
+window.__anim&&window.__anim(app);
+})();
+</script>
+</body>
+</html>
