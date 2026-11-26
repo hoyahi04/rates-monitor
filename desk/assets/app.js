@@ -1,5 +1,6 @@
 /* 틀: 왼쪽 메뉴, 상단 필터, 화면 전환, 뉴스 서랍, 채권 상세 서랍.
-   화면 하나는 window.DeskViews[이름](ctx) → {q, title, sub, tabs, body} 를 돌려주는 함수다. */
+   화면 하나는 window.DeskViews[이름](ctx) → {q, title, lead, sub, tabs, body} 를 돌려주는 함수다.
+   title은 결론 한 줄, lead는 그 아래 두 번째 소제목(사실 요약), sub는 근거와 출처다. */
 (function () {
   'use strict';
   const { h, s, F, ok } = UI;
@@ -15,7 +16,7 @@
     { id: 'flows', name: '수급·펀딩', q: '누가 사고, 조달비용은', icon: 'M4 7h13l-3-3M20 17H7l3 3' },
     { id: 'rv', name: 'RV·전략', q: '어디에 투자할까', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M7 12a5 5 0 1 0 10 0a5 5 0 1 0-10 0' },
     { id: 'credit', name: '크레딧·소버린', q: '발행자는 안전한가', icon: 'M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6l8-3z' },
-    { id: 'book', name: '포트폴리오·리스크', q: '내 북은 어떤가', icon: 'M3 8h18v12H3zM9 8V5h6v3M3 13h18' },
+    { id: 'book', name: '포트폴리오·리스크', q: '내 포트폴리오는 어떤가', icon: 'M3 8h18v12H3zM9 8V5h6v3M3 13h18' },
   ];
   const PERIODS = [['3M', '3달'], ['1Y', '1년'], ['3Y', '3년'], ['5Y', '5년'], ['ALL', '전체']];
   const krOk = D.kr && D.kr.status === 'ok';
@@ -141,7 +142,7 @@
     if (st.region === 'KR' && !krOk) notes.push(h('div', { cls: 'banner' }, '한국 자료는 아직 없습니다. 한국은행 ECOS 인증키를 ', h('code', null, '4. desk/.env'), '에 넣고 ', h('code', null, 'pipeline/fetch_korea.py'), '를 돌리면 시장 모니터와 크레딧 화면의 한국 칸이 채워집니다. 지금은 미국 자료를 보여 줍니다.'));
     else if (st.region === 'KR' && v.usOnly) notes.push(h('div', { cls: 'banner' }, '이 화면은 미국 자료만 있습니다. 한국 자료는 시장 모니터, 매크로·정책의 중앙은행, 크레딧·소버린에 있습니다.'));
     view.replaceChildren(
-      h('div', { cls: 'vhead' }, h('p', { cls: 'q' }, m.name + ' · ' + (v.q || m.q)), h('h1', null, v.title), v.sub ? h('p', { cls: 'sub' }, v.sub) : null,
+      h('div', { cls: 'vhead' }, h('p', { cls: 'q' }, m.name + ' · ' + (v.q || m.q)), h('h1', null, v.title), v.lead ? h('p', { cls: 'lead', role: 'doc-subtitle' }, v.lead) : null, v.sub ? h('p', { cls: 'sub' }, v.sub) : null,
         v.tabs ? h('div', { cls: 'tabs' }, v.tabs.map(([id, t]) => { const a = h('a', { href: '#/' + route + '/' + id }, t); return a; })) : null),
       notes, h('div', { cls: 'grid' }, v.body));
     document.title = m.name + ' · Rates Desk';
@@ -203,18 +204,18 @@
     const kv = (items) => h('dl', { cls: 'kv' }, items.map(([k, v, u]) => h('div', null, h('dt', null, k), h('dd', null, v, u ? h('small', null, u) : null))));
     const nodes = [];
     if (b.tags && b.tags.length) nodes.push(h('p', { style: 'margin:0 0 10px' }, b.tags.map((t) => [h('span', { cls: 'pill acc' }, t), ' '])));
-    nodes.push(kv([['가격 (클린)', F.n(a.clean, 3)], ['경과이자', F.n(a.accrued, 4)], ['결제 가격 (더티)', F.n(a.dirty, 3)],
+    nodes.push(kv([['클린가격', F.n(a.clean, 3)], ['경과이자', F.n(a.accrued, 4)], ['더티가격', F.n(a.dirty, 3)],
                    ['만기수익률 (YTM)', F.n(a.ytm, 3), '%'], ['수정듀레이션', F.n(a.mdur, 2), '년'], ['볼록성', F.n(a.conv, 1)],
                    ['DV01', F.usd(a.dv01PerM), '/ 액면 100만'], ['맥컬리 듀레이션', F.n(a.mac, 2), '년'], ['잔존만기', F.n(ttm, 2), '년']]));
     nodes.push(h('p', { cls: 'note' }, `결제일 ${b.settle} 기준. ${b.source || ''}`));
 
     nodes.push(h('h3', null, '상대가치'));
     if (b.rv) {
-      nodes.push(kv([['이웃 추세선 대비', F.bp(b.rv.fit_bp, 1)], ['재무부 par 곡선 대비', F.bp(b.rv.par_gap_bp, 1)],
-                     ['3개월 carry + roll', ok(b.rv.carry3m) && ok(b.rv.roll3m) ? F.bp(b.rv.carry3m + b.rv.roll3m, 0) : '–']]));
-      nodes.push(h('p', { cls: 'note' }, '+ 는 잔존만기가 비슷한 종목들보다 금리가 높다(싸다)는 뜻입니다. carry는 금리에서 SOFR를 뺀 값, roll은 추세선을 따라 3개월 내려올 때의 가격 효과입니다.'));
+      nodes.push(kv([['적합 커브 대비', F.bp(b.rv.fit_bp, 1)], ['재무부 par 커브 대비', F.bp(b.rv.par_gap_bp, 1)],
+                     ['3개월 캐리+롤다운', ok(b.rv.carry3m) && ok(b.rv.roll3m) ? F.bp(b.rv.carry3m + b.rv.roll3m, 0) : '–']]));
+      nodes.push(h('p', { cls: 'note' }, '+ 는 잔존만기가 비슷한 종목들로 만든 적합 커브보다 금리가 높다(저평가)는 뜻입니다. 캐리는 금리에서 SOFR를 뺀 값, 롤다운은 커브를 따라 3개월 내려올 때의 가격 효과입니다.'));
     }
-    nodes.push(h('p', { cls: 'note' }, 'Z-스프레드와 OAS는 회사채를 국채·스왑 곡선과 비교하는 지표라 국채 자체에는 쓰지 않습니다. 회사채 종목 자료는 아직 없습니다.'));
+    nodes.push(h('p', { cls: 'note' }, 'Z-스프레드와 OAS는 회사채를 국채·스왑 커브와 비교하는 지표라 국채 자체에는 쓰지 않습니다. 회사채 종목 자료는 아직 없습니다.'));
 
     // 금리가 움직이면
     nodes.push(h('h3', null, '금리가 움직이면'));
@@ -224,7 +225,7 @@
       const bp = Number(rng.value), dy = bp / 100;
       const d1 = BM.dirtyFromYield(b.coupon, b.maturity, b.settle, a.ytm + dy);
       const tot = d1 - a.dirty, durEff = -a.mdur * (dy / 100) * a.dirty, convEff = 0.5 * a.conv * Math.pow(dy / 100, 2) * a.dirty;
-      out.replaceChildren(kv([['금리 변화', F.bp(bp)], ['새 금리', F.n(a.ytm + dy, 3), '%'], ['새 가격 (클린)', F.n(d1 - a.accrued, 3)],
+      out.replaceChildren(kv([['금리 변화', F.bp(bp)], ['새 금리', F.n(a.ytm + dy, 3), '%'], ['새 클린가격', F.n(d1 - a.accrued, 3)],
                               ['손익', F.usdS(tot * 10000)], ['듀레이션 효과', F.usdS(durEff * 10000)], ['볼록성 효과', F.usdS(convEff * 10000)]]),
         h('p', { cls: 'note' }, '손익과 두 효과는 액면 100만 달러를 들고 있을 때의 달러 금액입니다.'));
     };
@@ -235,7 +236,7 @@
     for (let k = -200; k <= 200; k += 25) shifts.push(k);
     nodes.push(h('div', { style: 'height:10px' }), UI.line({
       x: shifts.map((k) => F.s(k)), date: false, xEvery: 2, h: 170, legend: false, unit: '', aria: '금리 변화에 따른 가격',
-      series: [{ name: '가격 (클린)', color: 'var(--s1)', values: shifts.map((k) => BM.dirtyFromYield(b.coupon, b.maturity, b.settle, a.ytm + k / 100) - a.accrued) },
+      series: [{ name: '클린가격', color: 'var(--s1)', values: shifts.map((k) => BM.dirtyFromYield(b.coupon, b.maturity, b.settle, a.ytm + k / 100) - a.accrued) },
                { name: '듀레이션만으로 본 가격', color: 'var(--s-mute)', width: 1.5, values: shifts.map((k) => a.clean - a.mdur * (k / 10000) * a.dirty) }],
       marks: [{ i: 8, label: '지금' }], tipFmt: (v) => F.n(v, 2) }));
     nodes.push(h('p', { cls: 'note' }, '가로축은 금리 변화(bp)입니다. 회색 선(듀레이션만)보다 실제 가격이 늘 위에 있는 만큼이 볼록성입니다.'));

@@ -7,15 +7,15 @@
     const D = ctx.D, M = D.macro, P = M.policy, asof = D.meta.asof;
     const kv = (items, two) => h('dl', { cls: 'kv' + (two ? ' two' : '') }, items.map(([k, v, u]) => h('div', null, h('dt', null, k), h('dd', null, v, u ? h('small', null, u) : null))));
 
-    // 결론 한 줄
+    // 사실 요약 (두 번째 소제목)
     const m0 = (P.meetings || [])[0];
-    let title = '정책금리 경로 자료가 없습니다';
+    let lead = '정책금리 경로 자료가 없습니다';
     if (m0) {
       const mv = m0.move, word = Math.abs(mv) < 5 ? '동결' : mv > 0 ? '인상' : '인하';
       const prob = Math.min(100, Math.abs(mv) / 25 * 100);
       const peakTxt = P.peak ? `, 내재 금리의 ${P.peak > P.upper ? '정점' : '저점'}은 ${P.peak_month.slice(0, 4)}년 ${Number(P.peak_month.slice(5))}월 ${F.n(P.peak, 2)}%입니다` : '입니다';
       const how = prob >= 92 ? `25bp ${word}을 거의 다 가격했고` : `${F.bp(mv)}를 가격했고 (25bp ${word} 확률 약 ${prob.toFixed(0)}%)`;
-      title = word === '동결' ? `선물 시장은 ${F.kdate(m0.date)} FOMC를 동결로 보고 있고${peakTxt}`
+      lead = word === '동결' ? `선물 시장은 ${F.kdate(m0.date)} FOMC를 동결로 보고 있고${peakTxt}`
         : `선물 시장은 ${F.kdate(m0.date)} FOMC의 ${how}${peakTxt}`;
     }
 
@@ -39,7 +39,7 @@
 
     const surChart = (key, name, unit, max) => {
       const ev = M.hist[key] || [];
-      return UI.card({ span: 'c6', title: `${name} 서프라이즈와 당일 10년 금리`, cap: `최근 ${ev.length}번 · 왼쪽 막대 서프라이즈 (${unit}), 오른쪽 표`,
+      return UI.card({ span: 'c6', title: `${name} 서프라이즈와 당일 10년 금리`, cap: `최근 ${ev.length}번 발표 · ${unit}`,
         body: [UI.bars({ cats: ev.map((e) => F.ym(e.ref + '-01')), sign: true, h: 150, unit: ' ' + unit, tipFmt: (v) => F.s(v, key === 'nfp' ? 0 : 1), aria: name + ' 서프라이즈',
                  series: [{ name: '서프라이즈', color: 'var(--s1)', values: ev.map((e) => e.sur) }] }),
                h('p', { cls: 'note', style: 'margin:6px 0 4px;color:var(--ink2)' }, '발표 당일 10년 금리 변화 (bp)'),
@@ -122,12 +122,37 @@
       UI.tile({ lab: '미시간 1년 기대', val: F.n(I.mich, 1), unit: '%', note: '소비자 설문' }));
     const infl = ctx.lineOf([{ key: 'y_10Y', name: '10년 명목금리', color: 'var(--s1)' }, { key: 'real10', name: '10년 실질금리', color: 'var(--s2)' }, { key: 'bei10', name: '10년 BEI', color: 'var(--s3)' }],
       { h: 240, unit: '%', tipFmt: (v) => F.n(v, 2), aria: '10년 명목금리, 실질금리, BEI' });
+    // 인플레이션 결론: 실제 물가가 목표보다 높은가 + 시장의 기대는 어떤가 + 지난 1년 금리 변화를 무엇이 이끌었나
+    const y10row = D.us.heat.find((r) => r.tenor === '10Y'), bei = sp.bei10, real = sp.real10;
+    let inflConcl = null;
+    if (bei && ok(I.core_pce_yoy)) {
+      const hot = I.core_pce_yoy > 2.5, expLo = bei.pct3y <= 20, expHi = bei.pct3y >= 80;
+      const a = hot ? (expLo ? '물가는 목표(2%)보다 높지만 시장의 물가 기대는 3년 가운데 가장 낮은 쪽입니다' : expHi ? '물가가 목표(2%)보다 높고 시장의 물가 기대도 3년 가운데 높은 쪽입니다' : '물가는 목표(2%)보다 높고 시장의 물가 기대는 평소 수준입니다')
+        : (expLo ? '물가는 목표(2%) 근처이고 시장의 물가 기대도 3년 가운데 낮은 쪽입니다' : expHi ? '물가는 목표(2%) 근처지만 시장의 물가 기대는 3년 가운데 높은 쪽입니다' : '물가와 시장의 물가 기대 모두 안정적입니다');
+      let b = '', detail = `근원 PCE 전년비 ${F.n(I.core_pce_yoy, 2)}% (3개월 연율 ${F.n(I.core_pce_3m, 1)}%, 2.5% 넘으면 목표보다 높다고 봄) · 10년 BEI ${F.n(bei.level, 2)}%는 3년 백분위 ${F.n(bei.pct3y, 0)}`;
+      if (real && y10row && ok(real.y1) && ok(bei.y1) && ok(y10row.chg.y1) && Math.abs(y10row.chg.y1) >= 10) {
+        const dn = y10row.chg.y1, dir = dn > 0 ? '상승' : '하락', same = (v) => Math.sign(v) === Math.sign(dn);
+        const lead = same(real.y1) && Math.abs(real.y1) >= 2 * Math.abs(bei.y1) ? 'real' : same(bei.y1) && Math.abs(bei.y1) >= 2 * Math.abs(real.y1) ? 'bei' : 'both';
+        b = { real: `. 지난 1년 금리 ${dir}은 물가 기대가 아니라 실질금리가 이끌었습니다`, bei: `. 지난 1년 금리 ${dir}은 실질금리가 아니라 물가 기대가 이끌었습니다`,
+              both: `. 지난 1년 금리 ${dir}에는 실질금리와 물가 기대가 함께 작용했습니다` }[lead];
+        detail += ` · 지난 1년 10년 금리 ${F.bp(dn)} 가운데 실질금리 ${F.bp(real.y1)}, BEI ${F.bp(bei.y1)}`;
+      }
+      inflConcl = UI.concl(a + b, detail + '.');
+    }
     const inflCard = UI.card({ id: 'infl', span: 'c12', title: '인플레이션 (BEI·실질금리)', cap: '10년 명목금리 = 실질금리 + 기대 인플레이션(BEI)',
-      body: [inflTiles, h('div', { style: 'height:14px' }), infl.chart], alt: infl.alt,
+      body: [inflConcl, inflTiles, h('div', { style: 'height:14px' }), infl.chart], alt: infl.alt,
       foot: 'BEI는 명목 국채와 물가연동채(TIPS)의 금리 차이로, 시장이 가격한 평균 물가 상승률에 위험 보상이 섞인 값입니다.' });
 
-    return { title, usOnly: true,
-      sub: `선물 가격 ${P.asof || '–'} 기준. 정책금리 목표 범위 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%.`,
+    // 결론 한 줄: 금리 수준을 보는 세 신호(정책, 성장, 물가)가 지금 어느 쪽을 가리키나. +1이 금리 하락 쪽
+    const L = D.score.live, three = [['s1_policy', '정책 경로'], ['s2_growth', '성장·고용'], ['s3_inflation', '물가']];
+    const dn = three.filter(([k]) => L[k] > 0).map((x) => x[1]), up = three.filter(([k]) => L[k] < 0).map((x) => x[1]);
+    let title;
+    if (!dn.length && !up.length) title = '매크로 신호는 모두 중립이라 금리 방향을 가리키지 않습니다';
+    else if (L.view_level > 0) title = `매크로 신호는 금리 하락 쪽입니다. ${F.josa(dn.join('·'), '이', '가')} 하락을 가리키고` + (up.length ? `, 반대쪽은 ${dn.length > up.length ? up.join('·') + '뿐입니다' : up.join('·') + '입니다'}` : ' 반대 신호는 없습니다');
+    else if (L.view_level < 0) title = `매크로 신호는 금리 상승 쪽입니다. ${F.josa(up.join('·'), '이', '가')} 상승을 가리키고` + (dn.length ? `, 반대쪽은 ${dn.join('·')}${up.length > dn.length ? '뿐입니다' : '입니다'}` : ' 반대 신호는 없습니다');
+    else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
+    return { title, lead, usOnly: true,
+      sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
       tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
       body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, cbCard, inflCard] };
   };

@@ -44,6 +44,10 @@
       return a >= 1000 ? sign + F.n(a / 1000, d == null ? 2 : d) + '조 달러' : sign + F.n(a * 10, 0) + '억 달러';
     },
     bnS(v) { return !ok(v) ? '–' : (v > 0 ? '+' : '') + F.bn(v); },
+    josa(word, withFinal, noFinal) {                 // '성장·고용' + 은/는 → '성장·고용은'
+      const c = String(word).charCodeAt(String(word).length - 1);
+      return word + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? withFinal : noFinal);
+    },
     md(d) { return d ? d.slice(5, 10) : '–'; },
     ym(d) { return d ? d.slice(2, 4) + '.' + d.slice(5, 7) : '–'; },
     mon(d) { return d ? Number(d.slice(5, 7)) + '월' : '–'; },
@@ -160,6 +164,8 @@
     }
     return h('section', { cls: 'card ' + (o.span || 'c12'), id: o.id }, head, body, o.foot ? h('footer', null, o.foot) : null);
   }
+  /* 카드 제목 바로 아래에 두는 결론 한마디와 그 근거 한 줄 */
+  const concl = (text, detail) => h('div', { cls: 'concl' }, h('p', null, text), detail ? h('small', null, detail) : null);
   const empty = (title, text) => h('div', { cls: 'empty' }, h('b', null, title), text);
 
   function tile(o) {
@@ -261,7 +267,7 @@
       if (o.zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
       const padY = (hi - lo || Math.abs(hi) || 1) * 0.07;
       lo -= padY; hi += padY;
-      const { ticks, step } = niceTicks(lo, hi, Math.max(2, Math.round(ph / 46)));
+      const { ticks, step } = niceTicks(lo, hi, Math.min(6, Math.max(2, Math.round(ph / 46))));   // 키가 큰 차트도 눈금은 여섯 개쯤까지만
       const yf = o.yFmt || tickFmt(step);
       const X = (i) => m.l + (n > 1 ? (i / (n - 1)) * pw : pw / 2), Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * ph;
       const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': o.aria || '선 차트' });
@@ -453,6 +459,48 @@
     });
   }
 
+  /* 도넛. o: {segments:[{name, value, color:'var(--b1)', tipRows}], center:[큰 글자, 작은 글자], h, aria}
+     조각 사이는 바탕색 2px로 띄우고, 7% 이상인 조각에만 비중을 적는다. 값은 모두 옆의 표에도 있다. */
+  function donut(o) {
+    return chartBox(o.h || 230, (el, W, H) => {
+      const segs = o.segments.filter((g) => ok(g.value) && g.value > 0), total = segs.reduce((t, g) => t + g.value, 0);
+      if (!total) { el.appendChild(empty('그릴 값이 없습니다', '')); return; }
+      const R = Math.min(W, H) / 2 - 3, r = R * 0.6, cx = W / 2, cy = H / 2, pad = 1 / R;
+      const css = getComputedStyle(document.documentElement);
+      const lum = (c) => {                            // 조각 안 글자를 흰색으로 할지 검은색으로 할지
+        const m = /var\((--[\w-]+)\)/.exec(c), hex = (m ? css.getPropertyValue(m[1]) : c).trim().replace('#', '');
+        if (hex.length !== 6) return 0;
+        const [rr, gg, bb] = [0, 2, 4].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+        return 0.2126 * rr + 0.7152 * gg + 0.0722 * bb;
+      };
+      const pt = (rad, a) => [cx + rad * Math.cos(a), cy + rad * Math.sin(a)];
+      const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': o.aria || '도넛 차트' });
+      let a0 = -Math.PI / 2;
+      for (const g of segs) {
+        const share = g.value / total, a1 = a0 + share * Math.PI * 2, s0 = a0 + pad, s1 = a1 - pad, big = s1 - s0 > Math.PI ? 1 : 0;
+        const [x0, y0] = pt(R, s0), [x1, y1] = pt(R, s1), [x2, y2] = pt(r, s1), [x3, y3] = pt(r, s0);
+        const path = s('path', { d: `M${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}L${x2} ${y2}A${r} ${r} 0 ${big} 0 ${x3} ${y3}Z`, fill: g.color, tabindex: 0,
+                                 'aria-label': `${g.name} ${F.n(share * 100, 1)}%` });
+        const show = (e) => { path.setAttribute('opacity', '.78'); tip.show(e, g.name, [{ name: '비중', value: F.n(share * 100, 1) + '%' }].concat(g.tipRows || [])); };
+        const hide = () => { path.removeAttribute('opacity'); tip.hide(); };
+        path.addEventListener('pointermove', show);
+        path.addEventListener('pointerleave', hide);
+        path.addEventListener('focus', () => { const b = path.getBoundingClientRect(); show({ clientX: b.left + b.width / 2, clientY: b.top + b.height / 2 }); });
+        path.addEventListener('blur', hide);
+        svg.appendChild(path);
+        if (share >= 0.07) {
+          const [lx, ly] = pt((R + r) / 2, (a0 + a1) / 2);
+          svg.appendChild(s('text', { cls: 'dn-lab', x: lx, y: ly + 4, 'text-anchor': 'middle', style: `fill:${lum(g.color) > 0.36 ? '#0b0b0b' : '#ffffff'}` }, F.n(share * 100, 0) + '%'));
+        }
+        a0 = a1;
+      }
+      const c = o.center || [];
+      if (c[0]) svg.appendChild(s('text', { cls: 'dn-big', x: cx, y: cy + (c[1] ? 1 : 6), 'text-anchor': 'middle' }, c[0]));
+      if (c[1]) svg.appendChild(s('text', { cls: 'dn-sub', x: cx, y: cy + 19, 'text-anchor': 'middle' }, c[1]));
+      el.appendChild(svg);
+    });
+  }
+
   /* 시계열을 표로: 달마다 마지막 값 (최근 maxRows개). cols: [{name, values, fmt}] */
   function seriesTable(dates, cols, maxRows) {
     const rows = [];
@@ -464,6 +512,6 @@
       { rows, dense: true });
   }
 
-  window.UI = { h, s, F, ok, dirCls, heat, heatPct, tip, table, card, empty, tile, spark, range, legend, scaleKey, line, bars, scatter,
+  window.UI = { h, s, F, ok, dirCls, heat, heatPct, tip, table, card, concl, empty, tile, spark, range, legend, scaleKey, line, bars, scatter, donut,
                 seriesTable, cut, chartBox };
 })();
