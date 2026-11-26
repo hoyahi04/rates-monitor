@@ -495,7 +495,7 @@ function btTable(sel, bt, names){
     +`<tr><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">달</th><th>평균 bp</th><th class="b">달</th><th>평균 bp</th><th>적중률</th><th class="b">신호 적중률</th><th>기준선</th><th>(+1)−(−1) bp</th></tr></thead>`
     +`<tbody>${bt.samples.map(row).join('')}<tr class="sep"><td colspan="13">국면별 (전체 기간)</td></tr>${bt.regimes.map(row).join('')}</tbody>`;
 }
-const BM=S.bt.momentum, BE=S.bt.expect;
+const BM=S.bt.momentum, BE=S.bt.expect, BE_L=S.bt.expect_level;
 btTable('#q2-table', BM, ['둔화','재가속']);
 btTable('#q3-table', BE, ['기대 상승','기대 하락']);
 $('#q2-sub').textContent='막대: 매월 말 판정한 3개월 연율 − 12개월 상승률(%p), 그날까지 공개된 Core PCE 기준 · 표: 판정 다음 달의 10년 금리 변화. 적중 = +1 뒤 금리 하락, −1 뒤 금리 상승';
@@ -517,7 +517,9 @@ $('#q1-finding').innerHTML=`<b>반응형으로 확인됩니다.</b> ${eA.label}�
   +`${eB.label}에는 ${fx(eB.abs_cpi2/eB.abs_other2,1)}배로 커졌고 서프라이즈 0.1%p당 2년 금리가 ${sg(eB.slope2,1)}bp, 10년 금리가 ${sg(eB.slope10,1)}bp 움직였습니다(t ${fx(eB.t2,1)}, ${fx(eB.t10,1)}). `
   +`물가가 목표에서 멀어진 뒤에야 CPI가 큰 이벤트가 됐다는 가설과 맞습니다.`+(proxy?' 서프라이즈가 대용치라서 기울기는 실제보다 작게 나왔을 가능성이 큽니다.':'');
 $('#q2-finding').innerHTML=findingText(BM, true, '10년 금리');
-$('#q3-finding').innerHTML=findingText(BE, false, '5s30s')+` 같은 달 안에서 보면 5y5y가 10bp 오를 때 10년 금리는 ${sg(sm_.slope_10y,1)}bp 움직였지만(t ${fx(sm_.t_10y,1)}) 5s30s는 ${sg(sm_.slope_5s30s,1)}bp에 그쳤습니다(t ${fx(sm_.t_5s30s,1)}). 장기 기대는 기울기가 아니라 금리 수준과 함께 움직입니다.`;
+$('#q3-finding').innerHTML=findingText(BE, false, '5s30s')+` 같은 달 안에서 보면 5y5y가 10bp 오를 때 10년 금리는 ${sg(sm_.slope_10y,1)}bp 움직였지만(t ${fx(sm_.t_10y,1)}) 5s30s는 ${sg(sm_.slope_5s30s,1)}bp에 그쳤습니다(t ${fx(sm_.t_5s30s,1)}). 장기 기대는 기울기가 아니라 금리 수준과 함께 움직입니다.`+(function(){ const L=BE_L; if(!L) return ''; const a=L.train;
+    return ` 그래서 이 점수가 다음 달 10년 금리를 맞히는지도 설정 구간(${L.start}~${L.end})에서 따로 봤습니다. 신호 적중률 ${a.signal.hit}% (${a.signal.hits}/${a.signal.n}), 평균 차이 ${sg(a.spread,1)}bp (t ${fx(a.t,2)})로 `
+      +(L.passed ? `관문(${L.gate_hit}%)을 넘어 검증 구간을 열었고, 검증 구간 적중률은 ${L.test.signal.hit}% (t ${fx(L.test.t,2)})입니다.` : `관문(${L.gate_hit}%)을 넘지 못해 검증 구간은 열지 않았습니다. 수준 뷰로 옮길 근거도 없습니다.`); })();
 
 /* ---------- 전략 시사점 ---------- */
 (function(){

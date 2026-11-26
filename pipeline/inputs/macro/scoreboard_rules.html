@@ -108,15 +108,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;ba
 <div class="sec-title">이번 달 적용 <span id="now-span"></span></div>
 <div class="nowbox" id="now"><div class="err">scoreboard.js가 없습니다. 이 폴더에서 <code>python3 scoreboard.py</code>를 실행하면 이번 달 판정이 표시됩니다.</div></div>
 
-<div class="sec-title">1단계 · 신호별 점수 <span>조건에 해당하지 않으면 0</span></div>
+<div class="sec-title">1단계 · 신호별 점수 <span>조건에 해당하지 않으면 0 · 1·3·4번은 섹션에서 점수를 두 개 내고, 점수표에는 아래 하나만 들어갑니다</span></div>
 <div class="card">
   <div class="tablewrap"><table>
     <thead><tr><th>#</th><th>신호</th><th>재는 것</th><th>+1</th><th>−1</th><th>+1의 방향</th><th>열</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td class="name">정책 경로</td><td>시장이 가격한 2년 평균 정책금리 − 점도표 2년 평균</td><td><span class="p">+25bp 이상</span><span class="hint">시장이 연준보다 높게 가격</span></td><td><span class="m">−25bp 이하</span></td><td>금리 하락, 스티프닝</td><td><code>s1_policy</code></td></tr>
+      <tr><td>1</td><td class="name">정책 경로<span class="hint">경로 괴리</span></td><td>시장이 가격한 2년 평균 정책금리 − 점도표 2년 평균</td><td><span class="p">+25bp 이상</span><span class="hint">시장이 연준보다 높게 가격</span></td><td><span class="m">−25bp 이하</span></td><td>금리 하락, 스티프닝</td><td><code>s1_policy</code></td></tr>
       <tr><td>2</td><td class="name">성장·고용</td><td>고용 투표 + 실업률 투표의 부호</td><td><span class="p">둔화</span></td><td><span class="m">확장</span></td><td>금리 하락</td><td><code>s2_growth</code></td></tr>
-      <tr><td>3</td><td class="name">인플레이션</td><td>Core PCE 3개월 연율 − 12개월 상승률</td><td><span class="p">−0.3%p 이하</span><span class="hint">물가 둔화</span></td><td><span class="m">+0.3%p 이상</span><span class="hint">재가속</span></td><td>금리 하락</td><td><code>s3_inflation</code></td></tr>
-      <tr><td>4</td><td class="name">수급</td><td>장기물 순공급의 가속 ÷ 민간 보유 잔액</td><td><span class="p">+0.56% 이상</span><span class="hint">공급 가속</span></td><td><span class="m">−0.09% 이하</span><span class="hint">공급 감속</span></td><td>스티프닝</td><td><code>s4_supply</code></td></tr>
+      <tr><td>3</td><td class="name">인플레이션<span class="hint">물가 모멘텀</span></td><td>Core PCE 3개월 연율 − 12개월 상승률</td><td><span class="p">−0.3%p 이하</span><span class="hint">물가 둔화</span></td><td><span class="m">+0.3%p 이상</span><span class="hint">재가속</span></td><td>금리 하락</td><td><code>s3_inflation</code></td></tr>
+      <tr><td>4</td><td class="name">수급<span class="hint">공급 압력</span></td><td>장기물 순공급의 가속 ÷ 민간 보유 잔액</td><td><span class="p">+0.56% 이상</span><span class="hint">공급 가속</span></td><td><span class="m">−0.09% 이하</span><span class="hint">공급 감속</span></td><td>스티프닝</td><td><code>s4_supply</code></td></tr>
       <tr><td>5</td><td class="name">유동성·변동성</td><td>MOVE · 리스크 심리 · 자금 사정의 3년 백분위</td><td><span class="p">셋 다 안정</span></td><td><span class="m">MOVE 백분위 90 초과</span><span class="hint">스트레스</span></td><td>벨리 불릿 허용 (−1은 브레이크)</td><td><code>s5_liquidity_vol</code></td></tr>
     </tbody>
   </table></div>
@@ -157,6 +157,20 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;ba
     <li><b>3번 인플레이션</b>: 그날까지 발표된 Core PCE를 발표 당시 수치 그대로 씁니다. 전월분은 다음 달 말에 발표됩니다.</li>
     <li><b>4번 수급</b>: 장기물 순공급 = 만기 20·30년 국채 잔액 증감 − 연준의 보유 증감. 가속 = (최근 3개월 합 − 직전 12개월의 3개월 평균) ÷ 민간 보유 잔액. 문턱값은 2015~2020년 신호 분포의 상위·하위 1/3 지점입니다.</li>
   </ul>
+</div>
+
+<div class="card">
+  <h2>점수표에 들어가지 않는 참고 점수</h2>
+  <p class="sub">1·3·4번 섹션은 점수를 두 개씩 냅니다. 두 번째 점수는 다음 달 기울기를 맞히지 못해 참고로만 봅니다(2026-11-21 백테스트). 월별 값은 각 섹션의 <code>signals_monthly.csv</code>에 있습니다.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>참고 점수</th><th>재는 것</th><th>+1</th><th>−1</th><th>원래 연결하려던 뷰</th><th>백테스트 결과</th><th>섹션 파일의 열</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="name">정책 기조</td><td>1년 뒤 1년 금리 − 장기 점도표</td><td class="nw"><span class="p">+50bp 이상</span><span class="hint">긴축</span></td><td class="nw"><span class="m">−50bp 이하</span><span class="hint">완화</span></td><td>기울기</td><td>다음 달 2s10s 적중률 54%</td><td><code>score_stance</code></td></tr>
+      <tr><td>3</td><td class="name">장기 기대</td><td>5y5y 기대 인플레이션의 3개월 변화</td><td class="nw"><span class="p">+15bp 이상</span><span class="hint">기대 상승</span></td><td class="nw"><span class="m">−15bp 이하</span><span class="hint">기대 하락</span></td><td>기울기</td><td>다음 달 5s30s 적중률 49%. 같은 달에는 금리 수준과 함께 움직이지만, 다음 달 10년 금리도 설정 구간 53%로 관문 미통과</td><td><code>score_expect</code></td></tr>
+      <tr><td>4</td><td class="name">기간 프리미엄</td><td>ACM 10년 기간 프리미엄의 3개월 변화</td><td class="nw"><span class="p">+15bp 이상</span><span class="hint">상승</span></td><td class="nw"><span class="m">−15bp 이하</span><span class="hint">하락</span></td><td>기울기</td><td>다음 달 5s30s 적중률 54%. 2021년 이후에만 63%</td><td><code>score_tp</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul><li>인플레이션을 예로 들면 <b>실제로 오른 물가</b>(물가 모멘텀, 팀 점수)와 <b>시장이 예상하는 물가</b>(장기 기대, 참고)를 따로 잽니다.</li></ul>
 </div>
 
 <div class="sec-title">2단계 · 커브 뷰 <span>1~3번을 하나로 합쳐 같은 매크로 뷰를 여러 전략에 중복으로 싣지 않습니다</span></div>
