@@ -80,6 +80,23 @@
       foot: '과거 시점의 선물 가격은 만기가 지나면 구할 수 없어, 비교 선은 한 달 전과 직전 점도표 발표일 두 개만 있습니다.' })
       : UI.card({ id: 'policy', span: 'c7', title: '정책금리 경로', body: UI.empty('선물 가격을 받지 못했습니다', 'Yahoo Finance의 연방기금금리 선물(ZQ) 수집이 실패했습니다.') });
 
+    // 시장 가격 vs 컨센서스: 선물 내재 금리 − 뉴욕 연은 SME 중간값 (±25bp 넘으면 시장이 컨센서스와 다르게 가격)
+    const S = P.sme;
+    let consCard = null;
+    if (S && S.rows && S.rows.length) {
+      const hd = S.head, g = hd ? hd.gap_bp : null;
+      const word = g == null ? null : g >= 25 ? '컨센서스보다 매파적으로(금리를 높게) 가격하고 있습니다' : g <= -25 ? '컨센서스보다 비둘기적으로(금리를 낮게) 가격하고 있습니다' : '컨센서스와 비슷하게 가격하고 있습니다';
+      consCard = UI.card({ id: 'cons', span: 'c12', title: '시장 가격 vs 컨센서스', cap: `연방기금금리 선물 vs 뉴욕 연은 시장참가자 설문(SME, ${S.survey}) vs 점도표`,
+        body: [hd ? UI.concl(`약 1년 뒤(${hd.label}) 기준으로 선물은 ${F.n(hd.fut, 2)}%, SME 중간값은 ${F.n(hd.sme, 2)}%라서 시장은 ${word}`,
+            `갭 ${F.bp(g, 0)}. 기준: ±25bp 안이면 비슷, 넘으면 시장과 컨센서스가 갈린 것으로 봅니다. SME 장기 금리 ${F.n(S.lr, 2)}%, 향후 10년 평균 ${F.n(S.avg10, 2)}%.`) : null,
+          UI.table([{ label: '시점', align: 'l', get: (x) => x.label }, { label: '선물 내재', get: (x) => x.fut, fmt: (v) => F.n(v, 2) },
+            { label: 'SME 중간값', get: (x) => x.sme, fmt: (v) => F.n(v, 2) }, { label: 'SME 25~75%', get: (x) => `${F.n(x.p25, 2)}~${F.n(x.p75, 2)}` },
+            { label: '점도표', get: (x) => x.dot, fmt: (v) => F.n(v, 3) }, { label: '선물 − SME', get: (x) => x.gap_bp, fmt: (v) => F.bp(v, 0) }],
+            { rows: S.rows.filter((x) => x.fut != null), dense: true })],
+        foot: h('span', null, '선물은 월평균 금리라 회의가 있는 달은 다음 달 평균(회의 뒤 수준)과 비교합니다. SME는 목표 범위 중간값, 점도표는 연말 값입니다. 원자료: ',
+          h('a', { href: S.url, target: '_blank', rel: 'noopener noreferrer' }, 'SME 결과 PDF'), '.') });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -153,7 +170,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, cbCard, inflCard] };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '시장 vs 컨센서스'], ['cons', '시장 vs 컨센서스'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, cbCard, inflCard].filter(Boolean) };
   };
 })();
