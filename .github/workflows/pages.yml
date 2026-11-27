@@ -1,6 +1,11 @@
 name: Deploy to GitHub Pages (production → /, main → /beta/)
 
+# 베타(/beta/)는 배포할 때마다 공개 자료를 새로 받아서 올린다. 받은 자료는 저장소에 커밋하지 않는다
+# (main은 PR로만 바뀌므로). 그래서 매일 정해진 시각에 이 작업을 돌려 베타를 최신으로 만든다.
+# 확정본(/)은 production에 커밋된 자료 그대로 둔다.
 on:
+  schedule:
+    - cron: "30 23 * * 1-5"   # 평일 23:30 UTC = 한국 시간 화~토 08:30 (미국 장 마감 뒤)
   push:
     branches: [main, production]
     paths:
@@ -37,6 +42,49 @@ jobs:
         with:
           ref: main
           path: _src/main
+      # ── 베타 자료 새로 받기 (main 사본에서만). 한 단계가 실패해도 나머지는 계속하고, 실패한 곳은 커밋된 값이 남는다.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 준비 (PDF 도구, 파이썬 패키지)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+          pip install -q xlrd openpyxl yfinance
+      - name: 금리 (CMT)
+        working-directory: _src/main/pipeline/inputs/curve
+        run: python3 fetch_data.py
+        continue-on-error: true
+      - name: 매크로 5개 섹션
+        working-directory: _src/main/pipeline/inputs/macro
+        run: |
+          for d in 0*/; do
+            echo "::group::$d"
+            (cd "$d" && python3 fetch_data.py && python3 analyze.py) || echo "::warning::$d 갱신 실패, 지난 값 사용"
+            echo "::endgroup::"
+          done
+        continue-on-error: true
+      - name: 통합 점수표
+        working-directory: _src/main/pipeline/inputs/macro
+        run: python3 scoreboard.py
+        continue-on-error: true
+      - name: 모형 포트폴리오
+        working-directory: _src/main/pipeline/model
+        run: python3 backtest.py
+        continue-on-error: true
+      - name: 데스크 · 새 공개 자료
+        working-directory: _src/main/pipeline/desk
+        run: python3 fetch_extra.py
+        continue-on-error: true
+      - name: 데스크 · 한국 (ECOS 인증키가 없으면 건너뛴다고 기록만 함)
+        working-directory: _src/main/pipeline/desk
+        env:
+          ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
+        run: python3 fetch_korea.py
+        continue-on-error: true
+      - name: 데스크 · 화면용 자료
+        working-directory: _src/main/pipeline/desk
+        run: python3 build_data.py
+        continue-on-error: true
       # Pages는 저장소당 사이트가 하나라서, 어느 브랜치가 바뀌든 두 브랜치를 모두 다시 올린다.
       - name: Build site (production at /, main at /beta/)
         run: |
