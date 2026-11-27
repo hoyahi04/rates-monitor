@@ -13,11 +13,11 @@
 실행:  python3 fetch_extra.py            전부
        python3 fetch_extra.py cftc news   고른 묶음만
 """
-import csv, html, http.cookiejar, io, json, re, sys, urllib.parse, urllib.request
+import csv, html, http.cookiejar, io, json, re, shutil, subprocess, sys, tempfile, urllib.parse, urllib.request
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-from common import RAW, UA, UA_BROWSER, UA_YAHOO, fred, get, log, now_utc, num, read_json, write_json
+from common import RAW, UA, UA_BROWSER, UA_YAHOO, fred, get, get_bytes, log, now_utc, num, read_json, write_json
 
 START = "2014-01-01"
 OUT = RAW / "extra.json"
@@ -402,11 +402,74 @@ def g_fomc():
         raise RuntimeError("; ".join(miss))
     log(f"  FOMC 성명 {len(out)}개 ({out[0]['date']} ~ {out[-1]['date']})")
     return out, miss
+_MON = {m: i + 1 for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
+
+
+def _sme_table(lines, k):
+    """lines[k] = 'Federal Funds Target Rate or Range Modal Forecasts'. 그 아래 머리글과 25/중간/75 백분위 줄을 읽는다."""
+    head, rows = [], {}
+    for ln in lines[k + 1:k + 9]:
+        t = ln.strip()
+        for key, lab in (("p25", "25th Percentile"), ("med", "Median"), ("p75", "75th Percentile")):
+            if t.startswith(lab):
+                rows[key] = [float(x) for x in re.findall(r"(-?\d+\.\d+)%", t)]
+        if not rows and t:
+            head.append(t)
+    return head, rows
+
+
+def g_sme():
+    """뉴욕 연은 시장참가자 설문(SME) 결과 PDF에서 정책금리 중간값 경로(3a)와 장기 금리(3b)를 읽는다.
+    PDF를 글자로 바꾸는 데 poppler의 pdftotext가 필요하다 (맥: brew install poppler)."""
+    if not shutil.which("pdftotext"):
+        raise RuntimeError("pdftotext 없음 (poppler 설치 필요) → SME 건너뜀")
+    base = "https://www.newyorkfed.org"
+    page = get(base + "/markets/market-intelligence/survey-of-market-expectations", UA_BROWSER)
+    links = re.findall(r'href="(/medialibrary/media/markets/survey/(\d{4})/([a-z]{3})-\d{4}-sme-results\.pdf)"', page)
+    if not links:
+        raise RuntimeError("SME 결과 PDF 링크를 찾지 못함")
+    path, yr, mon = max(links, key=lambda x: (x[1], _MON.get(x[2], 0)))
+    with tempfile.TemporaryDirectory() as td:
+        pdf = f"{td}/sme.pdf"
+        open(pdf, "wb").write(get_bytes(base + path, UA_BROWSER))
+        subprocess.run(["pdftotext", "-layout", pdf, f"{td}/sme.txt"], check=True)
+        lines = open(f"{td}/sme.txt", encoding="utf-8", errors="replace").read().splitlines()
+    idx = [k for k, ln in enumerate(lines) if "Federal Funds Target Rate or Range Modal Forecasts" in ln]
+    if len(idx) < 3:
+        raise RuntimeError("SME 3a/3b 표를 찾지 못함")
+    pts, y, last_m = [], int(yr), 0
+    # 표 1: FOMC 회의별 (머리글 = 월 이름 줄 + 날짜 줄)
+    head, rows = _sme_table(lines, idx[0])
+    months = [_MON[m.lower()[:3]] for m in re.findall(r"([A-Z][a-z]{2})\.?", head[0]) if m.lower()[:3] in _MON]
+    days = re.findall(r"\d+-\d+", head[1]) if len(head) > 1 else []
+    for j, m in enumerate(months):
+        if m < last_m:
+            y += 1
+        last_m = m
+        pts.append({"label": f"{y}-{m:02d} FOMC" + (f" ({days[j]}일)" if j < len(days) else ""), "month": f"{y}-{m:02d}",
+                    "kind": "meeting"})
+    # 표 2: 분기 말·연말
+    head2, rows2 = _sme_table(lines, idx[1])
+    for t in re.findall(r"(\d{4})(?:\s+Q(\d))?", head2[0]):
+        qy, q = int(t[0]), t[1]
+        pts.append({"label": f"{qy} Q{q} 말" if q else f"{qy}년 말", "month": f"{qy}-{int(q) * 3 if q else 12:02d}",
+                    "kind": "quarter" if q else "year"})
+    for key in ("p25", "med", "p75"):
+        vals = rows.get(key, []) + rows2.get(key, [])
+        if len(vals) != len(pts):
+            raise RuntimeError(f"SME 표 열 수가 맞지 않음 ({key}: {len(vals)} vs {len(pts)})")
+        for p, v in zip(pts, vals):
+            p[key] = v
+    _, rows3 = _sme_table(lines, idx[2])
+    lr = rows3.get("med", [None, None])
+    log(f"  SME {mon} {yr}: {len(pts)}개 시점")
+    return {"survey": f"{yr}-{_MON[mon]:02d}", "url": base + path, "points": pts,
+            "avg10": lr[0] if len(lr) > 1 else None, "lr": lr[-1]}, []
 
 
 GROUPS = [("fred_daily", g_fred_daily), ("intl", g_intl), ("yahoo", g_yahoo), ("cftc", g_cftc),
           ("upcoming", g_upcoming), ("calendar", g_calendar), ("news", g_news), ("fedinvest", g_fedinvest),
-          ("fomc", g_fomc)]
+          ("sme", g_sme), ("fomc", g_fomc)]
 
 
 def main(argv):

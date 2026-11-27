@@ -103,6 +103,23 @@
           h('a', { href: FO.url, target: '_blank', rel: 'noopener noreferrer' }, '최신 성명'), '.') });
     }
 
+    // 시장 가격 vs 컨센서스: 선물 내재 금리 − 뉴욕 연은 SME 중간값 (±25bp 넘으면 시장이 컨센서스와 다르게 가격)
+    const S = P.sme;
+    let consCard = null;
+    if (S && S.rows && S.rows.length) {
+      const hd = S.head, g = hd ? hd.gap_bp : null;
+      const word = g == null ? null : g >= 25 ? '컨센서스보다 매파적으로(금리를 높게) 가격하고 있습니다' : g <= -25 ? '컨센서스보다 비둘기적으로(금리를 낮게) 가격하고 있습니다' : '컨센서스와 비슷하게 가격하고 있습니다';
+      consCard = UI.card({ id: 'cons', span: 'c12', title: '시장 가격 vs 컨센서스', cap: `연방기금금리 선물 vs 뉴욕 연은 시장참가자 설문(SME, ${S.survey}) vs 점도표`,
+        body: [hd ? UI.concl(`약 1년 뒤(${hd.label}) 기준으로 선물은 ${F.n(hd.fut, 2)}%, SME 중간값은 ${F.n(hd.sme, 2)}%라서 시장은 ${word}`,
+            `갭 ${F.bp(g, 0)}. 기준: ±25bp 안이면 비슷, 넘으면 시장과 컨센서스가 갈린 것으로 봅니다. SME 장기 금리 ${F.n(S.lr, 2)}%, 향후 10년 평균 ${F.n(S.avg10, 2)}%.`) : null,
+          UI.table([{ label: '시점', align: 'l', get: (x) => x.label }, { label: '선물 내재', get: (x) => x.fut, fmt: (v) => F.n(v, 2) },
+            { label: 'SME 중간값', get: (x) => x.sme, fmt: (v) => F.n(v, 2) }, { label: 'SME 25~75%', get: (x) => `${F.n(x.p25, 2)}~${F.n(x.p75, 2)}` },
+            { label: '점도표', get: (x) => x.dot, fmt: (v) => F.n(v, 3) }, { label: '선물 − SME', get: (x) => x.gap_bp, fmt: (v) => F.bp(v, 0) }],
+            { rows: S.rows.filter((x) => x.fut != null), dense: true })],
+        foot: h('span', null, '선물은 월평균 금리라 회의가 있는 달은 다음 달 평균(회의 뒤 수준)과 비교합니다. SME는 목표 범위 중간값, 점도표는 연말 값입니다. 원자료: ',
+          h('a', { href: S.url, target: '_blank', rel: 'noopener noreferrer' }, 'SME 결과 PDF'), '.') });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -120,19 +137,28 @@
                  ['다음 회의 가격', m0 ? F.bp(m0.move, 0) : '–', m0 ? '선물 내재' : ''],
                  ['정책 기조', F.bp(P.stance_bp, 0), '1년 뒤 1년 금리 − 중립금리'],
                  ['연준 보유 국채', F.bn(soma.total_bn), soma.asof], ['3개월 변화', F.bnS(soma.chg_3m_bn), ''], ['1년 변화', F.bnS(soma.chg_1y_bn), '']];
-    const K = D.kr;
-    const bokBody = ctx.krOk && K.bok ? kv([['기준금리', F.n(K.bok.base, 2), '%'], ['마지막 변경', K.bok.last_change ? F.bp(K.bok.last_change.bp) : '–', K.bok.last_change ? K.bok.last_change.date : ''],
-        ['국고 3년 − 기준금리', ok(K.bok.ktb3) ? F.bp((K.bok.ktb3 - K.bok.base) * 100) : '–', '시장이 보는 방향'],
-        ['CD 91일', F.n(K.bok.cd91, 2), '%'], ['콜금리', F.n(K.bok.call, 2), '%'], ['소비자물가 전년비', ok(K.cpi_yoy) ? F.n(K.cpi_yoy, 1) : '–', K.cpi_date ? '% · ' + K.cpi_date : '%']], true)
-      : UI.empty('한국은행 자료는 인증키가 필요합니다', '한국은행 ECOS 인증키를 넣으면 기준금리, 국고채 금리, CD 금리가 채워집니다. 금융통화위원회 일정은 공개 자료로 받는 곳을 아직 찾지 못했습니다.');
     const today = new Date().toISOString().slice(0, 10), from = today < asof ? asof : today;
     const talks = D.events.filter((e) => (e.kind === '연설' || e.kind === '의회 증언' || e.kind === 'FOMC' || e.kind === '연준 자료') && e.date >= from).slice(0, 8);
     const talkList = h('ul', { cls: 'list' }, talks.length ? talks.map((e) => h('li', null, h('span', { cls: 'when' }, `${F.md(e.date)} ${e.time || ''}`),
       h('span', { cls: 'what' }, e.title, h('small', null, [e.kind, e.note].filter(Boolean).join(' · '))))) : h('li', null, h('span'), h('span', { cls: 'mute' }, '공개된 예정 일정이 없습니다')));
-    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '중앙은행 트래커', cap: '연준과 한국은행',
+    // 연준 커뮤니케이션 로그: 이사회 연설·의회 증언·통화정책 보도자료(성명, 의사록)를 RSS에서 자동 수집 (최근 45일)
+    const cut = new Date(new Date(asof).getTime() - 45 * 864e5).toISOString().slice(0, 10);
+    const comms = (D.news || []).filter((n) => n.src === '연준' && n.ts.slice(0, 10) >= cut &&
+      (n.kind === '연설' || n.kind === '의회 증언' || (n.kind === '보도자료' && /monetary/i.test(n.cat || ''))));
+    const who = (n) => (n.kind === '보도자료' ? 'FOMC' : (n.title.split(',')[0] || '').trim());
+    const tally = {};
+    for (const n of comms) if (n.kind !== '보도자료') tally[who(n)] = (tally[who(n)] || 0) + 1;
+    const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ');
+    const commsList = h('ul', { cls: 'list' }, comms.length ? comms.slice(0, 8).map((n) => {
+      const safe = /^https?:\/\//.test(n.link) ? n.link : null, ttl = n.kind === '보도자료' ? n.title : n.title.slice(n.title.indexOf(',') + 1).trim();
+      return h('li', null, h('span', { cls: 'when' }, F.md(n.ts)),
+        h('span', { cls: 'what' }, safe ? h('a', { href: safe, target: '_blank', rel: 'noopener noreferrer' }, ttl) : ttl, h('small', null, `${who(n)} · ${n.kind}`)));
+    }) : h('li', null, h('span'), h('span', { cls: 'mute' }, '최근 45일 연준 발언이 없습니다')));
+    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '연준 트래커', cap: '정책 현황 · 최근 발언 로그 · 예정 일정',
       body: h('div', { cls: 'grid' },
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '연준 (Fed)'), kv(fed, true)),
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '한국은행 (BOK)'), bokBody),
+        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '정책 현황'), kv(fed, true)),
+        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '최근 발언 로그 (45일)'), commsList,
+          h('p', { cls: 'note', style: 'margin:6px 0 0' }, comms.length ? `이사별 연설·증언 횟수: ${tallyTxt || '없음'}. 연준 이사회 RSS 기준이라 지역 연은 총재 발언은 빠져 있습니다.` : '')),
         h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '연준 예정 일정 (미 동부 시각)'), talkList)) });
 
     // ── 인플레이션 ──
@@ -176,7 +202,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, fomcCard, cbCard, inflCard].filter(Boolean) };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '시장 vs 컨센서스'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();

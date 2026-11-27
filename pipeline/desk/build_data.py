@@ -522,6 +522,33 @@ def fomc_block(st, grid, cols):
         meetings.append(row)
     return {"latest": st[-1]["date"], "prev": st[-2]["date"], "url": st[-1]["url"], "redline": segs,
             "changed_words": changed, "total_words": len(b), "meetings": meetings[::-1]}
+def sme_block(sme, policy, asof):
+    """뉴욕 연은 SME(시장참가자 설문) 중간값 경로를 선물 내재 금리, 점도표와 같은 시점에서 비교한다.
+    선물은 월평균 금리라서, 회의가 있는 달은 다음 달 평균(회의 뒤 수준)을 쓴다. 양수 갭 = 선물이 컨센서스보다 높음(매파적)."""
+    if not sme or not sme.get("points"):
+        return None
+    now = next((s for s in policy.get("snaps") or [] if s["key"] == "now"), None)
+    fut = dict(zip(now["months"], now["rates"])) if now else {}
+    dots = policy.get("dots") or {}
+    ym0 = asof[:7]
+    rows = []
+    for p in sme["points"]:
+        if p["month"] < ym0:
+            continue
+        m = p["month"]
+        if p["kind"] == "meeting":
+            y, mm = int(m[:4]), int(m[5:]) + 1
+            m = f"{y + (mm > 12)}-{(mm - 1) % 12 + 1:02d}"
+        f = fut.get(m)
+        d = dots.get(p["month"][:4]) if p["month"].endswith("-12") else None
+        rows.append({"label": p["label"], "month": p["month"], "sme": p["med"], "p25": p["p25"], "p75": p["p75"],
+                     "fut": r(f, 3), "dot": d, "gap_bp": None if f is None else r((f - p["med"]) * 100, 0)})
+    yr = int(asof[:4]) + 1
+    target = f"{yr}-{asof[5:7]}"
+    have = [x for x in rows if x["gap_bp"] is not None]
+    head = min(have, key=lambda x: abs(int(x["month"][:4]) * 12 + int(x["month"][5:]) - yr * 12 - int(asof[5:7]))) if have else None
+    return {"survey": sme["survey"], "url": sme["url"], "lr": sme.get("lr"), "avg10": sme.get("avg10"),
+            "rows": rows, "head": head, "target": target}
 
 
 def macro_block(I, grid, cols, events):
@@ -632,6 +659,7 @@ def macro_block(I, grid, cols, events):
               "next": None if not nxt_fomc else {"date": nxt_fomc["date"], "sep": bool(nxt_fomc.get("sep")),
                                                  "days": (date.fromisoformat(nxt_fomc["date"]) - date.fromisoformat(asof)).days}}
     policy["fomc"] = fomc_block(I["extra"].get("fomc"), grid, cols)
+    policy["sme"] = sme_block(I["extra"].get("sme"), policy, asof)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
