@@ -5,8 +5,9 @@
 
 > **이 저장소에서의 위치**: 화면은 `desk/`, 자료를 만드는 스크립트는 `pipeline/desk/`에 있습니다 (아래 본문의 `4. desk/pipeline`은 `pipeline/desk`로 읽으면 됩니다).
 > `build_data.py`가 읽는 `2. portfolio`·`1. macro`는 `pipeline/inputs/curve`·`pipeline/inputs/macro`, `3. dashboard/portfolio.js`는 `pipeline/model/portfolio.js`입니다.
-> 모형 포트폴리오(`portfolio.js`, `backtest.py`)는 `pipeline/model/`에 있습니다. `.github/workflows/daily.yml`은 아직 이 저장소에 없어서
-> 매일 자동 갱신은 되지 않습니다. 화면은 올려 둔 `data/desk_data.js`(2026-11-23 종가 기준)를 읽습니다.
+> 모형 포트폴리오(`portfolio.js`, `backtest.py`)는 `pipeline/model/`에 있습니다. 베타(`/beta/`)는 `.github/workflows/pages.yml`이
+> 평일 매일(한국 시간 화~토 08:30)과 배포할 때마다 자료를 새로 받아 올립니다. 받은 자료는 저장소에 커밋하지 않으므로,
+> 이 폴더의 `data/desk_data.js`와 확정본(`/`)은 마지막으로 커밋된 시점의 자료입니다.
 
 ## 여는 법
 
@@ -90,7 +91,7 @@ python3 build_data.py      # data/desk_data.js 만들기
 
 표준 라이브러리만 씁니다. `build_data.py`는 다른 폴더가 만든 자료도 읽으므로, 전부 새로 받으려면 먼저
 `2. portfolio/fetch_data.py`, `1. macro/0X_*/fetch_data.py`, `1. macro/scoreboard.py`, `3. dashboard/backtest.py`를 돌립니다.
-GitHub Actions(`.github/workflows/daily.yml`)가 미국 장 마감 뒤(한국 시간으로 화~토 아침 8시 30분)에 이 순서대로 돌립니다.
+GitHub Actions(`.github/workflows/pages.yml`)가 미국 장 마감 뒤(한국 시간으로 화~토 아침 8시 30분)에 이 순서대로 돌려 베타에 올립니다.
 
 받기에 실패한 묶음은 지난번 값을 그대로 두고, 무엇이 실패했는지는 `desk_data.js`의 `meta.problems`에 적힙니다.
 
