@@ -1,8 +1,11 @@
 # Y-FoRM Rates Monitor
 
-> **📊 대시보드 바로가기: [https://hoyahi04.github.io/rates-monitor/](https://hoyahi04.github.io/rates-monitor/)**  
-> 팀 내부 베타: [https://hoyahi04.github.io/rates-monitor/beta/](https://hoyahi04.github.io/rates-monitor/beta/)
 
+> **팀 내부 베타: [https://hoyahi04.github.io/rates-monitor/beta/](https://hoyahi04.github.io/rates-monitor/beta/)** -> 요거 보기
+
+
+
+> 📊 대시보드 바로가기: [https://hoyahi04.github.io/rates-monitor/](https://hoyahi04.github.io/rates-monitor/)
 미국 국채 중심의 채권 데스크 대시보드다. 공개 자료만으로 만들며, 팀 발표와 투자의사결정, 예비 펀드운용에 쓴다.
 
 | 주소 | 브랜치 | 용도 |
