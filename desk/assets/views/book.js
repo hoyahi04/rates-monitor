@@ -23,12 +23,13 @@
       UI.tile({ lab: '올해 초과수익', val: F.s(ex('ytd'), 0), unit: 'bp', note: `포트폴리오 ${F.s(B.perf.ytd.p, 2)}%` }),
       UI.tile({ lab: `${B.start.slice(0, 4)}년 말 이후`, val: F.s(ex('itd'), 0), unit: 'bp', note: `연 ${F.s(S.excess_ann_bp, 1)}bp · 정보비율 ${F.n(S.ir, 2)}` }),
       UI.tile({ lab: '듀레이션 / BM', val: F.n(B.dur_p, 2), unit: `/ ${F.n(B.dur_b, 2)}년`, note: `액티브 듀레이션 ${F.s(B.active_dur, 2)}년` }),
-      UI.tile({ lab: 'DV01', val: F.usd(B.dv01), unit: '/ bp', note: `벤치마크 ${F.usd(B.dv01_b)} · CS01 $0` }));
+      UI.tile({ lab: '액티브 DV01', val: F.usdS(B.dv01 - B.dv01_b), unit: '/ bp', note: `포트폴리오 ${F.usd(B.dv01)} · 벤치마크 ${F.usd(B.dv01_b)}`,
+        title: '금리가 1bp 내릴 때 포트폴리오가 벤치마크보다 더 버는 금액 (달러)' }));
 
     // ── 구성 (도넛): 만기 구간별 비중. 평가금액 기준과 DV01 기준을 바꿔 볼 수 있다 ──
     const BK = B.positions, bcol = (i) => `var(--b${i + 1})`;
     const mUsd = (v) => '$' + F.n(v / 1e6, 2) + 'M';
-    let basis = 'mv';
+    let basis = 'dv01';   // 운용에서는 금액보다 금리 위험(DV01)으로 본다
     const donutSlot = h('div');
     const drawDonut = () => donutSlot.replaceChildren(UI.donut({ h: 230, aria: '만기 구간별 포트폴리오 구성',
       center: basis === 'mv' ? [mUsd(B.nav), `듀레이션 ${F.n(B.dur_p, 2)}년`] : [F.usd(B.dv01), 'DV01 / bp'],
@@ -41,16 +42,86 @@
       b.addEventListener('click', () => { basis = key; b.parentNode.querySelectorAll('[data-k]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.k === key))); drawDonut(); });
       return b;
     };
-    const dvTot = BK.reduce((t, p) => t + p.dv01, 0);
+    const dvTot = BK.reduce((t, p) => t + p.dv01, 0), dvTotB = BK.reduce((t, p) => t + p.dv01_b, 0);
     const composeCard = UI.card({ id: 'compose', span: 'c5', title: '내 포트폴리오', cap: '만기 구간별 구성',
-      tools: [h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, bBtn('mv', '평가금액'), bBtn('dv01', 'DV01'))],
+      tools: [h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, bBtn('dv01', 'DV01'), bBtn('mv', '평가금액'))],
       body: [donutSlot, h('div', { style: 'height:6px' }),
         UI.table([{ label: '만기 구간', align: 'l', get: (p) => p.label, fmt: (v, p) => [h('i', { cls: 'sw', style: `background:${bcol(BK.indexOf(p))}` }), v] },
-          { label: '비중', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }, { label: '벤치마크', get: (p) => p.w_b, fmt: (v) => F.n(v, 1) + '%' },
-          { label: '평가금액', get: (p) => p.mv, fmt: mUsd }, { label: '듀레이션', get: (p) => p.mdur, fmt: (v) => F.n(v, 2) },
-          { label: 'DV01 비중', title: '포트폴리오 전체 DV01 가운데 이 구간이 차지하는 몫', get: (p) => p.dv01 / dvTot * 100, fmt: (v) => F.n(v, 1) + '%' }],
-          { rows: BK, dense: true, foot: ['합계', '100%', '100%', mUsd(B.nav), F.n(B.dur_p, 2), '100%'] })],
-      foot: `${B.asof} 평가. 도넛은 평가금액 기준과 DV01 기준으로 바꿔 볼 수 있습니다. 비중은 벤치마크와 같고, 구간 안에서 만기를 옮겨 듀레이션을 조절합니다. DV01 기준으로 보면 금리 위험이 어느 만기에 몰려 있는지 보입니다. 국채만 보유하고 현금은 없습니다.` });
+          { label: 'DV01', title: '금리 1bp 하락 때 이 구간에서 버는 금액', get: (p) => p.dv01, fmt: (v) => F.usd(v) },
+          { label: 'DV01 비중', title: '포트폴리오 전체 DV01 가운데 이 구간이 차지하는 몫', get: (p) => p.dv01 / dvTot * 100, fmt: (v) => F.n(v, 1) + '%' },
+          { label: '벤치마크', title: '벤치마크 DV01 가운데 이 구간의 몫', get: (p) => p.dv01_b / dvTotB * 100, fmt: (v) => F.n(v, 1) + '%' },
+          { label: '평가금액 비중', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }],
+          { rows: BK, dense: true, foot: ['합계', F.usd(dvTot), '100%', '100%', '100%'] })],
+      foot: `${B.asof} 평가. 기본은 DV01 기준(금리가 1bp 움직일 때 손익)이고, 평가금액 기준으로 바꿔 볼 수 있습니다. 평가금액 비중은 벤치마크와 같지만 구간 안에서 만기를 옮겨 DV01이 달라집니다. 국채만 보유하고 현금은 없습니다.` });
+
+    // ── 키레이트 듀레이션 (KRD) 행렬: 종목 × 만기, 그 만기 금리만 ±1bp 움직였을 때 손익 ──
+    const K = B.krd || { keys: [], rows: [] }, nk = K.keys.length;
+    const sumRow = (k) => K.keys.map((_, j) => K.rows.reduce((t, x) => t + x[k][j], 0));
+    const krdP = sumRow('p'), krdB = sumRow('b'), krdA = krdP.map((v, j) => v - krdB[j]);
+    const tot = (a) => a.reduce((t, v) => t + v, 0);
+    let kMode = 'p';
+    const krdSlot = h('div');
+    const drawKrd = () => {
+      const val = (x, j) => (kMode === 'p' ? x.p[j] : kMode === 'b' ? x.b[j] : x.p[j] - x.b[j]);
+      const rows = K.rows.map((x) => ({ g: '보유 종목 (구간별 모형 국채)', label: x.label, v: K.keys.map((_, j) => val(x, j)), act: kMode === 'a' }))
+        .concat([{ g: '합계', label: '포트폴리오', v: krdP }, { g: '합계', label: '벤치마크', v: krdB }, { g: '합계', label: '액티브 (포트폴리오 − 벤치마크)', v: krdA, act: true }]);
+      const cols = [{ label: '종목 / 만기', align: 'l', get: (r) => r.label }]
+        .concat(K.keys.map((k, j) => ({ label: k, get: (r) => r.v[j], fmt: (v, r) => (r.act ? F.usdS(v) : F.usd(v)), heat: (v, r) => (r.act ? UI.heat(v, 150) : '') })))
+        .concat([{ label: '합계', get: (r) => tot(r.v), fmt: (v, r) => (r.act ? F.usdS(v) : F.usd(v)), heat: (v, r) => (r.act ? UI.heat(v, 300) : '') }]);
+      krdSlot.replaceChildren(UI.table(cols, { rows, dense: true, group: (r) => r.g }));
+    };
+    drawKrd();
+    const kBtn = (key, text) => {
+      const b = h('button', { cls: 'mini', type: 'button', 'aria-pressed': String(kMode === key) }, text);
+      b.dataset.k = key;
+      b.addEventListener('click', () => { kMode = key; b.parentNode.querySelectorAll('[data-k]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.k === key))); drawKrd(); });
+      return b;
+    };
+    const krdCard = UI.card({ id: 'krd', span: 'c12', title: '키레이트 듀레이션 (KRD)', cap: '달러 / bp · 그 만기 금리만 1bp 내릴 때 손익', flush: true,
+      tools: [h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, kBtn('p', '포트폴리오'), kBtn('b', '벤치마크'), kBtn('a', '액티브'))],
+      body: krdSlot,
+      foot: `만기 하나(1·2·3·5·7·10·20·30년)의 금리만 1bp 올린 값과 1bp 내린 값의 차이를 2로 나눈 것입니다 (중앙 차분). 범프는 그 만기에서 1bp, 옆 만기에서 0인 삼각형이라 이웃 만기 사이의 현금흐름은 두 칸에 나뉩니다. 할인율은 ${B.asof} 재무부 par 금리에 오늘 가격과 맞추는 일정한 스프레드를 더해 썼습니다. 그래서 줄 합계가 DV01(${F.usd(B.dv01)})과 조금 다릅니다. 액티브 줄이 +이면 그 만기 금리가 내릴 때 벤치마크보다 더 법니다.` });
+
+    // ── 앞으로: 지금 포지션을 그대로 두고 무엇을 조정할지 ──
+    const kIdx = (k) => K.keys.indexOf(k);
+    const ranked = K.keys.map((k, j) => [k, krdA[j]]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    const belly = (kIdx('5Y') >= 0 ? krdA[kIdx('5Y')] : 0) + (kIdx('7Y') >= 0 ? krdA[kIdx('7Y')] : 0);
+    const big = ranked.slice(0, 3).map(([k, v]) => `${k} ${F.usdS(v)}`).join(', ');
+    // 벨리 비중확대 예시: 5–7년을 사고 1–3년과 7–10년을 DV01 절반씩 판다 (DV01 중립 버터플라이)
+    const byLab = (l) => BK.find((p) => p.label === l), rowOf = (l) => K.rows.find((x) => x.label === l);
+    const legs = [['5–7년', 1], ['1–3년', -0.5], ['7–10년', -0.5]].filter(([l]) => byLab(l) && rowOf(l));
+    let flyAmt = 0;
+    const flySlot = h('div');
+    const drawFly = () => {
+      const after = krdA.slice();
+      const trades = legs.map(([l, wgt]) => {
+        const p = byLab(l), x = rowOf(l), dv = flyAmt * wgt, parT = dv / (p.dv01 / p.par);
+        x.p.forEach((v, j) => { after[j] += v * parT / p.par; });
+        return { l, side: dv > 0 ? '매수' : dv < 0 ? '매도' : '–', par: parT, dv };
+      });
+      const kCols = [{ label: '', align: 'l', get: (r) => r.n }].concat(K.keys.map((k, j) => ({ label: k, get: (r) => r.v[j], fmt: (v) => F.usdS(v), heat: (v) => UI.heat(v, 150) })))
+        .concat([{ label: '합계', get: (r) => tot(r.v), fmt: (v) => F.usdS(v) }]);
+      flySlot.replaceChildren(
+        UI.table([{ label: '구간', align: 'l', get: (t) => t.l }, { label: '매매', align: 'l', get: (t) => t.side }, { label: '액면', get: (t) => t.par, fmt: (v) => F.usdS(v) },
+          { label: 'DV01', get: (t) => t.dv, fmt: (v) => F.usdS(v) }], { rows: trades, dense: true }),
+        h('div', { style: 'height:8px' }),
+        UI.table(kCols, { rows: [{ n: '지금 액티브', v: krdA }, { n: '조정 뒤 액티브', v: after }], dense: true }),
+        h('p', { cls: 'note' }, flyAmt ? `벨리(5·7년) 금리가 양쪽 윙보다 10bp 더 내리면 약 ${F.usdS(flyAmt * 10)}를 법니다. 전체 DV01은 거의 그대로라 금리 수준 전체가 움직일 때의 손익은 크게 바뀌지 않습니다.` : '위 단추로 벨리 비중확대 크기를 고르면 필요한 매매와 조정 뒤 KRD가 나옵니다.'));
+    };
+    drawFly();
+    const fBtn = (amt, text) => {
+      const b = h('button', { cls: 'mini', type: 'button', 'aria-pressed': String(flyAmt === amt) }, text);
+      b.dataset.k = String(amt);
+      b.addEventListener('click', () => { flyAmt = amt; b.parentNode.querySelectorAll('[data-k]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.k === String(amt)))); drawFly(); });
+      return b;
+    };
+    const adjustCard = UI.card({ id: 'adjust', span: 'c12', title: '앞으로 무엇을 조정할까', cap: '지금 보유 포지션을 그대로 두고, 액티브 KRD로 본 위험과 벨리 비중확대 예시',
+      tools: [h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, fBtn(0, '그대로'), fBtn(250, '벨리 +$250'), fBtn(500, '+$500'), fBtn(1000, '+$1,000'))],
+      body: [UI.bars({ cats: K.keys, h: 190, sign: true, unit: '', tipFmt: (v) => F.usdS(v) + ' / bp', aria: '만기별 액티브 KRD',
+               series: [{ name: '액티브 KRD', color: 'var(--s1)', values: krdA }] }),
+             h('p', { cls: 'note' }, `지금 벤치마크와 가장 다르게 걸린 만기는 ${big}입니다 (달러 / bp). 벨리(5·7년) 액티브는 ${F.usdS(belly)}${Math.abs(belly) < 150 ? '로 작아서, 벨리 비중확대 관점은 아직 포트폴리오에 거의 들어가 있지 않습니다' : belly > 0 ? '로 벨리를 이미 비중확대하고 있습니다' : '로 벨리를 비중축소하고 있습니다'}. 오른쪽 위 단추로 DV01 중립 버터플라이(5–7년 매수, 1–3년·7–10년 매도)를 넣어 보면 매매 규모와 바뀐 KRD가 나옵니다.`),
+             flySlot],
+      foot: '예시 계산일 뿐 실제 리밸런싱 규칙을 바꾸지는 않습니다. 각 구간의 모형 국채로 매매한다고 보고, 1bp당 손익(DV01)을 맞춰 액면을 정했습니다. 거래비용은 뺐습니다.' });
 
     // ── 성과 ──
     const ser = B.series, i0 = UI.cut(ser.dates, st.period), xd = ser.dates.slice(i0);
@@ -101,7 +172,7 @@
         kv([['DV01 차이', F.usdS(B.dv01 - B.dv01_b), '/ bp'], ['CS01 (신용)', '$0', '국채만 보유'], ['통화', 'USD 100%', '환 위험 없음']])],
       alt: () => UI.table([{ label: '구간', align: 'l', get: (p) => p.label }, { label: '포트폴리오 DV01', get: (p) => p.dv01, fmt: (v) => F.n(v, 0) }, { label: '벤치마크 DV01', get: (p) => p.dv01_b, fmt: (v) => F.n(v, 0) },
         { label: '차이', get: (p) => p.dv01 - p.dv01_b, fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 100) }], { rows: B.positions, dense: true }),
-      foot: '모형 채권이 구간마다 하나라 구간별 DV01이 곧 키레이트 듀레이션(KRD)입니다.' });
+      foot: '구간별 DV01은 구간에 든 종목의 금리 위험입니다. 만기별(1~30년) 금리 위험은 위의 키레이트 듀레이션 표에서 봅니다.' });
 
     // ── 성과 분해 ──
     const cum = B.cum, cx = cum.month.map((m) => m + '-01'), c0 = UI.cut(cx, st.period);
@@ -152,7 +223,7 @@
       foot: '금리 변화 색은 오름이 빨강이고, 손익 색은 이익이 빨강입니다. 듀레이션만으로 계산한 근사라 금리가 크게 움직인 국면에서는 손실이 실제보다 조금 크게 나옵니다.' });
 
     const act = B.active_dur;
-    const lead = `포트폴리오 듀레이션은 벤치마크보다 ${Math.abs(act).toFixed(2)}년 ${act >= 0 ? '길고' : '짧고'} DV01은 ${F.usd(B.dv01)}입니다. ${B.start.slice(0, 4)}년 말 이후 초과수익은 ${F.bp(ex('itd'), 0)}, 올해는 ${F.bp(ex('ytd'), 0)}입니다`;
+    const lead = `포트폴리오 듀레이션은 벤치마크보다 ${Math.abs(act).toFixed(2)}년 ${act >= 0 ? '길고' : '짧고'} DV01은 ${F.usd(B.dv01)}입니다. ${B.start.slice(0, 4)}년 말 이후 초과수익은 ${F.bp(ex('itd'), 0)}, 올해는 ${F.bp(ex('ytd'), 0)}입니다.${ranked.length ? ` 액티브 KRD가 가장 큰 만기는 ${ranked[0][0]} (${F.usdS(ranked[0][1])} / bp)입니다` : ''}`;
     // 결론 한 줄: 듀레이션을 어느 쪽으로 얼마나 가져갔나 + 지금까지 성과가 벤치마크와 구분되나
     const use = te / bud[0], tStat = S.ir * Math.sqrt(S.years);
     const posWord = Math.abs(act) < 0.03 ? '듀레이션을 벤치마크와 같게 두고 있고' : `벤치마크보다 듀레이션을 ${use < 0.6 ? '소폭 ' : use > 1 ? '크게 ' : ''}${act > 0 ? '확대' : '축소'}했고`;
@@ -161,7 +232,7 @@
     const title = `포트폴리오는 ${posWord}, ${perfWord}`;
     return { title, lead, usOnly: true,
       sub: `근거: 사전 추적오차 ${F.n(te, 0)}bp는 위험예산 하단 ${bud[0]}bp의 ${F.n(use * 100, 0)}% (60% 미만이면 소폭으로 봄). 정보비율 ${F.n(S.ir, 2)} × √${F.n(S.years, 1)}년 = t ${F.n(tStat, 2)} (절댓값이 2에 못 미치면 우연과 구분되지 않는다고 봄). 가상 USD 10M을 미국 국채에 규칙대로 운용한 모형 포트폴리오이고, 벤치마크는 공개 자료로 만든 미국 국채 대용 지수입니다.`,
-      tabs: [['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
-      body: [tiles, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard] };
+      tabs: [['krd', 'KRD'], ['adjust', '조정'], ['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
+      body: [tiles, krdCard, adjustCard, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard] };
   };
 })();

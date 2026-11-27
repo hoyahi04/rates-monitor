@@ -337,6 +337,54 @@ EPISODES = [("2013-05-02", "2013-09-05", "2013 테이퍼 탠트럼"), ("2016-11-
             ("2023-07-31", "2023-10-19", "2023 가을 장기금리 급등"), ("2024-07-31", "2024-08-05", "2024 8월 고용 쇼크")]
 
 
+
+# 키레이트 듀레이션(KRD): 커브의 한 만기만 ±1bp 움직였을 때 값이 얼마 변하나 (중앙 차분)
+# 범프 모양은 그 만기에서 1bp, 옆 만기에서 0인 삼각형이다 (첫 만기 앞과 마지막 만기 뒤는 평평).
+# 재무부 par 금리를 할인율 곡선으로 쓰고, 오늘 가격과 맞도록 일정한 스프레드를 더한다.
+KRD_KEYS = [("1Y", 1), ("2Y", 2), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10), ("20Y", 20), ("30Y", 30)]
+
+
+def _tri(k, t):
+    ks = [x for _, x in KRD_KEYS]
+    i = ks.index(k)
+    if t <= ks[0]:
+        return 1.0 if i == 0 else 0.0
+    if t >= ks[-1]:
+        return 1.0 if i == len(ks) - 1 else 0.0
+    if i > 0 and ks[i - 1] <= t <= k:
+        return (t - ks[i - 1]) / (k - ks[i - 1])
+    if i < len(ks) - 1 and k <= t <= ks[i + 1]:
+        return (ks[i + 1] - t) / (ks[i + 1] - k)
+    return 0.0
+
+
+def krd_per100(coupon, maturity, settle, cx, cy, dirty):
+    """액면 100당, 만기 키마다 1bp에 대한 가격 변화 (금리 하락 때 이익이 +)."""
+    cfs = [(t, a) for _, t, a in bm.cashflows(coupon, maturity, settle)]
+    base = [bm.interp(cx, cy, t) / 100 for _, t in [(None, t) for t, _ in cfs]]
+
+    def price(spread, bump=None):
+        tot = 0.0
+        for (t, a), z in zip(cfs, base):
+            zz = z + spread + (bump(t) if bump else 0.0)
+            tot += a / (1 + zz / 2) ** (2 * t)
+        return tot
+
+    s = 0.0
+    for _ in range(30):          # 오늘 가격과 맞추는 스프레드
+        f = price(s) - dirty
+        if abs(f) < 1e-10:
+            break
+        d = (price(s + 1e-6) - price(s - 1e-6)) / 2e-6
+        s -= f / d
+    out = []
+    for _, k in KRD_KEYS:
+        up = price(s, lambda t: 1e-4 * _tri(k, t))
+        dn = price(s, lambda t: -1e-4 * _tri(k, t))
+        out.append((dn - up) / 2)
+    return out
+
+
 def book_block(I):
     P, U = I["pf"], I["U"]
     S, ser, now = P["stats"], P["series"], P["now"]
@@ -373,11 +421,18 @@ def book_block(I):
         return a
 
     pos, tot_dv01_p, tot_dv01_b = [], 0.0, 0.0
+    krd_rows = []
     for b in now["buckets"]:
         a = model_bond(b["coupon"], b["mat_p"])
-        ab = model_bond(bm.interp(dx, dy, b["mat_b"]), b["mat_b"])
+        cb = bm.interp(dx, dy, b["mat_b"])
+        ab = model_bond(cb, b["mat_b"])
         mv = nav * b["w_p"] / 100
         dirty = a["clean"] + a["accrued"]
+        dirty_b = ab["clean"] + ab["accrued"]
+        par_b = nav * b["w_b"] / 100 / dirty_b * 100
+        kp = krd_per100(b["coupon"], a["maturity"], settle, cx, cy, dirty)
+        kb = krd_per100(cb, ab["maturity"], settle, cx, cy, dirty_b)
+        krd_rows.append({"label": b["label"], "p": [r(v * mv / dirty, 0) for v in kp], "b": [r(v * par_b / 100, 0) for v in kb]})
         dv01 = mv * a["mdur"] * 1e-4
         dv01_b = nav * b["w_b"] / 100 * ab["mdur"] * 1e-4
         tot_dv01_p += dv01
@@ -450,6 +505,7 @@ def book_block(I):
         "decision_date": now["date"], "apply_month": P["apply_month"], "position": now["position"],
         "dur_p": r(dur_p, 3), "dur_b": r(dur_b, 3), "active_dur": r(dur_p - dur_b, 3), "rule_active_dur": now["active"],
         "dv01": r(tot_dv01_p, 0), "dv01_b": r(tot_dv01_b, 0), "cs01": 0, "positions": pos,
+        "krd": {"keys": [k for k, _ in KRD_KEYS], "rows": krd_rows},
         "stats": {k: S[k] for k in ("years", "ann_p", "ann_b", "excess_ann_bp", "excess_cum_bp", "vol_p", "vol_b", "te_all_bp",
                                     "te_1y_bp", "te_3y_bp", "ir", "mdd_p", "mdd_p_from", "mdd_p_to", "mdd_b", "mdd_rel_bp",
                                     "months", "months_active", "months_win", "n_rebal", "c_dur", "c_slope", "c_curv", "hit",
