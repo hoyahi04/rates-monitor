@@ -55,7 +55,7 @@
       body: [
         kv([['순자산 (NAV)', F.usd(B.nav)], ['일간 손익', F.usdS(B.pnl_d1_usd), null, UI.dirCls(B.pnl_d1_usd)],
             ['이번 달 초과수익', F.bp(B.perf.mtd.ex_bp, 1), '벤치마크 대비', UI.dirCls(B.perf.mtd.ex_bp)],
-            ['DV01', F.usd(B.dv01), '/ bp'], ['CS01', '$0', '국채만 보유'],
+            ['DV01', F.usd(B.dv01), '/ bp'], ['DV01 차이', F.usdS(B.dv01 - B.dv01_b), '벤치마크 대비', UI.dirCls(B.dv01 - B.dv01_b)],
             ['액티브 듀레이션', F.s(B.active_dur, 2), '년 (전체 ' + F.n(B.dur_p, 2) + ')'],
             ['사전 추적오차', F.n(te, 0), `bp · 위험예산 ${bud[0]}~${bud[1]}`], ['올해 초과수익', F.bp(B.perf.ytd.ex_bp, 0), null, UI.dirCls(B.perf.ytd.ex_bp)],
             [`${B.start.slice(0, 4)}년 말 이후`, F.bp(B.perf.itd.ex_bp, 0), null, UI.dirCls(B.perf.itd.ex_bp)]]),
@@ -100,14 +100,54 @@
     more.addEventListener('click', ctx.openNews);
     const newsCard = UI.card({ span: 'c5', title: '뉴스', cap: '연준·한국은행 · 하루 한 번 갱신', body: news, tools: [more] });
 
-    // 데스크의 하루 (대시보드.pdf의 다섯 단계)
+    // 이 데스크가 하는 일 (정보 화면이 아니라 운용 화면이라는 것을 먼저 밝힌다)
     const steps = [['1 · Monitor', '시장 파악', 'market', '무엇이 움직였나'], ['2 · Analyze', '원인 분석', 'macro', '왜 움직였나'],
                    ['3 · Identify', '기회 탐색', 'rv', '어디가 싸고 비싼가'], ['4 · Trade', '포지션 구성', 'rv/builder', 'DV01 기준 물량'],
                    ['5 · Manage', '위험·성과', 'book', '내 포트폴리오는 어떤가']];
-    const flow = h('div', { cls: 'flow5 c12' }, steps.map(([en, ko, to, q]) => h('a', { href: '#/' + to }, h('em', null, en), h('b', null, ko), h('span', null, q))));
+    const flow = h('div', { cls: 'flow5' }, steps.map(([en, ko, to, q]) => h('a', { href: '#/' + to }, h('em', null, en), h('b', null, ko), h('span', null, q))));
+    const purpose = h('section', { cls: 'purpose c12', 'aria-label': '이 데스크가 하는 일' },
+      h('p', null, h('b', null, '이 데스크는 운용 화면입니다. '),
+        `USD 10M 가상 미국채 포트폴리오를 자체 벤치마크(미국채 대용 지수) 대비 운용합니다. ` +
+        '시장·매크로·수급·RV·크레딧 화면은 매달 말 포지션을 정하는 재료이고, 정한 포지션의 위험은 만기별 키레이트 듀레이션(KRD)으로, 결과는 벤치마크 대비 초과수익으로 봅니다.'),
+      flow);
+
+    // 지금 할 일: 지금 포지션, 만기별 액티브 KRD, 다음 판정에서 바뀌는 것
+    const fmtYr = (v) => (Math.abs(v) < 0.005 ? '중립' : F.s(v, 2) + '년');
+    const monthEnd = L.month_end || null, dLeft = monthEnd ? F.days(from, monthEnd) : null;
+    const posChg = (S.changes || []).filter((c) => c.kind === 'position'), whyChg = (S.changes || []).filter((c) => c.kind !== 'position');
+    const todo = posChg.length
+      ? `${monthEnd ? F.md(monthEnd) + ' 종가에 ' : '다음 리밸런싱에서 '}${posChg.map((c) => `${c.name} ${c.from_ko} → ${c.to_ko}`).join(', ')}` +
+        (posChg.some((c) => c.key === 'duration_active_yr') ? ` (DV01 차이 ${F.usdS(B.dv01 - B.dv01_b)} → ${F.usdS(B.dv01_b * L.duration_active_yr / B.dur_b)} / bp)` : '')
+      : '포지션을 그대로 둡니다. 월말에 규칙값으로 다시 맞추기만 합니다';
+    // KRD: 포트폴리오 스레드가 book.krd({labels, active_dv01, active_yr})를 넣으면 그것을 쓰고, 없으면 구간별 DV01 차이로 대신한다
+    // (모형 채권이 구간마다 하나라 구간별 DV01이 곧 KRD)
+    const K = B.krd && B.krd.labels ? B.krd : {
+      labels: B.positions.map((p) => p.label),
+      active_dv01: B.positions.map((p) => p.dv01 - p.dv01_b),
+      active_yr: B.positions.map((p) => ok(p.active) ? p.active : (p.c_p - p.c_b)),
+      note: '구간마다 모형 채권이 하나라 구간별 DV01 차이를 KRD로 씁니다' };
+    const kmax = Math.max(1, ...K.active_dv01.map((v) => Math.abs(v || 0)));
+    const krdStrip = h('div', { cls: 'krdstrip', role: 'img', 'aria-label': '만기별 액티브 KRD: ' + K.labels.map((l, i) => `${l} ${F.usdS(K.active_dv01[i])}`).join(', ') },
+      K.labels.map((l, i) => {
+        const v = K.active_dv01[i], y = K.active_yr ? K.active_yr[i] : null;
+        return h('div', null, h('dt', null, l),
+          h('span', { cls: 'bar' }, h('i', { cls: v < 0 ? 'neg' : 'pos', style: `width:${Math.round(Math.abs(v || 0) / kmax * 100)}%` })),
+          h('dd', { cls: UI.dirCls(v) }, F.usdS(v)), ok(y) ? h('small', null, F.s(y, 2) + '년') : null);
+      }));
+    const actCard = UI.card({ span: 'c12', title: '지금 할 일', cap: `${F.mon(O.apply_month + '-01')} 포지션과 다음 판정 · ${D.meta.asof} 종가 기준`,
+      tools: [h('a', { href: '#/book/exposure', cls: 'cap' }, '익스포저 →')],
+      body: [
+        kv([['지금 포지션', O.position_ko.replace(/ · Carry 유지$/, '')],
+            ['액티브 듀레이션', fmtYr(act), `규칙 ${fmtYr(B.rule_active_dur)}`, UI.dirCls(act)],
+            ['다음 판정', monthEnd ? F.md(monthEnd) : '월말', dLeft != null && dLeft >= 0 ? `${dLeft}일 남음 · 월말 종가` : null]]),
+        h('p', { cls: 'todo' }, h('b', null, '할 일 '), todo + '.',
+          whyChg.length ? h('small', null, ' 이유: ' + whyChg.map((c) => `${c.name} ${c.from_ko} → ${c.to_ko}`).join(', ') + ` (${F.md(L.decision_date)} 잠정 점수)`) : null),
+        h('h3', { cls: 'mini-h' }, '만기별 액티브 KRD', h('small', null, ' 벤치마크보다 더 든 DV01 ($/bp) · 아래는 액티브 듀레이션 기여 (년)')),
+        krdStrip,
+        h('p', { cls: 'note' }, K.note || '포트폴리오·리스크 화면의 KRD 표와 같은 값입니다.')] });
 
     return { q: 'Desk Overview', title, lead, usOnly: true,
       sub: `근거: 한 주 동안 10년 금리 ${F.bp(w)}, 액티브 듀레이션 ${F.s(act, 2)}년, 벤치마크 대비 ${F.bp(exW, 1)}. ${D.meta.asof} 종가 기준이고, 숫자의 빨강은 오름, 파랑은 내림입니다.`,
-      body: [tiles, h('div', { cls: 'stack c7' }, bookCard, scoreCard), h('div', { cls: 'stack c5' }, evCard, newsCard), flow] };
+      body: [purpose, actCard, tiles, h('div', { cls: 'stack c7' }, bookCard, scoreCard), h('div', { cls: 'stack c5' }, evCard, newsCard)] };
   };
 })();
