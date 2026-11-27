@@ -59,7 +59,7 @@
       tbl.style.maxHeight = '420px';
       tbl.style.overflowY = 'auto';
       listCard = UI.card({ id: 'list', span: 'c12', title: '종목 표', cap: `미국 이표 국채 ${all.length}종목 · 머리글을 누르면 정렬 · 줄을 누르면 채권 상세`, flush: true, body: tbl,
-        foot: 'DV01은 액면 100만 달러당 달러, 캐리와 롤다운은 3개월 동안의 가격 기준 bp입니다.' });
+        foot: 'DV01은 액면 100만 달러당 달러, 캐리와 롤다운은 3개월 동안의 가격 기준 bp이고, 계산 방법은 "캐리·롤다운 계산 방법" 카드에 있습니다.' });
     } else {
       rvCard = UI.card({ id: 'bonds', span: 'c6', title: '종목 상대가치', body: UI.empty('종목 종가를 받지 못했습니다', '재무부 FedInvest에서 종가를 받지 못해 종목별 비교를 만들지 못했습니다.') });
     }
@@ -88,7 +88,40 @@
         UI.table(spreadCols('스프레드'), { rows: S.curves.filter(legOk), dense: true, sortable: true }),
         h('p', { cls: 'note', style: 'margin:16px 0 4px;color:var(--ink);font-weight:600' }, '버터플라이 (벨리 매수 기준, 윙은 DV01 절반씩)'),
         UI.table(spreadCols('버터플라이'), { rows: S.flies.filter(legOk), dense: true, sortable: true })],
-      foot: '재무부 par 커브로 계산한 근사입니다. 버터플라이 수준은 2 × 벨리 − 두 윙이고, z-score가 높으면 벨리가 윙보다 싸다(금리가 높다)는 뜻입니다. 캐리+롤다운이 +면 그 포지션을 들고만 있어도 버는 쪽입니다. 지난 값이 싸 보인다고 해서 되돌아온다는 보장은 없습니다.' });
+      foot: '재무부 par 커브로 계산한 근사입니다. 캐리·롤다운 계산 방법은 바로 아래 카드에 오늘 숫자로 풀어 두었습니다. 버터플라이 수준은 2 × 벨리 − 두 윙이고, z-score가 높으면 벨리가 윙보다 싸다(금리가 높다)는 뜻입니다. 캐리+롤다운이 +면 그 포지션을 들고만 있어도 버는 쪽입니다. 지난 값이 싸 보인다고 해서 되돌아온다는 보장은 없습니다.' });
+
+    // ── 캐리·롤다운 계산 방법 (지금 숫자로 한 번 계산해 보인다) ──
+    const ex = S.outright.find((o) => o.tenor === '5Y') || S.outright[0];
+    const beOf = (t) => (S.outright.find((o) => o.tenor === t) || {}).be;
+    const flyEx = S.flies.find((t) => t.label === '2s5s10s');
+    const step = (lab, formula, val) => h('div', { style: 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:3px 0' },
+      h('span', { style: 'min-width:92px;color:var(--ink);font-weight:600' }, lab), h('code', { style: 'white-space:normal' }, formula), val ? h('b', null, '= ' + val) : null);
+    const calcBody = [
+      h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink)' }, '캐리·롤다운은 "금리 곡선이 3개월 뒤에도 오늘과 똑같다면 이 포지션을 들고만 있어서 얼마를 벌거나 잃는가"입니다. 금리 전망이 들어가지 않은, 포지션을 드는 비용 또는 보상입니다.'),
+      h('p', { cls: 'note', style: 'margin:0 0 4px;color:var(--ink);font-weight:600' }, '공식 (3개월, 가격 기준 bp = 투자금 대비 1/100%)'),
+      step('캐리', '(금리 − 조달 금리 SOFR) × 0.25년 × 100'),
+      step('롤다운', '(오늘 만기 T의 금리 − 오늘 곡선에서 만기 T−0.25년의 금리) × 100 × 3개월 뒤 수정듀레이션'),
+      step('합계', '캐리 + 롤다운'),
+      step('손익분기', '합계 ÷ 3개월 뒤 수정듀레이션  (금리 bp. 3개월 동안 금리가 이만큼 올라도 손익이 0)'),
+      ex && ok(ex.y_roll) ? [
+        h('p', { cls: 'note', style: 'margin:14px 0 4px;color:var(--ink);font-weight:600' }, `예시: ${ex.tenor.replace('Y', '년')} 매수 (오늘 숫자)`),
+        step('캐리', `(${F.n(ex.yield, 2)}% − ${F.n(S.repo, 2)}%) × 0.25 × 100`, `${F.s(ex.carry, 1)}bp`),
+        step('롤다운', `(${F.n(ex.y_now, 3)}% − ${F.n(ex.y_roll, 3)}%) × 100 × ${F.n(ex.dur, 2)}`, `${F.s(ex.roll, 1)}bp`),
+        step('합계', `${F.s(ex.carry, 1)} + ${F.s(ex.roll, 1)}`, `${F.s(ex.total, 1)}bp`),
+        step('손익분기', `${F.s(ex.total, 1)} ÷ ${F.n(ex.dur, 2)}`, `${F.s(ex.be, 1)}bp`),
+        h('p', { cls: 'note' }, `${ex.tenor.replace('Y', '년')} 금리가 ${F.n(ex.yield, 2)}%이고 조달 금리가 ${F.n(S.repo, 2)}%라 들고 있는 동안 이자 차이로 ${F.s(ex.carry, 1)}bp를 받습니다. 3개월이 지나면 이 채권은 ${F.n(ex.years - 0.25, 2)}년짜리가 되는데, 오늘 곡선에서 그 만기 금리가 ${F.n(ex.y_roll, 3)}%로 조금 낮으므로 금리가 그만큼 내려온 효과로 가격이 ${F.s(ex.roll, 1)}bp 오릅니다.`)] : null,
+      h('p', { cls: 'note', style: 'margin:14px 0 4px;color:var(--ink);font-weight:600' }, '커브·버터플라이로 넓히기 (DV01 중립)'),
+      h('p', { cls: 'note', style: 'margin:0' }, '레그마다 DV01을 맞춰 드므로, 각 레그의 손익분기(금리 bp)에 DV01 가중치를 곱해 더합니다. 결과는 스프레드 bp입니다.'),
+      step('스티프너', '짧은 레그 손익분기 − 긴 레그 손익분기'),
+      flyEx && ok(beOf('2Y')) ? step('2s5s10s 벨리 매수', `5년 ${F.s(beOf('5Y'), 1)} − ½ × 2년 ${F.s(beOf('2Y'), 1)} − ½ × 10년 ${F.s(beOf('10Y'), 1)}`, `${F.s(flyEx.cr3m, 1)}bp`) : null,
+      h('p', { cls: 'note', style: 'margin:14px 0 4px;color:var(--ink);font-weight:600' }, '가정과 한계'),
+      h('ul', { cls: 'note', style: 'margin:0;padding-left:18px' },
+        h('li', null, `곡선: 전략 스크리너는 재무부 par 금리(CMT)를 직선으로 이은 곡선, 종목 표는 종목 종가로 만든 적합 커브를 씁니다. 수정듀레이션은 스크리너는 par 채권, 종목 표는 그 종목의 3개월 뒤 값입니다.`),
+        h('li', null, `조달 금리: 하루짜리 일반 담보 레포 금리인 SOFR(${F.n(S.repo, 2)}%)를 3개월 내내 그대로 씁니다. 특정 종목의 스페셜 레포 금리와 기간물 레포는 무료 자료가 없어 반영하지 않았습니다.`),
+        h('li', null, '캐리에 쿠폰 대신 만기수익률을 쓰므로, 액면보다 싸거나 비싼 채권이 액면으로 다가가는 효과까지 캐리에 들어갑니다. 볼록성, 거래비용, 3개월 사이 쿠폰 재투자는 넣지 않았습니다.'),
+        h('li', null, '"곡선이 그대로"라는 가정이 핵심입니다. 실제 손익은 이 값에 금리 변화 × 듀레이션이 더해집니다. 그래서 손익분기를 함께 봅니다.')),
+    ];
+    const calcCard = UI.card({ id: 'carry', span: 'c12', title: '캐리·롤다운 계산 방법', cap: `전략 스크리너와 종목 표의 캐리·롤다운이 이렇게 계산됩니다 · 기준일 ${D.meta.asof}`, body: calcBody });
 
     // ── 벨리 비중 확대 점검 (프로젝트 질문: 듀레이션을 맞춘 채 벨리를 더 들면 어떤 위험과 수익이 생기나) ──
     const BELLY = ['3Y', '5Y', '7Y'];
@@ -282,7 +315,7 @@
     }
     return { title, lead, usOnly: true,
       sub: `근거: 커브 스프레드 6개와 버터플라이 6개 가운데 3년 z-score가 평균에서 가장 먼 것을 골랐습니다 (1 미만이면 눈에 띄는 자리가 없다고 봄). 싸 보인다고 되돌아온다는 보장은 없습니다. 10년 금리 ${y10 ? F.n(y10.level, 2) : '–'}% 가운데 기간 프리미엄은 ${tp10 ? F.n(tp10.level, 2) : '–'}%입니다.`,
-      tabs: [['value', '커브 밸류에이션'], ['bonds', '종목 상대가치'], ['belly', '벨리 점검'], ['screener', '전략 스크리너'], ['builder', 'Trade Builder'], ['backtest', '백테스터'], ['list', '종목 표']],
-      body: [tpCard, rvCard, bellyCard, scrCard, tbCard, btCard, listCard] };
+      tabs: [['value', '커브 밸류에이션'], ['bonds', '종목 상대가치'], ['belly', '벨리 점검'], ['screener', '전략 스크리너'], ['carry', '캐리 계산'], ['builder', 'Trade Builder'], ['backtest', '백테스터'], ['list', '종목 표']],
+      body: [tpCard, rvCard, bellyCard, scrCard, calcCard, tbCard, btCard, listCard] };
   };
 })();

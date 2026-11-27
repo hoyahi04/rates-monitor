@@ -263,10 +263,17 @@ def bonds_block(I):
         b["fit_bp"] = None if own is None else r((b["ytm"] - own) * 100, 1)   # + 면 이웃보다 금리가 높다 (싸다)
         if b["fit_bp"] is not None:
             resid.append(b["fit_bp"])
+        # 캐리·롤다운 (3개월, 가격 bp). 계산 방법은 화면(RV·전략 → 전략 스크리너 → 계산 방법)과 같다.
+        #   캐리 = (YTM − SOFR) × 0.25 × 100
+        #   롤다운 = −(3개월 뒤 수정듀레이션) × (적합 커브의 [잔존만기 − 0.25년] 금리 − [잔존만기] 금리) × 100
         h = 0.25
         y_now, y_roll = fit(b["ttm"]), fit(max(b["ttm"] - h, 0.3))
-        b["roll3m"] = r(-b["mdur"] * (y_roll - y_now) * 100, 1) if (b["ttm"] > h + 0.3 and y_now is not None and y_roll is not None) else None
-        b["carry3m"] = None if sofr is None else r((b["ytm"] - sofr) * 0.25 * 100, 1)
+        if b["ttm"] > h + 0.3 and y_now is not None and y_roll is not None:
+            d_after = bm.analytics(b["coupon"], b["maturity"], bm.add_months(settle, 3), yield_pct=b["ytm"] + y_roll - y_now)["mdur"]
+            b["roll3m"] = r(-d_after * (y_roll - y_now) * 100, 1)
+        else:
+            b["roll3m"] = None
+        b["carry3m"] = None if sofr is None else r((b["ytm"] - sofr) * h * 100, 1)
         b["par_gap_bp"] = r((b["ytm"] - bm.interp(cx, cy, b["ttm"])) * 100, 1)   # 재무부 par 금리 곡선 대비
         b.pop("issued", None)
     rows.sort(key=lambda b: b["maturity"])
@@ -294,7 +301,7 @@ def screener_block(dates, ys, repo):
         d_after = bm.par_mod_dur(T - H, yr)
         carry = (y - repo) * H * 100                 # bp (가격 기준)
         roll = (y - yr) * 100 * d_after              # bp (가격 기준)
-        return {"carry": carry, "roll": roll, "total": carry + roll, "be": (carry + roll) / d_after, "dur": d_after}
+        return {"carry": carry, "roll": roll, "total": carry + roll, "be": (carry + roll) / d_after, "dur": d_after, "y_roll": yr}
 
     legs = {t: leg(yrs) for t, yrs in TEN if yrs >= 1}
     outright = []
@@ -305,7 +312,8 @@ def screener_block(dates, ys, repo):
         L = legs[t]
         outright.append({"key": t, "label": f"{t} 매수", "tenor": t, "years": yrs, "yield": s["level"], "m1": s["chg"]["m1"],
                          "z3y": s["z3y"], "pct3y": s["pct3y"], "carry": r(L["carry"], 1), "roll": r(L["roll"], 1),
-                         "total": r(L["total"], 1), "be": r(L["be"], 1), "dur": r(L["dur"], 2)})
+                         "total": r(L["total"], 1), "be": r(L["be"], 1), "dur": r(L["dur"], 2),
+                         "y_now": r(yat(yrs), 4), "y_roll": r(L["y_roll"], 4)})
 
     def series_of(w):
         cols = [ys[t] for t in w]
