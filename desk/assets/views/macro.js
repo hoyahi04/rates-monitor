@@ -97,19 +97,28 @@
                  ['다음 회의 가격', m0 ? F.bp(m0.move, 0) : '–', m0 ? '선물 내재' : ''],
                  ['정책 기조', F.bp(P.stance_bp, 0), '1년 뒤 1년 금리 − 중립금리'],
                  ['연준 보유 국채', F.bn(soma.total_bn), soma.asof], ['3개월 변화', F.bnS(soma.chg_3m_bn), ''], ['1년 변화', F.bnS(soma.chg_1y_bn), '']];
-    const K = D.kr;
-    const bokBody = ctx.krOk && K.bok ? kv([['기준금리', F.n(K.bok.base, 2), '%'], ['마지막 변경', K.bok.last_change ? F.bp(K.bok.last_change.bp) : '–', K.bok.last_change ? K.bok.last_change.date : ''],
-        ['국고 3년 − 기준금리', ok(K.bok.ktb3) ? F.bp((K.bok.ktb3 - K.bok.base) * 100) : '–', '시장이 보는 방향'],
-        ['CD 91일', F.n(K.bok.cd91, 2), '%'], ['콜금리', F.n(K.bok.call, 2), '%'], ['소비자물가 전년비', ok(K.cpi_yoy) ? F.n(K.cpi_yoy, 1) : '–', K.cpi_date ? '% · ' + K.cpi_date : '%']], true)
-      : UI.empty('한국은행 자료는 인증키가 필요합니다', '한국은행 ECOS 인증키를 넣으면 기준금리, 국고채 금리, CD 금리가 채워집니다. 금융통화위원회 일정은 공개 자료로 받는 곳을 아직 찾지 못했습니다.');
     const today = new Date().toISOString().slice(0, 10), from = today < asof ? asof : today;
     const talks = D.events.filter((e) => (e.kind === '연설' || e.kind === '의회 증언' || e.kind === 'FOMC' || e.kind === '연준 자료') && e.date >= from).slice(0, 8);
     const talkList = h('ul', { cls: 'list' }, talks.length ? talks.map((e) => h('li', null, h('span', { cls: 'when' }, `${F.md(e.date)} ${e.time || ''}`),
       h('span', { cls: 'what' }, e.title, h('small', null, [e.kind, e.note].filter(Boolean).join(' · '))))) : h('li', null, h('span'), h('span', { cls: 'mute' }, '공개된 예정 일정이 없습니다')));
-    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '중앙은행 트래커', cap: '연준과 한국은행',
+    // 연준 커뮤니케이션 로그: 이사회 연설·의회 증언·통화정책 보도자료(성명, 의사록)를 RSS에서 자동 수집 (최근 45일)
+    const cut = new Date(new Date(asof).getTime() - 45 * 864e5).toISOString().slice(0, 10);
+    const comms = (D.news || []).filter((n) => n.src === '연준' && n.ts.slice(0, 10) >= cut &&
+      (n.kind === '연설' || n.kind === '의회 증언' || (n.kind === '보도자료' && /monetary/i.test(n.cat || ''))));
+    const who = (n) => (n.kind === '보도자료' ? 'FOMC' : (n.title.split(',')[0] || '').trim());
+    const tally = {};
+    for (const n of comms) if (n.kind !== '보도자료') tally[who(n)] = (tally[who(n)] || 0) + 1;
+    const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ');
+    const commsList = h('ul', { cls: 'list' }, comms.length ? comms.slice(0, 8).map((n) => {
+      const safe = /^https?:\/\//.test(n.link) ? n.link : null, ttl = n.kind === '보도자료' ? n.title : n.title.slice(n.title.indexOf(',') + 1).trim();
+      return h('li', null, h('span', { cls: 'when' }, F.md(n.ts)),
+        h('span', { cls: 'what' }, safe ? h('a', { href: safe, target: '_blank', rel: 'noopener noreferrer' }, ttl) : ttl, h('small', null, `${who(n)} · ${n.kind}`)));
+    }) : h('li', null, h('span'), h('span', { cls: 'mute' }, '최근 45일 연준 발언이 없습니다')));
+    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '연준 트래커', cap: '정책 현황 · 최근 발언 로그 · 예정 일정',
       body: h('div', { cls: 'grid' },
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '연준 (Fed)'), kv(fed, true)),
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '한국은행 (BOK)'), bokBody),
+        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '정책 현황'), kv(fed, true)),
+        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '최근 발언 로그 (45일)'), commsList,
+          h('p', { cls: 'note', style: 'margin:6px 0 0' }, comms.length ? `이사별 연설·증언 횟수: ${tallyTxt || '없음'}. 연준 이사회 RSS 기준이라 지역 연은 총재 발언은 빠져 있습니다.` : '')),
         h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '연준 예정 일정 (미 동부 시각)'), talkList)) });
 
     // ── 인플레이션 ──
