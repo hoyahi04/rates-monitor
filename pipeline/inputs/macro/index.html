@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates Monitor · 매크로 판정</title>
+<link rel="icon" href="data:,">
+<style>
+/* 기본 토큰 14개: 03_inflation/index.html과 같은 값 */
+:root{
+  color-scheme:light;
+  --page:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --up:#e34948; --down:#2a78d6; --up-text:#b42318; --down-text:#1c5cab;
+  --accent:#147b79; --hover:rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --up:#e66767; --down:#3987e5; --up-text:#f08a8a; --down-text:#86b6ef;
+    --accent:#3fb5b2; --hover:rgba(255,255,255,.05);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+  --up:#e66767; --down:#3987e5; --up-text:#f08a8a; --down-text:#86b6ef;
+  --accent:#3fb5b2; --hover:rgba(255,255,255,.05);
+}
+
+/* 모든 선택자는 .mp 또는 .mp- 로 시작한다. 맨 태그(header, table, td …)에는 규칙을 걸지 않는다 */
+.mp{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Pretendard","Segoe UI",sans-serif;font-size:13px;line-height:1.5;word-break:keep-all;-webkit-text-size-adjust:100%}
+.mp *{box-sizing:border-box}
+.mp a:focus-visible{outline:2px solid var(--ink);outline-offset:1px;border-radius:4px}
+.mp code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--hover);padding:1px 5px;border-radius:3px}
+
+/* 색 규칙: 파랑·빨강은 1~3번 신호, 수준 뷰, Duration에만 쓴다 (파랑 = 금리 하락 쪽 = 듀레이션 길게) */
+.mp .mp-dn{color:var(--down-text)}
+.mp .mp-up{color:var(--up-text)}
+.mp .mp-z{color:var(--muted)}
+.mp .mp-num.mp-w.mp-z{color:var(--ink2)}                    /* 16px 낱말(없음 · 중립 · 미충족)은 회색 숫자보다 진하게: 읽히는 대비 */
+
+/* ---------- 고정 메뉴: 한 줄에 다 안 들어가면 바로가기가 다음 줄로 넘어간다. 가려지는 링크는 없다 ---------- */
+.mp-nav{position:sticky;top:0;z-index:20;background:var(--page);border-bottom:1px solid var(--ring);padding:0 28px}
+.mp-nav-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:12px;min-height:44px;padding:5px 0;font-size:12.5px}
+.mp-pages{display:flex;gap:2px;font-weight:650;flex:none}
+.mp-pages a{padding:4px 10px;border-radius:7px;text-decoration:none;color:var(--ink2);white-space:nowrap}
+.mp-pages a:hover{background:var(--hover);color:var(--ink)}
+.mp-pages a[aria-current]{background:var(--ink);color:var(--surface)}
+.mp-bar{width:1px;height:18px;background:var(--axis);flex:none}
+.mp-jump{display:flex;flex-wrap:wrap;gap:2px;min-width:0;flex:1 1 0}
+.mp-jump a{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;text-decoration:none;color:var(--ink2);white-space:nowrap;flex:none}
+.mp-jump a:hover{background:var(--hover);color:var(--ink)}
+.mp-asof{flex:none;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mp-asof b{color:var(--ink);font-weight:650}
+.mp-chip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:18px;padding:0 5px;border-radius:5px;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;border:1px solid var(--axis);color:var(--ink2);background:var(--surface)}
+.mp-chip.mp-dn{border-color:var(--down)}
+.mp-chip.mp-up{border-color:var(--up)}
+.mp-chip.mp-on{border-color:var(--ink);color:var(--ink)}
+.mp-chip.mp-chip-lv{border-style:dashed}                    /* 잠정 점수: 점선 테두리 */
+.mp-lv{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;color:var(--ink)}
+.mp-lva{display:none;color:var(--ink2);font-weight:500}     /* 좁은 화면에서 '잠정' 대신 쓰는 화살표 */
+.mp-jshort{display:none}
+
+/* ---------- 머리말 ---------- */
+.mp-body{padding:18px 28px 48px}
+.mp-wrap{max-width:1320px;margin:0 auto}
+.mp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-top:4px solid var(--ink);padding-top:14px;margin-bottom:14px}
+.mp-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+.mp-h1{font-size:24px;margin:2px 0 0;letter-spacing:-.5px}
+.mp-meta{font-size:12px;color:var(--ink2);text-align:right}
+.mp-meta b{color:var(--ink)}
+
+/* ---------- 판정 요약 띠 ---------- */
+.mp-strip{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:14px 16px 12px;margin-bottom:22px}
+.mp-strip,.mp-card{scroll-margin-top:calc(var(--nav-h, 44px) + 12px)}      /* --nav-h: 메뉴의 실제 높이 (스크립트가 잰다) */
+.mp-title{font-size:13px;font-weight:400;color:var(--ink2);margin:0 0 12px}
+.mp-title b{font-size:14px;font-weight:700;color:var(--ink)}
+.mp-title strong{font-weight:650;color:var(--ink)}
+.mp-warn{font-size:12.5px;font-weight:650;color:var(--ink);margin:0 0 8px}
+.mp-warn code{font-weight:500}
+.mp-probs{margin:0 0 8px;padding-left:18px;font-size:12.5px;color:var(--ink)}
+.mp-cmd{margin:0 0 4px;font-size:13px}
+
+.mp-band{border-left:4px solid var(--ink);padding:1px 0 1px 12px}
+.mp-band.mp-live{border-left:4px dashed var(--ink2)}        /* 잠정 행: 점선 막대 */
+.mp-band .mp-warn{margin:0 0 6px}
+.mp-band + .mp-band{margin-top:12px}
+.mp-band-lab{font-size:13.5px;margin-bottom:6px}
+.mp-band-lab b{font-weight:700}
+.mp-band-lab span{color:var(--ink2)}
+.mp-groups{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:8px}
+.mp-g{min-width:0;display:flex;flex-direction:column}
+.mp-g-sig{grid-column:1 / -1}
+.mp-gl{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--ink2);margin-bottom:3px}
+.mp-gl span{font-weight:500;letter-spacing:0;color:var(--ink2);margin-left:1px}
+.mp-cells{display:grid;gap:8px;flex:1 1 auto}
+.mp-g-sig .mp-cells{grid-template-columns:repeat(5,minmax(0,1fr))}
+.mp-g-view .mp-cells{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mp-g-pos .mp-cells{grid-template-columns:repeat(4,minmax(0,1fr))}
+.mp-cell{border:1px solid var(--ring);border-radius:8px;padding:8px 10px 7px;min-width:0;background:var(--page);overflow-wrap:anywhere}
+.mp-cell.mp-chg{box-shadow:inset 3px 0 0 var(--ink)}      /* 잠정 행에서 바뀐 칸: 왼쪽 막대 + "바뀜" 글 */
+.mp-nb{white-space:nowrap}                                 /* 날짜(10-30)가 줄 끝에서 잘리지 않게 */
+.mp-k{font-size:11.5px;font-weight:650;color:var(--ink2);display:flex;gap:2px 6px;align-items:center;flex-wrap:wrap}
+.mp-no{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--ink);color:var(--surface);font-size:10.5px;font-weight:700;flex:none}
+.mp-tag{font-size:10.5px;font-weight:600;border:1px solid var(--axis);border-radius:4px;padding:0 5px;color:var(--ink2);white-space:nowrap}
+.mp-dir{font-weight:500}
+.mp-v{display:flex;align-items:baseline;gap:2px 7px;flex-wrap:wrap;margin:2px 0 1px}
+.mp-num{font-size:22px;font-weight:650;letter-spacing:-.5px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mp-num.mp-w{font-size:16px;letter-spacing:-.2px;line-height:1.5;white-space:normal}
+.mp-word{font-size:12.5px;font-weight:650}
+.mp-eq{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.mp-d{font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.mp-d b{color:var(--ink);font-weight:650}
+.mp-d.mp-val{color:var(--ink)}
+.mp-d.mp-rec{margin-top:4px;padding-top:4px;border-top:1px dashed var(--axis)}
+.mp-pos.mp-on{border:1.5px solid var(--ink);background:var(--surface)}
+.mp-pos.mp-off{border-style:dashed;border-color:var(--axis)}
+.mp-chgline{margin:10px 0;padding:7px 12px;border-radius:8px;background:var(--hover);font-size:13px}
+.mp-chgline b{font-weight:650}
+.mp-chgline .mp-chg-k{font-weight:700;margin-right:5px}
+.mp-chgline .mp-sep{color:var(--ink2);margin:0 3px}
+
+.mp-l6{margin-top:14px}
+.mp-l6-h{font-size:12px;font-weight:650;margin-bottom:5px}
+.mp-l6-h > span{font-weight:400;color:var(--ink2);margin-left:3px}
+.mp-l6-g{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.mp-m{border-top:2px solid var(--axis);padding-top:4px;font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums;min-width:0}
+.mp-m b{color:var(--ink);font-weight:650}
+.mp-foot{margin-top:12px;border-top:1px solid var(--grid);padding-top:8px;font-size:11.5px;color:var(--ink2);line-height:1.6}
+.mp-foot p{margin:0 0 3px}
+.mp-foot b{color:var(--ink);font-weight:650}
+.mp-foot .mp-warn{font-size:12.5px;margin-bottom:4px}
+
+/* ---------- 섹션 카드 ---------- */
+.mp-sec-title{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin:0 0 8px}
+.mp-sec-title span{font-weight:500;letter-spacing:0;color:var(--ink2);font-size:11.5px;margin-left:8px}
+.mp-card{background:var(--surface);border:1px solid var(--ring);border-left:4px solid var(--ink);border-radius:10px;padding:12px 16px 12px 14px;margin-bottom:12px}
+.mp-card-head{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;margin-bottom:8px}
+.mp-card-no{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent)}
+.mp-card-h2{font-size:17px;margin:0;letter-spacing:-.3px}
+.mp-feeds{font-size:12px;color:var(--ink2)}
+.mp-flag{margin-left:auto;font-size:12.5px;font-weight:650;color:var(--ink)}
+.mp-card-body{display:grid;grid-template-columns:62px minmax(0,1fr);gap:0 12px;align-items:start}
+.mp-big{font-size:34px;font-weight:650;letter-spacing:-1.5px;line-height:1.1;font-variant-numeric:tabular-nums}
+.mp-line{margin:0 0 4px;font-size:13px;font-variant-numeric:tabular-nums}
+.mp-line b{font-weight:650}
+.mp-line.mp-sub{font-size:12.5px;color:var(--ink2)}
+.mp-line.mp-sub b{color:var(--ink)}
+.mp-card-foot{display:flex;justify-content:space-between;align-items:baseline;gap:4px 16px;flex-wrap:wrap;margin-top:6px}
+.mp-open{font-size:12.5px;font-weight:650;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.mp-stamp{font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+
+/* ---------- 좁은 화면: 띠는 묶음(신호 · 뷰 · 포지션) 단위로 접힌다 ---------- */
+@media (max-width:1319px){          /* 뷰와 포지션이 한 줄에 서면 포지션 칸이 너무 좁다: 묶음마다 한 줄 */
+  .mp-groups{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:1199px){          /* 메뉴: '잠정' 낱말 대신 화살표 (0 → −1) */
+  .mp-lvw{display:none}
+  .mp-lva{display:inline}
+}
+@media (max-width:1140px){          /* 메뉴: 긴 이름 → 짧은 이름 */
+  .mp-jname{display:none}
+  .mp-jshort{display:inline}
+}
+@media (max-width:1000px){
+  .mp-l6-g{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:920px){           /* 메뉴: 번호와 점수만 */
+  .mp-jshort{display:none}
+}
+@media (max-width:860px){
+  .mp-g-sig .mp-cells{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .mp-g-sig .mp-cell{grid-column:span 2}
+  .mp-g-sig .mp-cell:nth-child(n+4){grid-column:span 3}
+}
+@media (max-width:780px){           /* 메뉴를 촘촘하게 */
+  .mp-nav{padding:0 14px}
+  .mp-nav-in{gap:6px}
+  .mp-bar{display:none}
+  .mp-pages a{padding:4px 6px}
+  .mp-jump a{padding:4px 4px;gap:4px}
+  .mp-chip{min-width:22px;padding:0 4px}
+  .mp-asof-l{display:none}
+  .mp-body{padding:14px 14px 40px}
+}
+@media (max-width:640px){
+  .mp-meta{text-align:left}
+  .mp-strip{padding:12px 12px 10px}
+  .mp-band{padding-left:10px}
+  .mp-g-sig .mp-cells{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mp-g-sig .mp-cell,.mp-g-sig .mp-cell:nth-child(n+4){grid-column:auto}
+  .mp-g-sig .mp-cell:last-child:nth-child(odd){grid-column:1 / -1}
+  .mp-g-view .mp-cells{grid-template-columns:minmax(0,1fr)}
+  .mp-g-pos .mp-cells{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mp-l6-g{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mp-card-body{grid-template-columns:minmax(0,1fr)}
+  .mp-big{font-size:28px;margin-bottom:2px}
+  .mp-flag{margin-left:0}
+}
+@media (max-width:590px){           /* 좁은 폭: 바로가기를 제 줄로 내린다 */
+  .mp-nav-in{flex-wrap:wrap;padding:6px 0;gap:4px 6px}
+  .mp-asof{margin-left:auto}
+  .mp-jump{order:3;flex:1 0 100%}
+}
+@media print{
+  .mp-nav{position:static}
+  .mp-card,.mp-band{break-inside:avoid}
+  .mp-no{background:none;color:var(--ink);border:1px solid var(--ink)}      /* 배경을 빼고 찍어도 번호와 현재 탭이 보이게 */
+  .mp-pages a[aria-current]{background:none;color:var(--ink);text-decoration:underline}
+}
+</style>
+</head>
+<body class="mp">
+
+<nav class="mp-nav" aria-label="페이지와 섹션 이동">
+  <div class="mp-nav-in">
+    <div class="mp-pages">
+      <a href="index.html" aria-current="page">매크로</a>
+      <a href="../curve/index.html">운용</a>
+      <a href="scoreboard_rules.html">규칙표</a>
+    </div>
+    <span class="mp-bar" aria-hidden="true"></span>
+    <div class="mp-jump" id="jump"></div>
+    <span class="mp-bar" aria-hidden="true"></span>
+    <div class="mp-asof" id="asof"></div>
+  </div>
+</nav>
+
+<div class="mp-body">
+<div class="mp-wrap">
+  <div class="mp-head">
+    <div>
+      <div class="mp-eyebrow">RATES MONITOR · MACRO</div>
+      <h1 class="mp-h1">매크로 판정</h1>
+    </div>
+    <div class="mp-meta" id="meta"></div>
+  </div>
+
+  <div class="mp-strip" id="strip"></div>
+
+  <div class="mp-sec-title">섹션 <span>점수 하나씩 · 차트와 백테스트 근거는 각 섹션 페이지에 있습니다</span></div>
+  <div id="cards"></div>
+</div>
+</div>
+
+<script src="scoreboard.js"></script>
+<script>
+"use strict";
+/* 매크로 페이지: 메뉴 · 판정 요약 띠 · 섹션 카드 5장.
+   화면의 숫자와 낱말은 모두 scoreboard.js(window.MACRO_SCOREBOARD)에서 읽는다. 여기서 계산하지 않는다.
+   브라우저 날짜를 쓰는 곳은 '월말이 지났는데 화면이 옛 자료'라는 경고 한 줄뿐이다 (oldWarn). */
+(function(){
+const SB = window.MACRO_SCOREBOARD;
+const $ = id => document.getElementById(id);
+
+/* ---------- 값이 아니라 구조인 것 ---------- */
+const FALLBACK = [   /* 점수표를 못 읽어도 메뉴와 카드는 그린다. 폴더 이름은 scoreboard.py와 같다. */
+  {no:1, key:'s1_policy',        folder:'01_policy_path',   name:'정책 경로',     short:'정책',   global:'POLICY_SIGNALS'},
+  {no:2, key:'s2_growth',        folder:'02_growth_jobs',   name:'성장·고용',     short:'성장',   global:'GROWTH_SIGNALS'},
+  {no:3, key:'s3_inflation',     folder:'03_inflation',     name:'인플레이션',    short:'물가',   global:'INFLATION_SIGNALS'},
+  {no:4, key:'s4_supply',        folder:'04_supply_tp',     name:'수급',          short:'수급',   global:'SUPPLY_SIGNALS'},
+  {no:5, key:'s5_liquidity_vol', folder:'05_liquidity_vol', name:'유동성·변동성', short:'변동성', global:'LIQUIDITY_SIGNALS'}
+];
+const TAG = {s1_policy:{strip:'2년 국채 대용치', full:'시장 경로 = 2년 국채 대용치 (선물 아님)'}};   /* 1번 점수는 선물이 아니라 2년 국채로 잰다 */
+const VIEW_KO = {level:'수준 뷰', slope:'기울기 뷰', curvature:'곡률 뷰'};
+const SLOPE_KO = {steepener:'스티프너', flattener:'플래트너', none:'없음'};
+const CURV_KO = {bullet:'불릿', none:'없음'};
+const CMD = '<code>pipeline/inputs/macro</code> 폴더에서 <code>python3 scoreboard.py</code>를 실행하세요';
+
+/* ---------- 점수표 상태 ---------- */
+function whyUnusable(){
+  if(!SB) return ['scoreboard.js를 불러오지 못했습니다.'];
+  if(!(SB.schema >= 2)) return ['scoreboard.js가 옛 형식입니다 (지금 schema ' + (SB.schema == null ? '없음' : SB.schema) + ', 필요 2).'];
+  if(SB.status === 'error') return (SB.problems && SB.problems.length) ? SB.problems.slice() : ['점수표 계산이 실패했습니다.'];
+  if(!SB.official || !SB.rules || !SB.record || !SB.sections || !SB.sections.length) return ['scoreboard.js에 필요한 항목이 없습니다.'];
+  return null;
+}
+const BAD = whyUnusable();                 /* null이면 쓸 수 있다 (ok 또는 partial) */
+const SECS = BAD ? FALLBACK : SB.sections;
+const O = BAD ? null : SB.official;        /* 적용분 행 */
+const L = BAD ? null : (SB.live || null);  /* 잠정 행. 없을 수 있다 */
+const R = BAD ? null : SB.rules;
+const REC = BAD ? null : SB.record;
+const LEVEL = BAD ? [] : ((R.views && R.views.level) || []);
+const CH = {};                             /* 잠정 행에서 바뀐 항목: key → change */
+if(L) (SB.changes || []).forEach(c => { CH[c.key] = c; });
+const DC = BAD ? {} : (SB.decision_check || {});
+const FZ = L ? (DC.live || null) : null;   /* decisions.csv에 고정해 둔 줄 가운데 잠정 행과 같은 달 것. 없으면 null */
+const liveWord = () => L && L.is_month_end ? '판정값' : '잠정';      /* 월말 종가 값이면 띠 · 카드 · 메뉴가 모두 '판정값'이라고 부른다 */
+
+/* ---------- 표시 도구 ---------- */
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function sgn(v, d){                        /* 부호 붙인 수. 음수는 U+2212 */
+  if(v == null || isNaN(v)) return '–';
+  const r = +(+v).toFixed(d);
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r).toFixed(d);
+}
+function sgnT(v){                          /* 끝자리 0은 뗀다: 0.25 → +0.25, 1.0 → +1, −8.0 → −8 */
+  if(v == null || isNaN(v)) return '–';
+  const r = +(+v).toFixed(2);
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + String(Math.abs(r));
+}
+const sc = v => sgn(v, 0);                                  /* 점수: +1 / 0 / −1 */
+const txt = s => esc(s).replace(/\d+(?:-\d+)+/g, m => '<span class="mp-nb">' + m + '</span>');   /* 글 속 날짜는 한 덩어리로 */
+const md = d => d ? txt(String(d).slice(5)) : '–';          /* 2026-10-30 → 10-30 (2026-11-30 23:10 → 11-30 23:10) */
+const mon = m => m ? (+String(m).slice(5,7)) + '월' : '–';   /* 2026-11 → 11월 */
+const durKo = d => d == null ? '–' : !d ? '중립' : sgnT(d) + '년 ' + (d > 0 ? '길게' : '짧게');
+const metKo = b => b ? '충족' : '미충족';
+const hitKo = h => h === true ? '맞음' : h === false ? '빗나감' : '–';
+const isLevel = key => LEVEL.indexOf(key) >= 0;
+const tone = v => v > 0 ? 'mp-dn' : v < 0 ? 'mp-up' : 'mp-z';     /* 수준 계열: + = 금리 하락 쪽 = 파랑 */
+const numTone = (key, v) => !v ? 'mp-z' : isLevel(key) ? tone(v) : '';
+const chipTone = (key, v) => !v ? '' : isLevel(key) ? tone(v) : 'mp-on';
+const partTxt = p => esc(p.name) + ' ' + sc(p.score);
+function recOne(s, k, withBase){           /* 그 점수였던 달의 기록: '+1일 때 18번 중 7번 다음 달 10년 금리 하락 (전체 142개월 중 62개월)' */
+  const r = s.record || {}, b = r.by_score && r.by_score[String(k)];
+  if(!b) return (r.scores_used && r.scores_used.indexOf(k) < 0) ? `${sc(k)}은 규칙에서 방향으로 쓰지 않음` : '';
+  if(!b.hit_ko) return `${sc(k)}일 때 ${b.n}번 중 ${b.hits}번 맞음 · ${esc(r.yardstick_ko)}`;      /* 옛 점수표 */
+  const base = withBase && r.base && b.base_hits != null ? ` (전체 ${r.base.n}개월 중 ${b.base_hits}개월)` : '';
+  return `${sc(k)}일 때 ${b.n}번 중 ${b.hits}번 다음 달 ${esc(b.hit_ko)}${base}`;
+}
+function fitNav(){                         /* 메뉴가 두세 줄이 되어도 바로가기로 간 자리가 메뉴에 가리지 않게: 실제 높이를 잰다 */
+  const n = document.querySelector('.mp-nav');
+  if(n) document.documentElement.style.setProperty('--nav-h', Math.ceil(n.getBoundingClientRect().height) + 'px');
+}
+function safe(id, draw){                   /* 한 블록이 실패해도 나머지는 그린다 */
+  try{ draw(); }
+  catch(e){ const el = $(id); if(el) el.innerHTML = '<p class="mp-warn">⚠ 이 부분을 그리지 못했습니다 (' + esc(e && e.message) + '). ' + CMD + '</p>'; }
+}
+
+/* ---------- 고정 메뉴 · 머리말 ---------- */
+function asofKo(){                         /* 기준일. 섹션마다 다르면 범위로 적는다 (점수표의 asof는 그중 가장 오래된 날) */
+  if(BAD || !SB.asof) return null;
+  const ds = SECS.map(s => s.asof).filter(Boolean).sort(), a = ds[0] || SB.asof, b = ds[ds.length - 1] || SB.asof;
+  return a === b ? {html: esc(a), mixed: false} : {html: `<span class="mp-nb">${esc(a)}~${esc(b.slice(5))}</span>`, mixed: true};
+}
+function renderNav(){
+  let h = '<a href="#strip">판정 요약</a>';
+  const lw = liveWord();
+  SECS.forEach(s => {
+    let chip = '', say = s.no + ' ' + s.name;         /* 좁은 화면에서는 이름이 숨으므로 title · aria-label에 다 적는다 */
+    if(!BAD && s.official){
+      const a = s.official.score;
+      chip = `<span class="mp-chip ${chipTone(s.key, a)}">${sc(a)}</span>`;
+      say += ` · ${mon(O.apply_month)} 적용분 ${sc(a)}`;
+      if(L && s.live && s.live.score !== a){            /* 잠정 행이 있을 때만: 띠는 못 만들었다는데 메뉴만 잠정을 말하지 않게 */
+        const v = s.live.score;
+        chip += `<span class="mp-lv"><span class="mp-lvw">${lw}</span><span class="mp-lva" aria-hidden="true">→</span><span class="mp-chip mp-chip-lv ${chipTone(s.key, v)}">${sc(v)}</span></span>`;
+        say += ` · ${mon(L.apply_month)} ${lw} ${sc(v)}`;
+      }
+    }
+    h += `<a href="#s${s.no}" title="${esc(say)}" aria-label="${esc(say)}"><span>${s.no}<span class="mp-jname"> ${esc(s.name)}</span><span class="mp-jshort"> ${esc(s.short || s.name)}</span></span>${chip}</a>`;
+  });
+  $('jump').innerHTML = h;
+  const a = asofKo();
+  $('asof').innerHTML = `<span class="mp-asof-l">기준일 </span><b>${a ? a.html : '–'}</b>`;
+}
+function renderMeta(){
+  const a = asofKo();
+  let h = (a ? '기준일 <b>' + a.html + '</b>' + (a.mixed ? ' (섹션마다 다름)' : '') + ' · ' : '') + (SB && SB.generated ? '점수표 생성 <b>' + txt(SB.generated) + '</b>' : '점수표 없음');
+  if(BAD) h += ' · ⚠ 읽지 못함';
+  else if(SB.status !== 'ok') h += ' · ⚠ 일부만 계산됨';
+  $('meta').innerHTML = h;
+}
+
+/* ---------- 판정 요약 띠 ---------- */
+function rowLabel(row, which){
+  if(which === 'official'){                /* 이 달을 미리 고정해 둔 줄이 있으면 월말 판정과 같은지 적는다 */
+    const ck = (DC.checked || []).filter(c => c.apply_month === row.apply_month).pop();
+    const fz = !ck ? '' : ck.match ? ` · 고정해 둔 판정(${md(ck.frozen_at)} 기록)과 같음` : ' · ⚠ 고정해 둔 판정과 다름 (아래 줄 참고)';
+    return `<b>${mon(row.apply_month)} 적용분</b> <span>· ${md(row.decision_date)} 판정${fz}</span>`;
+  }
+  const m = mon(row.apply_month);
+  if(FZ && FZ.same_asof && row.is_month_end) return `<b>${m} 판정값</b> <span>· ${md(row.date)} 미국 종가 기준 · 확정 (${md(FZ.frozen_at)} 고정)</span>`;
+  const early = FZ ? ` · ⚠ ${md(FZ.asof)} 기준으로 미리 고정한 줄이 있음 (${md(FZ.frozen_at)} 기록)` : '';
+  if(row.is_month_end) return `<b>${m} 판정값</b> <span>· ${md(row.date)} 미국 종가 기준 · 확정 전${FZ ? early : ' (아직 고정 안 함)'}</span>`;
+  return `<b>${m} 잠정</b> <span>· ${md(row.date)} 기준 · 월말(${md(row.month_end)} 미국 종가)에 확정${early}</span>`;
+}
+function frozenWarn(){                     /* 고정한 줄과 지금 계산한 점수가 다르면 알린다 (고정 뒤에 자료를 다시 받았을 때) */
+  if(!FZ || FZ.match) return '';
+  return `<p class="mp-warn" data-row="frozen-diff">⚠ 고정한 ${mon(FZ.apply_month)} 판정(${md(FZ.asof)} 기준)과 지금 계산이 다릅니다: ${(FZ.diff || []).map(d => esc(d.text_ko)).join(', ')}</p>`;
+}
+function oldWarn(){                        /* 월말이 지났는데 화면이 그 전 자료일 때. 이 줄만 브라우저 날짜를 쓴다 (미국 종가가 지났는지는 UTC 날짜로 본다) */
+  if(!L || L.is_month_end || !L.month_end) return '';
+  const now = new Date(), p2 = n => ('0' + n).slice(-2);
+  const utc = now.getUTCFullYear() + '-' + p2(now.getUTCMonth() + 1) + '-' + p2(now.getUTCDate());
+  if(!(utc > L.month_end)) return '';
+  const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
+  return `<p class="mp-warn" data-row="old">⚠ 이 화면은 ${md(L.date)} 기준입니다 (오늘 ${md(today)}). 월말 ${md(L.month_end)}이 지났습니다. 섹션 자료를 새로 받은 뒤 ${CMD}</p>`;
+}
+function wasLine(key){                     /* 잠정 행에서 바뀐 칸에만 */
+  const c = L && CH[key];
+  return c ? `<div class="mp-d"><b>바뀜</b> · ${mon(O.apply_month)} 적용분은 ${esc(c.from_ko)}</div>` : '';
+}
+function sigCell(s, which, row){
+  const d = s[which] || {}, v = row[s.key], live = which === 'live', chg = live && CH[s.key];
+  const tag = TAG[s.key];
+  /* 그 부호의 기록: 적용분 행에는 0이 아닌 점수마다, 잠정 행에는 점수가 바뀐 칸에만 (같은 줄을 두 번 적지 않는다) */
+  const rec = v && (!live || chg) ? recOne(s, v, true) : '';
+  const inp = [d.input_ko, row.is_month_end ? '' : d.pending_ko].filter(Boolean).map(txt).join(' · ');
+  return `<div class="mp-cell mp-sig${chg ? ' mp-chg' : ''}" data-cell="${esc(s.key)}">
+    <div class="mp-k"><i class="mp-no">${s.no}</i>${esc(s.name)}${tag ? `<span class="mp-tag" title="${esc(tag.full)}">${esc(tag.strip)}</span>` : ''}</div>
+    <div class="mp-v"><b class="mp-num ${numTone(s.key, v)}">${sc(v)}</b><span class="mp-word">${esc(d.word_ko)}</span></div>
+    ${live ? wasLine(s.key) : ''}
+    <div class="mp-d mp-val">${txt(d.value_ko || '–')}</div>
+    <div class="mp-d">${txt(s.th_ko)}</div>
+    ${live && inp ? `<div class="mp-d">입력: ${inp}</div>` : ''}
+    ${rec ? `<div class="mp-d mp-rec">${rec}</div>` : ''}
+  </div>`;
+}
+function stateKo(view){
+  if(view.state === 'no_signal') return '신호 없음';
+  const nz = view.parts.filter(p => p.score);
+  if(view.state === 'conflict') return '상충 (' + nz.map(partTxt).join(', ') + ')';
+  if(nz.length === 1) return esc(nz[0].name) + ' 하나로 결정';
+  return nz.length > 1 ? nz.length + '개가 같은 방향' : '';
+}
+function sumCell(row, which, key, title, dir, coloured, extra){     /* 수준 · 기울기: 점수를 더한 뷰 */
+  const v = row[key === 'view_level' ? 'level' : 'slope'], chg = which === 'live' && CH[key];
+  const st = [stateKo(v), extra].filter(Boolean).join(' · ');
+  return `<div class="mp-cell mp-view${chg ? ' mp-chg' : ''}" data-cell="${key}">
+    <div class="mp-k">${title} <span class="mp-dir">${dir}</span></div>
+    <div class="mp-v"><b class="mp-num ${coloured ? tone(v.value) : (v.value ? '' : 'mp-z')}">${sc(v.value)}</b><span class="mp-eq">= ${v.parts.map(partTxt).join(' · ')}</span></div>
+    ${which === 'live' ? wasLine(key) : ''}
+    ${st ? `<div class="mp-d">${st}</div>` : ''}
+  </div>`;
+}
+function curvCell(row, which){
+  const c = row.curvature, g = R.curvature_gate || {}, gs = SECS.filter(s => s.key === g.key)[0];
+  const who = gs ? gs.no + '번' : esc(g.key), chg = which === 'live' && CH.view_curvature;
+  const main1y = R.fly_lookback_m === 12;                  /* 규칙이 쓰는 룩백을 앞에 적는다 */
+  const z3 = c.z_3y_ko ? esc(c.z_3y_ko) : sgn(c.z_3y, 2), z1 = c.z_1y_ko ? esc(c.z_1y_ko) : sgn(c.z_1y, 2);   /* 문턱 바로 밑이면 점수표가 자리를 더 적어 준다 */
+  const zA = main1y ? z1 : z3, zB = main1y ? z3 : z1, la = main1y ? '1년' : '3년', lb = main1y ? '3년' : '1년';
+  const when = which === 'official' ? md(row.decision_date) + ' 판정' : md(row.date) + ' 기준';      /* 두 행의 날짜가 다르므로 '지금'이라고 하지 않는다 */
+  return `<div class="mp-cell mp-view${chg ? ' mp-chg' : ''}" data-cell="view_curvature">
+    <div class="mp-k">곡률 뷰 <span class="mp-dir">조건 2개 모두 충족 → 불릿</span></div>
+    <div class="mp-v"><b class="mp-num mp-w ${c.met ? '' : 'mp-z'}">${metKo(c.met)}</b></div>
+    ${which === 'live' ? wasLine('view_curvature') : ''}
+    <div class="mp-d">${who} = ${sc(g.score)} 필요 (${when} ${sc(c.gate_score)}) · <b>${metKo(c.gate_met)}</b></div>
+    <div class="mp-d">Fly z ≥ ${sgnT(R.fly_z_th)} (${la} ${zA} · ${lb} ${zB}) · Fly ${sgnT(c.fly_bp)}bp · <b>${metKo(c.z_met)}</b> (${la} 기준)</div>
+  </div>`;
+}
+function posCell(row, which, key, name, text, on, cls, sub){
+  const chg = which === 'live' && CH[key];
+  return `<div class="mp-cell mp-pos ${on ? 'mp-on' : 'mp-off'}${chg ? ' mp-chg' : ''}" data-cell="${key}">
+    <div class="mp-k">${name}</div>
+    <div class="mp-v"><b class="mp-num mp-w ${on ? cls : 'mp-z'}">${text}</b></div>
+    ${which === 'live' ? wasLine(key) : ''}
+    <div class="mp-d">${sub}</div>
+  </div>`;
+}
+function sideLine(rec, key){               /* 지금 잡은 방향의 기록을 따로 적는다. 길게와 짧게, 스티프너와 플래트너를 한 숫자로 합치지 않는다 */
+  const n = REC.months, S = rec.sides;
+  if(!S || !S[key]) return `${n}개월 중 ${rec.on}개월 보유 · ${rec.hits}번 맞음 · ${esc(rec.yardstick_ko)}`;      /* 옛 점수표 */
+  const one = x => `${esc(x.name_ko)} ${x.on}개월 중 ${x.hits}번 다음 달 ${esc(x.hit_ko)}`;
+  const rest = Object.keys(S).filter(k => k !== key).map(k => one(S[k]));
+  return `<b>${one(S[key])}</b>` + rest.map(t => `<br>${t}`).join('');
+}
+function posCells(row, which){             /* 포지션 글은 필드 세 개에서 만든다. 점수표의 완성 문장 열은 브레이크 문구가 섞여 있어 쓰지 않는다 */
+  const n = REC.months, d = row.duration_active_yr, sp = row.slope_position, cp = row.curvature_position, carry = row.carry_rolldown === 'on';
+  return posCell(row, which, 'duration_active_yr', 'Duration', durKo(d), !!d, tone(d), d ? sideLine(REC.duration, d > 0 ? 'long' : 'short') : `${n}개월 중 ${REC.duration.off}개월이 중립`)
+    + posCell(row, which, 'slope_position', 'Slope', esc(SLOPE_KO[sp] || sp), sp !== 'none', '', sp !== 'none' ? sideLine(REC.slope, sp) : `${n}개월 중 ${REC.slope.off}개월이 없음`)
+    + posCell(row, which, 'curvature_position', 'Curvature', esc(CURV_KO[cp] || cp), cp !== 'none', '', cp !== 'none' ? sideLine(REC.curvature, cp) : `${n}개월 중 ${REC.curvature.off}개월이 없음`)
+    + posCell(row, which, 'carry_rolldown', 'Carry', carry ? '유지' : '없음', carry, '', '신호와 무관하게 항상');
+}
+function band(row, which){
+  /* 수준 뷰가 몇 년이 되는지: 1점에 0.25년, 한도 ±0.5년 (수준 ±3이어도 ±0.5년) */
+  const scale = R.dur_step ? `Duration은 수준 1점에 ${R.dur_step}년` + (R.dur_cap ? ` · ±${R.dur_step * R.dur_cap}년까지` : '') : '';
+  return `<div class="mp-band ${which === 'live' ? 'mp-live' : ''}" data-row="${which}">
+    <div class="mp-band-lab">${rowLabel(row, which)}</div>
+    ${which === 'live' ? frozenWarn() : ''}
+    <div class="mp-groups">
+      <div class="mp-g mp-g-sig"><div class="mp-gl">신호 ${SECS.length}개 <span>점수 −1 / 0 / +1</span></div>
+        <div class="mp-cells">${SECS.map(s => sigCell(s, which, row)).join('')}</div></div>
+      <div class="mp-g mp-g-view"><div class="mp-gl">커브 뷰 3개</div>
+        <div class="mp-cells">${sumCell(row, which, 'view_level', '수준 뷰', '+ = 듀레이션 길게 쪽', true, '')}${sumCell(row, which, 'view_slope', '기울기 뷰', '+ = 스티프너 쪽', false, '±' + R.slope_trigger + '일 때만 포지션')}${curvCell(row, which)}</div></div>
+      <div class="mp-g mp-g-pos"><div class="mp-gl">규칙상 포지션 4개${scale ? ` <span>${scale}</span>` : ''}</div>
+        <div class="mp-cells">${posCells(row, which)}</div></div>
+    </div>
+  </div>`;
+}
+function changesLine(){                    /* 뷰마다 한 줄기: 그 뷰에 들어가는 점수 → 뷰 → 포지션. 다른 뷰의 점수를 원인처럼 잇지 않는다 */
+  if(!L) return '';
+  const ch = SB.changes || [], one = c => `${esc(c.name)} ${esc(c.from_ko)} → <b>${esc(c.to_ko)}</b>`;
+  const head = '<div class="mp-chgline" data-row="changes"><span class="mp-chg-k">바뀐 점</span> ';
+  if(!ch.length) return head + '없음 · 두 행의 점수, 뷰, 포지션이 같습니다</div>';
+  const chains = SB.change_chains;
+  if(!chains || !chains.length) return head + ch.map(one).join(', ') + '</div>';      /* 옛 점수표: 나열만 한다 */
+  const parts = chains.map(c => {
+    const ins = (c.inputs || []).map(one).join(', ');
+    if(!c.view_change) return `${ins} (${VIEW_KO[c.view] || esc(c.view)}와 포지션은 그대로)`;
+    return (ins ? ins + ', 그래서 ' : '') + one(c.view_change) + (c.position_change ? ', ' + one(c.position_change) : ' (포지션은 그대로)');
+  });
+  return head + parts.join(' <span class="mp-sep">/</span> ') + '</div>';
+}
+function liveMissing(){                    /* 잠정 행이 없을 때: 왜 없는지 적는다 */
+  const m = SB.asof ? (+SB.asof.slice(5,7) % 12) + 1 + '월 ' : '';
+  const why = (SB.problems && SB.problems.length) ? SB.problems : ['잠정 값이 scoreboard.js에 없습니다.'];
+  return `<div class="mp-band mp-live" data-row="live">
+    <div class="mp-band-lab"><b>${m}잠정</b> <span>· 만들지 못했습니다</span></div>
+    <p class="mp-warn">⚠ 잠정 행을 계산하지 못했습니다. 위 적용분 행은 그대로 유효합니다.</p>
+    <ul class="mp-probs">${why.map(p => '<li>' + txt(p) + '</li>').join('')}</ul>
+  </div>`;
+}
+function last6(){
+  const rows = REC.last6 || [];
+  if(!rows.length) return '';
+  const cells = rows.map(m => {
+    const pos = [], hit = [], h = m.hit || {};
+    if(m.duration_active_yr){ pos.push('Duration ' + durKo(m.duration_active_yr)); hit.push('Duration ' + hitKo(h.duration)); }
+    if(m.slope_position && m.slope_position !== 'none'){ pos.push('Slope ' + esc(SLOPE_KO[m.slope_position] || m.slope_position)); hit.push('Slope ' + hitKo(h.slope)); }
+    if(m.curvature_position && m.curvature_position !== 'none'){ pos.push('Curvature ' + esc(CURV_KO[m.curvature_position] || m.curvature_position)); hit.push('Curvature ' + hitKo(h.curvature)); }
+    return `<div class="mp-m">
+      <div><b>${mon(m.apply_month)}</b> · ${md(m.decision_date)} 판정</div>
+      <div><b>${pos.length ? pos.join(' + ') : 'Carry만'}</b></div>
+      <div>10년 ${sgnT(m.next_d10y_bp)} · 2s10s ${sgnT(m.next_d2s10s_bp)} · Fly ${sgnT(m.next_dfly_bp)}</div>
+      <div>${hit.length ? hit.join(' · ') : '포지션 없음'}</div>
+    </div>`;
+  }).join('');
+  return `<div class="mp-l6" data-row="last6">
+    <div class="mp-l6-h">최근 ${rows.length}개월 규칙 출력과 결과 <span>${txt(rows[0].apply_month)} ~ ${txt(rows[rows.length - 1].apply_month)} 적용분 · 숫자는 적용한 달의 변화(bp) · 변화 0은 빗나감으로 셈</span></div>
+    <div class="mp-l6-g">${cells}</div>
+  </div>`;
+}
+function footNotes(){
+  const drift = DC.drift || [];
+  const yard = [REC.duration, REC.slope, REC.curvature].map(x => x && x.yardstick_ko).filter(Boolean).map(esc).join(' · ');
+  /* 문턱을 자료에서 뽑은 섹션만 따로 적는다 (점수표의 th_origin_ko). 나머지는 백테스트 전에 정한 상수다 */
+  const own = SECS.filter(s => s.th_origin_ko).map(s => ` ${s.no}번(${esc(s.name)})만 ${esc(s.th_origin_ko)}로 정했습니다 (이후 변경 없음).`).join('');
+  const ps = SB.paper_start, begun = ps && SB.asof && SB.asof.slice(0, 7) >= ps;
+  const paper = !ps ? '' : ` 실시간 모의운용은 ${txt(ps)}${begun ? '부터 진행 중입니다' : '에 시작합니다'} (그 전 기록은 모두 백테스트).`;
+  return `<div class="mp-foot">
+    ${drift.length ? `<p class="mp-warn" data-row="drift">⚠ 고정해 둔 판정과 다시 계산한 값이 다릅니다: ${drift.map(x => txt(x.text_ko)).join(' / ')}</p>` : ''}
+    <p data-row="brake">${txt(SB.brake && SB.brake.text_ko)}</p>
+    <p data-row="howto"><b>읽는 법</b> 점수는 매월 마지막 거래일에 판정해 다음 달에 적용합니다. 화면의 월말 날짜는 달력의 마지막 평일이며 미국 휴장일은 따지지 않습니다 (휴장이면 그 전 거래일에 판정). 문턱값은 백테스트 전에 정했고 결과를 보고 바꾸지 않습니다.${own} 이 화면은 검증 중인 규칙의 출력이며 예측이 아닙니다. ‘맞음’은 잣대(${yard})가 점수나 포지션이 가리킨 쪽으로 움직였다는 뜻입니다.${paper}</p>
+  </div>`;
+}
+function renderStrip(){
+  const el = $('strip');
+  if(BAD){
+    el.innerHTML = `<h2 class="mp-title"><b>판정 요약</b></h2>
+      <p class="mp-warn">⚠ 판정 요약을 표시할 수 없습니다.</p>
+      <ul class="mp-probs">${BAD.map(p => '<li>' + txt(p) + '</li>').join('')}</ul>
+      <p class="mp-cmd">${SB && SB.status === 'error' ? '위 문제를 고친 뒤 ' : ''}${CMD}</p>`;
+    return;
+  }
+  const d = REC.duration, base = REC.base && REC.base[d.yardstick];
+  const probs = SB.problems || [];
+  /* 109(Duration 포지션이 있던 달)와 142(백테스트 전체)가 무엇을 센 것인지 적는다. 오른 달 + 내린 달 + 그대로 = 전체 */
+  const baseKo = !base ? '' : ` 백테스트 ${REC.months}개월 가운데 Duration 포지션이 있던 달이 ${d.on}개월이고, ${base.n === REC.months ? '' : `결과가 나온 ${base.n}개월 중 `}금리가 오른 달은 ${base.up}개월 · 내린 달 ${base.down}개월${base.zero != null ? ` · 그대로 ${base.zero}개월` : ''}입니다.`;
+  el.innerHTML = `<h2 class="mp-title"><b>판정 요약</b> · <strong>규칙은 가설입니다. 월말 점수는 ${esc(d.yardstick_ko)} 방향을 ${d.on}번 중 ${d.hits}번 맞혔습니다.</strong>${baseKo}</h2>
+    ${L && probs.length ? `<p class="mp-warn" data-row="problems">⚠ ${probs.map(txt).join(' / ')}</p>` : ''}
+    ${oldWarn()}
+    <div id="stale"></div>
+    ${band(O, 'official')}
+    ${changesLine()}
+    ${L ? band(L, 'live') : liveMissing()}
+    ${last6()}
+    ${footNotes()}`;
+}
+
+/* ---------- 섹션 카드 ---------- */
+function usage(s){                         /* 규칙에서 쓰는 곳: parts에서 만든 문장 */
+  const M = mon(O.apply_month) + ' 적용분', head = [], tail = [];
+  (s.feeds || []).forEach(f => {
+    if(f === 'level' || f === 'slope'){
+      const view = O[f], mine = view.parts.filter(p => p.key === s.key)[0];
+      if(!mine) return;
+      const nz = view.parts.filter(p => p.score), list = nz.map(partTxt).join(', ');
+      head.push(`${VIEW_KO[f]}에 ${sc(mine.score)}`);
+      if(f === 'level'){
+        const dur = O.duration_active_yr;
+        if(!dur) tail.push(nz.length ? `${list}이 상쇄되어 수준 뷰가 0이고 ${M} Duration은 중립입니다.` : `수준 뷰가 0(신호 없음)이라 ${M} Duration은 중립입니다.`);
+        else if(!mine.score) tail.push(`이 점수가 0이라 ${M} Duration ${sgnT(dur)}년에 보탠 것이 없습니다.`);
+        else if(nz.length === 1) tail.push(`${M} Duration ${sgnT(dur)}년은 이 점수 하나로 정해졌습니다.`);
+        else if(R.dur_cap && Math.abs(view.value) > R.dur_cap)      /* 수준 ±3: 점수는 셋을 더했지만 Duration은 한도까지만 */
+          tail.push(`${list}을 더한 수준 뷰는 ${sc(view.value)}이지만 한도가 ±${R.dur_step * R.dur_cap}년이라 ${M} Duration은 ${sgnT(dur)}년입니다.`);
+        else tail.push(`${M} Duration ${sgnT(dur)}년은 ${list}을 더한 결과입니다.`);
+      }else{
+        const sp = O.slope_position, trig = '±' + R.slope_trigger + '일 때만 포지션';
+        if(sp !== 'none') tail.push(`${M} Slope ${esc(SLOPE_KO[sp] || sp)}는 ${list}이 겹친 결과입니다 (${trig}).`);
+        else tail.push(`기울기 뷰가 ${sc(view.value)}이라 (${trig}) ${M} Slope 포지션은 없습니다.`);
+      }
+    }else if(f === 'curvature'){
+      const c = O.curvature, g = R.curvature_gate || {}, z = R.fly_lookback_m === 12 ? c.z_1y : c.z_3y;
+      head.push(`곡률 뷰의 조건 (이 점수가 ${sc(g.score)}이고 Fly z가 ${sgnT(R.fly_z_th)} 이상이면 불릿)`);
+      tail.push(c.met ? `두 조건을 모두 충족해 ${M} Curvature는 불릿입니다.`
+        : `${M}은 이 점수 ${sc(c.gate_score)} (${metKo(c.gate_met)}), Fly z ${sgn(z, 2)} (${metKo(c.z_met)})이라 Curvature 포지션이 없습니다.`);
+    }
+  });
+  return head.join(', ') + '. ' + tail.join(' ');
+}
+function recordLine(s){                    /* 점수마다 어느 쪽이 '맞음'이었는지 적고, 끝에 점수와 상관없는 기준선을 붙인다 */
+  const r = s.record, p = [1, -1].map(k => recOne(s, k, false)).filter(Boolean);
+  if(!r.scores_used || r.scores_used.length > 1) p.push(`합쳐서 ${r.all.n}번 중 ${r.all.hits}번`);
+  if(r.test) p.push(`${txt(REC.test_start)}부터는 ${r.test.n}번 중 ${r.test.hits}번`);
+  const b = r.base, base = b ? ` (전체 ${b.n}개월 중 오른 달 ${b.up} · 내린 달 ${b.down}${b.zero != null ? ` · 그대로 ${b.zero}` : ''})` : '';
+  return `<b>기록</b> ${p.join(' · ')} · 잣대: ${esc(r.yardstick_ko)}${base}`;
+}
+function card(s){
+  const no2 = ('0' + s.no).slice(-2);
+  const feeds = !BAD && s.feeds ? `<span class="mp-feeds">→ ${s.feeds.map(f => VIEW_KO[f] || esc(f)).join(' · ')}${s.role === 'gate' ? ' (조건)' : ''}</span>` : '';
+  const tag = TAG[s.key] ? `<span class="mp-tag">${esc(TAG[s.key].full)}</span>` : '';
+  const head = `<div class="mp-card-head"><span class="mp-card-no">MACRO · ${no2}</span><h2 class="mp-card-h2">${esc(s.name)}</h2>${feeds}${tag}<span class="mp-flag" id="flag-${s.no}"></span></div>`;
+  const foot = `<div class="mp-card-foot"><a class="mp-open" href="${esc(s.folder)}/index.html">섹션 페이지 열기 (차트 · 백테스트 근거) →</a><span class="mp-stamp" id="stamp-${s.no}">${s.generated ? '섹션 자료 기준일 ' + txt(s.asof) + ' · 생성 ' + txt(s.generated) : ''}</span></div>`;
+  let body = '<p class="mp-line mp-sub">점수표를 읽지 못해 판정을 표시하지 않습니다.</p>';
+  if(!BAD && s.official){
+    try{
+      const a = s.official, lv = s.live, diff = lv && lv.score !== a.score;
+      const l2 = lv
+        ? `${liveWord()}(${md(s.asof)}): ${diff ? `<b>${sc(lv.score)} ${esc(lv.word_ko)}</b>` : sc(lv.score)} · ${txt(lv.value_ko)}${lv.input_ko ? ' · 입력: ' + txt(lv.input_ko) : ''}`
+        : '잠정: ⚠ 기준일 현재 값을 읽지 못했습니다';
+      body = `<div class="mp-card-body">
+        <div class="mp-big ${numTone(s.key, a.score)}">${sc(a.score)}</div>
+        <div>
+          <p class="mp-line" data-line="verdict"><b>${sc(a.score)} ${esc(a.word_ko)}</b> · ${txt(a.value_ko)} (${txt(s.th_ko)}) · ${md(O.decision_date)} 판정 → ${mon(O.apply_month)} 적용</p>
+          <p class="mp-line mp-sub" data-line="live">${l2}</p>
+          <p class="mp-line mp-sub" data-line="record">${recordLine(s)}</p>
+          <p class="mp-line mp-sub" data-line="usage"><b>규칙에서 쓰는 곳</b> ${usage(s)}</p>
+        </div>
+      </div>`;
+    }catch(e){ body = '<p class="mp-line mp-sub">⚠ 이 카드의 판정을 그리지 못했습니다 (' + esc(e && e.message) + ').</p>'; }
+  }
+  return `<div class="mp-card" id="s${s.no}">${head}${body}${foot}</div>`;
+}
+function renderCards(){ $('cards').innerHTML = SECS.map(card).join(''); }
+
+/* ---------- 섹션 자료와 점수표의 시각 비교 ----------
+   각 폴더의 signals.js를 불러와 생성 시각만 본다. 점수표가 읽은 것보다 새것이면 다시 돌려야 한다. */
+const STALE = {};
+function flag(s, state, G){
+  const f = $('flag-' + s.no), st = $('stamp-' + s.no);
+  if(state === 'fail'){ if(f) f.textContent = '⚠ 섹션 자료를 불러오지 못했습니다'; return; }
+  if(state === 'newer'){
+    if(f) f.textContent = '⚠ 점수표 재실행 필요';
+    if(st) st.innerHTML = '섹션 자료 기준일 ' + txt(G.asof || '–') + ' · 생성 ' + txt(G.generated) + ' · 점수표가 읽은 것은 기준일 ' + txt(s.asof || '–') + ' · 생성 ' + txt(s.generated);
+    STALE[s.no] = s.name;
+    const el = $('stale'), names = Object.keys(STALE).sort().map(k => esc(STALE[k]));
+    if(el) el.innerHTML = `<p class="mp-warn" data-row="stale">⚠ 점수표 재실행 필요 · ${names.join(', ')} 자료가 점수표가 읽은 뒤에 바뀌었습니다. ${CMD}</p>`;
+    return;
+  }
+  if(st && !s.generated) st.innerHTML = '섹션 자료 기준일 ' + txt(G.asof || '–') + ' · 생성 ' + txt(G.generated);   /* 점수표가 없을 때 */
+}
+function checkStamps(){
+  SECS.forEach(s => {
+    if(!s.global || !s.folder) return;
+    const el = document.createElement('script');
+    el.src = s.folder + '/signals.js';
+    el.onload = () => {
+      const G = window[s.global];
+      if(!G || !G.generated) flag(s, 'fail');
+      else flag(s, s.generated && (G.generated > s.generated || (G.asof && s.asof && G.asof !== s.asof)) ? 'newer' : 'ok', G);      /* 생성 시각은 분 단위라 기준일도 함께 본다 */
+    };
+    el.onerror = () => flag(s, 'fail');
+    document.head.appendChild(el);
+  });
+}
+
+safe('jump', renderNav);
+fitNav();
+window.addEventListener('resize', fitNav);
+safe('meta', renderMeta);
+safe('strip', renderStrip);
+safe('cards', renderCards);
+checkStamps();
+})();
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@
   data/raw/korea.json                      fetch_korea.py가 받은 것 (키가 없으면 no_key)
   data/ratings.csv                         (있으면) 손으로 적은 신용등급
 
-화면(index.html)은 계산하지 않고 이 파일을 읽어 그리기만 한다. 예외는 채권 상세와 Trade Builder의
+화면(index.html, v2.html)은 계산하지 않고 이 파일을 읽어 그리기만 한다. 예외는 채권 상세와 Trade Builder의
 가격·물량 계산으로, assets/bondmath.js가 bondmath.py와 같은 수식으로 그 자리에서 계산한다.
 
 실행:  python3 build_data.py     (표준 라이브러리만)
@@ -150,7 +150,13 @@ def market_block(dates, ys, tenors):
             level[t].append(r(v1, 3))
             chg[t].append(None if v1 is None or v0 is None else r((v1 - v0) * 100, 1))
     partial = dates[me[-1]] == asof and not _is_month_last_bday(asof)
-    return {"tenors": names, "years": [y for _, y in tenors], "asof": asof, "snaps": snaps, "heat": heat,
+    wk_sd = {}
+    for t in names:                    # 평소 한 주 움직임: 최근 1년의 5영업일 변화(bp)의 표준편차
+        f = ffill(ys[t])[-258:]
+        ch = [(f[k] - f[k - 5]) * 100 for k in range(5, len(f)) if f[k] is not None and f[k - 5] is not None]
+        if len(ch) > 100:
+            wk_sd[t] = r(stdev(ch), 1)
+    return {"tenors": names, "years": [y for _, y in tenors], "asof": asof, "snaps": snaps, "heat": heat, "wk_sd": wk_sd,
             "monthly": {"months": months, "level": level, "chg": chg, "partial_last": partial}}
 
 
@@ -346,7 +352,8 @@ def book_block(I):
         i = idx_on_or_before(dts, target)
         return None if i < 0 else exc[-1] - exc[i]
 
-    marks = {"d1": dts[-2], "mtd": back(asof[:8] + "01", days=1), "ytd": f"{int(asof[:4]) - 1}-12-31", "y1": back(asof, years=1)}
+    marks = {"d1": dts[-2], "w1": back(asof, days=7), "mtd": back(asof[:8] + "01", days=1), "ytd": f"{int(asof[:4]) - 1}-12-31",
+             "y1": back(asof, years=1)}
     perf = {k: {"p": r(ret(navp, t), 3), "b": r(ret(navb, t), 3), "ex_bp": r(exc_since(t), 2)} for k, t in marks.items()}
     perf["itd"] = {"p": r(S["cum_p"], 3), "b": r(S["cum_b"], 3), "ex_bp": r(S["excess_cum_bp"], 2)}
     pnl_d1 = navp[-1] - navp[-2]
@@ -585,6 +592,19 @@ def flows_block(I, grid, cols):
                        "hy": e["hy"], "btc": e["btc"], "btc_avg": e["avg"], "btc_gap": r(e["btc"] - e["avg"], 2) if e["avg"] else None,
                        "dealer": e["dealer"], "dealer_dev": e["dealer_dev"], "d10": e["d10"], "d30": e["d30"]})
     up = [x for x in (ex.get("upcoming") or [])]
+    # 최근 입찰 수요: 응찰률이 평소(같은 만기 직전 입찰들의 평균)보다 높았나 낮았나를 최근 3건 평균으로 본다.
+    # 약함·강함의 문턱은 정해 둔 숫자가 아니라 2010년 이후 그 값의 아래·위 4분의 1 지점이다.
+    gaps = [e["btc"] - e["avg"] for e in sup["events"] if e.get("btc") is not None and e.get("avg")]
+    demand = None
+    if len(gaps) >= 30:
+        roll = sorted(sum(gaps[k - 2:k + 1]) / 3 for k in range(2, len(gaps)))
+        now3 = sum(gaps[-3:]) / 3
+        q25, q75 = roll[int(0.25 * (len(roll) - 1))], roll[int(0.75 * (len(roll) - 1))]
+        dd = [e["dealer_dev"] for e in sup["events"][-3:] if e.get("dealer_dev") is not None]
+        demand = {"n": 3, "avg_gap": r(now3, 3), "q25": r(q25, 3), "q75": r(q75, 3),
+                  "pct_hist": r(sum(1 for x in roll if x <= now3) / len(roll) * 100, 0),
+                  "dealer_dev": r(sum(dd) / len(dd), 1) if dd else None,
+                  "state": "weak" if now3 <= q25 else "strong" if now3 >= q75 else "normal", "history_n": len(gaps)}
     m = sd["monthly"]
     k0 = max(0, len(m["dates"]) - 36)
     issuance = {"months": [d0[:7] for d0 in m["dates"][k0:]], "coupon_net_bn": m["coupon_net_bn"][k0:],
@@ -618,7 +638,7 @@ def flows_block(I, grid, cols):
     ld, lw = liq["daily"], liq["weekly"]
     fund_rows = []
     for key, label, unit, scale, pc in [("sofr", "SOFR", "%", 100, False), ("effr", "EFFR (실효 연방기금금리)", "%", 100, False),
-                                        ("reserve_rate", "IORB (준비금 금리)", "%", 100, False),
+                                        ("reserve_rate", "IORB (지급준비금 이자율)", "%", 100, False),
                                         ("sofr_minus_rr_bp", "SOFR − IORB", "bp", 1, False),
                                         ("effr_minus_rr_bp", "EFFR − IORB", "bp", 1, False),
                                         ("rrp_bn", "역레포 잔액 (ON RRP)", "십억 달러", 1, False)]:
@@ -639,7 +659,7 @@ def flows_block(I, grid, cols):
     funding = {"rows": fund_rows, "alarm_bp": th.get("fund"), "alarm_days": th.get("fund_days"),
                "fund_avg_bp": off.get("fund"), "alarm_on": bool(off.get("alarm"))}
     return {"auctions": {"upcoming": up, "recent": recent, "tail_note": "발행 전 거래(WI) 금리가 없어 tail은 계산하지 못합니다"},
-            "issuance": issuance, "soma": soma, "cftc": cftc, "funding": funding}
+            "demand": demand, "issuance": issuance, "soma": soma, "cftc": cftc, "funding": funding}
 
 
 # ───────────────────────── 크레딧·소버린 ─────────────────────────
@@ -711,6 +731,30 @@ def credit_block(I, grid, cols):
             out.update({"debt_gdp": r(debt["v"][-1], 0), "debt_year": debt["d"][-1][:4]})
         sov.append(out)
 
+    # 종합: 재정·경제 여건을 한 칸으로. 네 지표 모두 낮을수록 좋다고 보고, 나라들 안에서의 순위를 0~100점으로 바꾼다.
+    # (순위를 쓰는 까닭: 일본의 정부부채처럼 한 나라 값이 튀어도 나머지 나라의 차이가 묻히지 않는다)
+    # 세 갈래를 같은 무게로 평균한다: 재정(정부부채), 경제(실업률), 시장(10년 금리 수준과 1년 변화의 평균).
+    # 금리 지표 둘을 따로 세면 시장 쪽이 절반을 차지하므로 하나로 묶었다.
+    parts = [("debt_gdp", "정부부채"), ("unemp", "실업률"), ("y10", "10년 금리"), ("y10_y1", "금리 1년 변화")]
+    for key, _ in parts:
+        have = sorted((x[key], k) for k, x in enumerate(sov) if x.get(key) is not None)
+        n = len(have)
+        if n < 3:
+            continue
+        for pos, (v, k) in enumerate(have):
+            same = [q for q, (v2, _) in enumerate(have) if v2 == v]            # 같은 값이면 평균 순위
+            rank = sum(same) / len(same)
+            sov[k].setdefault("score_parts", {})[key] = round((1 - rank / (n - 1)) * 100)
+    for x in sov:
+        sp = x.get("score_parts") or {}
+        mk = [sp[k] for k in ("y10", "y10_y1") if k in sp]
+        pillars = {"재정": sp.get("debt_gdp"), "경제": sp.get("unemp"), "시장": round(sum(mk) / len(mk)) if mk else None}
+        if all(v is not None for v in pillars.values()):
+            x["pillars"] = pillars
+            x["score"] = round(sum(pillars.values()) / 3)
+            x["verdict"] = "good" if x["score"] >= 60 else "bad" if x["score"] < 40 else "mid"
+    sov_parts = [{"key": k, "label": lab} for k, lab in parts]
+
     ratings, rpath = [], DESK / "data" / "ratings.csv"
     if rpath.exists():
         for x in csv.DictReader(io.StringIO(rpath.read_text(encoding="utf-8-sig"))):
@@ -722,7 +766,7 @@ def credit_block(I, grid, cols):
         cgrid = base["d"]
         series = {"dates": cgrid, "cols": {k: [None if v is None else r(v * 100, 1) for v in align(fd[k], cgrid)]
                                              for k in fd if k.startswith("oas_")}}
-    return {"ladder": ladder, "maturity": mat, "quality": quality, "sovereign": sov, "ratings": ratings, "series": series,
+    return {"ladder": ladder, "maturity": mat, "quality": quality, "sovereign": sov, "sov_parts": sov_parts, "ratings": ratings, "series": series,
             "oas_from": fd.get("oas_ig", {}).get("d", [None])[0]}
 
 
@@ -895,10 +939,10 @@ def main():
     for a in ex.get("upcoming") or []:
         if a["type"] == "Bill":
             continue
-        kind = "TIPS" if a.get("tips") else "변동금리채" if a.get("frn") else ""
+        kind = "TIPS" if a.get("tips") else "FRN" if a.get("frn") else ""
         size = f" {a['offering_bn'] * 10:,.0f}억 달러" if a.get("offering_bn") else ""
         events.append({"date": a["auction_date"], "time": "13:00", "kind": "입찰", "region": "US", "src": "재무부",
-                       "title": f"{a['term'].replace('-Year', '년')} {'재발행 ' if a['reopening'] else ''}{kind} 입찰{size}".replace("  ", " "),
+                       "title": f"{a['term'].replace('-Year', '년')} {'리오픈 ' if a['reopening'] else ''}{kind} 입찰{size}".replace("  ", " "),
                        "imp": 2 if a["term"] in ("10-Year", "30-Year", "2-Year", "5-Year") and not kind else 1,
                        "note": "잠정 일정" if a.get("tentative") else ""})
     events.sort(key=lambda e: (e["date"], -e["imp"]))

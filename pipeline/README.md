@@ -6,7 +6,7 @@
 | `inputs/macro/0X_*/` | 매크로 신호 5개 섹션. `fetch_data.py` → `analyze.py` → `data.js`, `signals.js` |
 | `inputs/macro/scoreboard.py` | 5개 섹션 점수 → `scoreboard.csv`/`.js` (커브 뷰·포지션). 규칙은 `inputs/macro/README.md` |
 | `desk/` | desk 화면용 자료. `fetch_extra.py`, `fetch_korea.py` → `build_data.py` → `../desk/data/desk_data.js` |
-| `model/` | 모형 포트폴리오와 백테스트. 아직 저장소에 없다 (`model/README.md`) |
+| `model/` | 모형 포트폴리오와 백테스트(`backtest.py` → `portfolio.js`), 2페이지 대시보드(`build.py` → `combined.html`) |
 
 `inputs/` 아래 폴더에는 각자의 화면(`index.html`)도 있어 `/curve/`, `/macro/` 주소로 함께 배포된다.
 

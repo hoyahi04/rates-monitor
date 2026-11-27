@@ -27,6 +27,7 @@ TH_EXPECT = 15       # bp
 BT_START = "2015-01"            # 첫 성과월
 TEST_START = "2021-01"          # 검증 구간 첫 성과월
 MIN_CONSENSUS = 24              # 컨센서스가 이만큼 채워져야 대용치 대신 사용
+GATE_HIT = 55                   # Q4 관문: 설정 구간 신호 적중률이 이 값(%) 이상이어야 검증 구간을 연다
 REGIME_KO = {"hike": "인상기", "cut": "인하기", "hold": "동결기"}
 
 
@@ -265,6 +266,16 @@ def main():
     bt_expect["same_month"] = {"n": len(same), "slope_5s30s": r1(bs * 10), "r2_5s30s": r1(r2s, 2), "t_5s30s": r1(ts, 1),
                                "slope_10y": r1(b10_ * 10), "r2_10y": r1(r210, 2), "t_10y": r1(t10_, 1)}
 
+    # ----- Q4: 장기 기대 → 다음 달 10년 금리 (수준 뷰로 옮길 수 있는가) · 2026-11-21 추가 -----
+    # 가설: 기대 상승(+1) 뒤 금리 상승, 기대 하락(−1) 뒤 금리 하락. 점수는 기존 것 그대로(5y5y 3개월 변화, ±15bp).
+    # 절차: 설정 구간만 먼저 본다. 관문(신호 적중률 GATE_HIT% 이상 + 평균 차이의 방향이 가설과 같음)을
+    #       넘을 때만 검증 구간을 계산한다. 넘지 못하면 검증 구간은 열지 않는다.
+    lv_train = summarize(train, "s2", "d10", expect=+1)
+    lv_pass = (lv_train["signal"]["hit"] or 0) >= GATE_HIT and (lv_train["spread"] or 0) > 0
+    bt_expect_level = {"train": lv_train, "gate_hit": GATE_HIT, "passed": lv_pass,
+                       "test": summarize(test, "s2", "d10", expect=+1) if lv_pass else None,
+                       "start": train[0]["month"], "end": train[-1]["month"]}
+
     # ----- Q1: Core CPI 발표일 반응 -----
     consensus = {}
     cpath = HERE / "cpi_consensus.csv"
@@ -351,7 +362,7 @@ def main():
         "monthly": {k: [r[k] for r in monthly] for k in keys},
         "events": events, "event_source": "consensus" if use_cons else "proxy",
         "event_stats": {"by_era": by_era, "by_year": by_year},
-        "bt": {"momentum": bt_momentum, "expect": bt_expect},
+        "bt": {"momentum": bt_momentum, "expect": bt_expect, "expect_level": bt_expect_level},
     }
     (HERE / "signals.js").write_text(
         "window.INFLATION_SIGNALS = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n", encoding="utf-8")
@@ -372,6 +383,16 @@ def main():
     for e in by_era:
         print(f"  {e['label']:10s} n={e['n']:<3d} 0.1%p당 2y {e['slope2']}bp (R² {e['r2_2']}, t {e['t2']})  10y {e['slope10']}bp (R² {e['r2_10']}, t {e['t10']})"
               f"  | |Δ2y| 발표일 {e['abs_cpi2']} vs 평소 {e['abs_other2']}bp")
+    print(f"\n[Q4 장기 기대 → 다음 달 10년 금리]  설정 구간 {bt_expect_level['start']}~{bt_expect_level['end']} 만 먼저 봄 (관문: 적중률 {GATE_HIT}% 이상 + 방향 일치)")
+    for label, s in (("설정 구간", lv_train), ("검증 구간", bt_expect_level["test"])):
+        if s is None:
+            print(f"  {label}  관문을 넘지 못해 열지 않음")
+            continue
+        by = "  ".join(f"{sc(g['score'])}: n={g['n']:<3d} {'' if g['mean'] is None else format(g['mean'], '+.1f'):>6s}"
+                       f"{'' if g['hit'] is None else ' (' + str(g['hit']) + '%)':>7s}" for g in s["by"])
+        print(f"  {label}  n={s['n']:<3d} {by}  | 신호 적중 {s['signal']['hits']}/{s['signal']['n']} ({s['signal']['hit']}%)"
+              f" 기준선 {s['base']}%  (+1)−(−1)={s['spread']} t={s['t']}")
+    print(f"  관문 {'통과' if lv_pass else '미통과'}")
     print(f"\n→ signals.js, signals_monthly.csv 저장 (월 {len(monthly)}개, 발표일 {len(events)}개)")
 
 

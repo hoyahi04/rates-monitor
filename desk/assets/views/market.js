@@ -1,4 +1,4 @@
-/* 1. 시장 모니터 — 무엇이 움직였나: 커브 모니터, 금리 히트맵, 스프레드 보드, 크로스에셋, 최근 발행물 */
+/* 1. 시장 모니터 — 무엇이 움직였나: 커브 모니터, 금리 히트맵, 스프레드 보드, 크로스에셋, 지표물 */
 (function () {
   'use strict';
   const { h, F, ok } = UI;
@@ -17,6 +17,25 @@
     return `한 주 동안 ${name} 금리는 ${a.tenor.replace('Y', '년')} ${F.bp(da)}, 10년 ${F.bp(db)}로 ${dir}, ${shape}`;
   }
 
+  /* 결론: 이번 주가 어떤 장이었나 (주가와 견준 방향) + 움직임이 평소보다 컸나 */
+  function conclusion(blk, eq) {
+    const by = Object.fromEntries(blk.heat.map((r) => [r.tenor, r]));
+    const a = by['2Y'] || by['3Y'], b = by['10Y'];
+    if (!a || !b || !ok(b.chg.w1)) return { title: '이번 주 금리 움직임을 계산하지 못했습니다', why: '' };
+    const avg = (a.chg.w1 + b.chg.w1) / 2, dir = Math.abs(avg) < 3 ? 0 : Math.sign(avg);
+    const sd = (blk.wk_sd || {})['10Y'], ratio = sd ? Math.abs(b.chg.w1) / sd : null;
+    const e = eq && ok(eq.w1) ? eq.w1 : null;
+    let what;
+    if (dir === 0) what = '금리가 거의 움직이지 않은 한 주';
+    else if (e != null && e <= -3) what = dir < 0 ? '주가가 내리고 국채 금리도 내린 위험 회피 장세' : '주식과 채권이 함께 약했던 한 주';
+    else if (e != null && e >= 3) what = dir > 0 ? '주가가 오르고 국채 금리도 오른 위험 선호 장세' : '주식과 채권이 함께 강했던 한 주';
+    else what = dir < 0 ? '국채가 강했던(금리 하락) 한 주' : '국채가 약했던(금리 상승) 한 주';
+    const size = ratio == null || dir === 0 ? '' : ratio >= 2 ? `, 금리 움직임은 평소 한 주의 ${F.n(ratio, 1)}배로 컸습니다` : ratio >= 1.2 ? ', 금리 움직임은 평소보다 컸습니다'
+      : ratio >= 0.6 ? ', 금리 움직임은 평소 수준이었습니다' : ', 금리 움직임은 평소보다 작았습니다';
+    const why = `10년 금리의 한 주 변화 ${F.bp(b.chg.w1)}` + (sd ? `는 최근 1년 주간 변화 표준편차(${F.n(sd, 0)}bp)의 ${F.n(ratio, 1)}배` : '') + (e != null ? `, ${eq.label} 한 주 ${F.s(e, 1)}% (±3%부터 주가 방향을 함께 봄)` : '');
+    return { title: size ? `이번 주는 ${what}였고${size}` : `이번 주는 ${what}였습니다`, why };
+  }
+
   window.DeskViews.market = function (ctx) {
     const D = ctx.D, st = ctx.st, kr = st.region === 'KR' && ctx.krOk;
     const blk = kr ? D.kr : D.us, name = kr ? '한국 국고채' : '미국 국채';
@@ -30,7 +49,7 @@
     const now = blk.snaps.find((x) => x.key === 'now'), w1 = blk.snaps.find((x) => x.key === 'w1'), m1 = blk.snaps.find((x) => x.key === 'm1');
     const diff = (ref) => pick(now.y.map((v, i) => (ok(v) && ref && ok(ref.y[i]) ? Math.round((v - ref.y[i]) * 100) : null)));
     const curveCard = UI.card({ id: 'curve', span: 'c5', title: '커브 모니터', cap: `${name} · 만기별 금리 (%)`,
-      body: [UI.line({ x: tenors, series: curveSeries, date: false, dots: true, h: 250, unit: '%', tipFmt: (v) => F.n(v, 2), aria: '수익률곡선' }),
+      body: [UI.line({ x: tenors, series: curveSeries, date: false, dots: true, h: 250, unit: '%', tipFmt: (v) => F.n(v, 2), aria: '수익률 커브' }),
              h('p', { cls: 'note', style: 'margin:10px 0 4px;color:var(--ink2)' }, '만기별 변화 (bp)'),
              UI.bars({ cats: tenors, h: 150, unit: 'bp', labels: true, labFmt: (v) => F.s(v), tipFmt: (v) => F.s(v), aria: '만기별 금리 변화',
                series: [{ name: '1주 전 대비', color: 'var(--t2)', values: diff(w1) }, { name: '1달 전 대비', color: 'var(--t3)', values: diff(m1) }] })],
@@ -99,29 +118,30 @@
         { rows: D.xasset, dense: true, group: (r) => r.group }),
       foot: '원/달러, 엔/달러가 오르면 달러 강세입니다. 금과 KOSPI는 Yahoo Finance, 나머지는 FRED 값입니다.' });
 
-    // ── 최근 발행물 ──
+    // ── 지표물 ──
     let bondCard;
     if (kr) {
       bondCard = UI.card({ id: 'bonds', span: 'c12', title: '종목', body: UI.empty('한국 종목 자료는 아직 없습니다', '국고채 종목별 가격은 금융투자협회 채권정보센터에서 받아야 하는데 아직 연결하지 않았습니다. 지금은 만기별 금리만 있습니다.') });
     } else if (D.bonds.status === 'ok') {
       const otr = D.bonds.list.filter((b) => b.otr && ctx.matOk(b.ttm));
-      bondCard = UI.card({ id: 'bonds', span: 'c12', title: '최근 발행물 (on-the-run)', cap: `재무부 종가 ${D.bonds.price_date} · 줄을 누르면 채권 상세가 열립니다`, flush: true,
+      bondCard = UI.card({ id: 'bonds', span: 'c12', title: '지표물 (on-the-run)', cap: `재무부 종가 ${D.bonds.price_date} · 줄을 누르면 채권 상세가 열립니다`, flush: true,
         body: UI.table([{ label: '구분', align: 'l', get: (b) => b.otr, fmt: (v) => v.replace('Y', '년') },
           { label: '종목', align: 'l', get: (b) => b.maturity, fmt: (_, b) => `UST ${F.n(b.coupon, 3)}% ${b.maturity}` },
           { label: 'CUSIP', align: 'l', get: (b) => b.cusip }, { label: '가격', get: (b) => b.price, fmt: (v) => F.n(v, 3) },
           { label: 'YTM', get: (b) => b.ytm, fmt: (v) => F.n(v, 3) + '%' }, { label: '수정듀레이션', get: (b) => b.mdur, fmt: (v) => F.n(v, 2) },
           { label: '볼록성', get: (b) => b.conv, fmt: (v) => F.n(v, 1) }, { label: 'DV01 (액면 100만)', get: (b) => b.dv01, fmt: (v) => F.usd(v) },
-          { label: '이웃 대비', title: '잔존만기가 비슷한 종목들의 추세선보다 금리가 얼마나 높은지 (bp). +면 싸다', get: (b) => b.fit_bp, fmt: (v) => F.s(v, 1), heat: (v) => UI.heat(v, 8) },
-          { label: '3개월 carry+roll', get: (b) => (ok(b.carry3m) && ok(b.roll3m) ? b.carry3m + b.roll3m : null), fmt: (v) => F.s(v, 0) + 'bp' }],
+          { label: '커브 대비', title: '잔존만기가 비슷한 종목들로 만든 적합 커브보다 금리가 얼마나 높은지 (bp). +면 저평가', get: (b) => b.fit_bp, fmt: (v) => F.s(v, 1), heat: (v) => UI.heat(v, 8) },
+          { label: '3개월 캐리+롤다운', get: (b) => (ok(b.carry3m) && ok(b.roll3m) ? b.carry3m + b.roll3m : null), fmt: (v) => F.s(v, 0) + 'bp' }],
           { rows: otr, dense: true, onRow: (b) => ctx.openBond(bondArg(D.bonds, b)) }),
         foot: [`전체 ${D.bonds.n}종목은 `, h('a', { href: '#/rv/value' }, 'RV·전략'), '에서 볼 수 있습니다. 종가는 다음 영업일에 공시되어 금리 기준일보다 하루 이를 수 있습니다.'] });
     } else {
-      bondCard = UI.card({ id: 'bonds', span: 'c12', title: '최근 발행물', body: UI.empty('종목 종가를 받지 못했습니다', '재무부 FedInvest에서 종가를 받지 못했습니다. 다음 갱신 때 다시 시도합니다.') });
+      bondCard = UI.card({ id: 'bonds', span: 'c12', title: '지표물', body: UI.empty('종목 종가를 받지 못했습니다', '재무부 FedInvest에서 종가를 받지 못했습니다. 다음 갱신 때 다시 시도합니다.') });
     }
 
-    return { title: headline(blk, name), usOnly: false,
-      sub: `${blk.asof} 종가. 상단의 지역·만기·자산군 필터가 이 화면의 표와 차트에 적용됩니다.`,
-      tabs: [['curve', '커브 모니터'], ['heat', '금리 히트맵'], ['months', '월별 변화'], ['spreads', '스프레드 보드'], ['xasset', '크로스에셋'], ['bonds', '최근 발행물']],
+    const con = conclusion(blk, D.xasset.find((x) => x.key === (kr ? 'kospi' : 'sp500')));
+    return { title: con.title, lead: headline(blk, name), usOnly: false,
+      sub: `${con.why ? '근거: ' + con.why + '. ' : ''}${blk.asof} 종가이고, 상단의 지역·만기·자산군 필터가 이 화면의 표와 차트에 적용됩니다.`,
+      tabs: [['curve', '커브 모니터'], ['heat', '금리 히트맵'], ['months', '월별 변화'], ['spreads', '스프레드 보드'], ['xasset', '크로스에셋'], ['bonds', '지표물']],
       body: [curveCard, heatCard, monthCard, spreadCard, xCard, bondCard] };
   };
 
@@ -129,7 +149,7 @@
   function bondArg(B, b) {
     return { title: `UST ${F.n(b.coupon, 3)}% ${b.maturity}`, sub: `${b.type === 'Bond' ? 'Treasury Bond' : 'Treasury Note'} · CUSIP ${b.cusip}`,
       coupon: b.coupon, maturity: b.maturity, settle: B.settle, price: b.price, cusip: b.cusip,
-      tags: [b.otr ? `${b.otr.replace('Y', '년')} 최근 발행물` : null, b.old ? '2010년 이전 발행' : null].filter(Boolean),
+      tags: [b.otr ? `${b.otr.replace('Y', '년')} 지표물` : null, b.old ? '2010년 이전 발행' : null].filter(Boolean),
       rv: { fit_bp: b.fit_bp, par_gap_bp: b.par_gap_bp, carry3m: b.carry3m, roll3m: b.roll3m },
       source: `가격은 미 재무부 FedInvest ${B.price_date} 종가입니다.` };
   }
