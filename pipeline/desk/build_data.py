@@ -967,7 +967,7 @@ def main():
         "bei5": align(fd.get("bei5"), grid), "real10": align(fd.get("real10"), grid), "real5": align(fd.get("real5"), grid),
         "real30": align(fd.get("real30"), grid),
         "tp10": from_section(sup, "acm_tp10"), "tp5": from_section(sup, "acm_tp5"), "tp2": from_section(sup, "acm_tp2"),
-        "rn10": from_section(sup, "acm_rn10"),
+        "rn10": from_section(sup, "acm_rn10"), "kw10": from_section(sup, "kw_tp10"),
         "move": from_section(liq, "move"), "vix": from_section(liq, "vix"),
         "sofr": from_section(liq, "sofr"), "effr": from_section(liq, "effr"), "iorb": from_section(liq, "reserve_rate"),
         "sofr_iorb": from_section(liq, "sofr_minus_rr_bp"), "effr_iorb": from_section(liq, "effr_minus_rr_bp"),
@@ -1039,13 +1039,19 @@ def main():
     repo = last_valid(cols["sofr"])[0]
     rv = {"screener": screener_block(U["dates"], ys_full, repo)}
     tp_rows = []
-    for key, label in [("tp2", "2년"), ("tp5", "5년"), ("tp10", "10년")]:
+    for key, label in [("tp2", "2년 (ACM)"), ("tp5", "5년 (ACM)"), ("tp10", "10년 (ACM)")]:
         s = summarize(grid, cols[key], 100)
         if s:
             tp_rows.append({"key": key, "label": label, "level": s["level"], "date": s["date"], "m1": s["chg"]["m1"],
                             "y1": s["chg"]["y1"], "pct3y": s["pct3y"], "z3y": s["z3y"]})
     rn = summarize(grid, cols["rn10"], 100)
-    rv["tp"] = {"rows": tp_rows, "rn10": rn["level"] if rn else None, "source": "뉴욕 연준 ACM 모형"}
+    kw = summarize(grid, cols["kw10"], 100)         # Kim-Wright는 FRED에 1~2주 늦게 올라온다
+    if kw:
+        tp_rows.append({"key": "kw10", "label": "10년 (Kim-Wright)", "level": kw["level"], "date": kw["date"], "m1": kw["chg"]["m1"],
+                        "y1": kw["chg"]["y1"], "pct3y": kw["pct3y"], "z3y": kw["z3y"]})
+    acm_on_kw = at(grid, cols["tp10"], kw["date"]) if kw else None    # 같은 날짜로 맞춘 두 모형의 차이
+    rv["tp"] = {"rows": tp_rows, "rn10": rn["level"] if rn else None, "source": "뉴욕 연준 ACM 모형 · 연준 Kim-Wright 모형",
+                "kw_date": kw["date"] if kw else None, "kw_gap_bp": r((kw["level"] - acm_on_kw) * 100, 0) if kw and acm_on_kw is not None else None}
     log("[내 북]")
     book = book_block(I)
     rv["backtest"] = {"split": I["score"]["split"], "record": {k: I["score"]["record"][k] for k in ("duration", "slope", "curvature", "months")},

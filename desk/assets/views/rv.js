@@ -11,17 +11,22 @@
     const D = ctx.D, R = D.rv, S = R.screener, B = D.bonds, book = D.book;
 
     // ── 기간 프리미엄 ──
-    const tp = ctx.lineOf([{ key: 'tp10', name: '10년', color: 'var(--s1)' }, { key: 'tp5', name: '5년', color: 'var(--s2)' }, { key: 'tp2', name: '2년', color: 'var(--s3)' }],
+    const tp = ctx.lineOf([{ key: 'tp10', name: '10년 (ACM)', color: 'var(--s1)' }, { key: 'kw10', name: '10년 (Kim-Wright)', color: 'var(--s1)', dash: '4 3' },
+      { key: 'tp5', name: '5년 (ACM)', color: 'var(--s2)' }, { key: 'tp2', name: '2년 (ACM)', color: 'var(--s3)' }],
       { h: 230, unit: '%', zero: true, tipFmt: (v) => F.n(v, 2), aria: '만기별 기간 프리미엄' });
     const tp10 = R.tp.rows.find((r) => r.key === 'tp10');
+    const kw10 = R.tp.rows.find((r) => r.key === 'kw10');
     const y10 = D.us.heat.find((r) => r.tenor === '10Y');
+    const kwTxt = kw10 && ok(R.tp.kw_gap_bp)
+      ? ` 연준의 Kim-Wright 모형으로는 10년 기간 프리미엄이 ${F.n(kw10.level, 2)}%(${R.tp.kw_date})로, 같은 날 ACM보다 ${F.s(R.tp.kw_gap_bp, 0)}bp ${R.tp.kw_gap_bp >= 0 ? '높습니다' : '낮습니다'}. 두 모형의 수준 차이는 모형 가정의 차이이고, 둘이 같은 방향으로 움직일 때 신호를 더 믿을 만합니다. Kim-Wright는 FRED에 1~2주 늦게 올라옵니다.`
+      : '';
     const tpCard = UI.card({ id: 'value', span: 'c6', title: '커브 밸류에이션 — 기간 프리미엄', cap: `${R.tp.source} · %`,
       body: [tp.chart, UI.table([{ label: '만기', align: 'l', get: (r) => r.label }, { label: '기간 프리미엄', get: (r) => r.level, fmt: (v) => F.n(v, 2) + '%' },
         { label: '1달', get: (r) => r.m1, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 25) }, { label: '1년', get: (r) => r.y1, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 50) },
         { label: 'z-score (3년)', get: (r) => r.z3y, fmt: (v) => F.s(v, 2), heat: (v) => UI.heat(v, 2.5) },
         { label: '3년 백분위', get: (r) => r.pct3y, fmt: (v) => F.n(v, 0), heat: (v) => UI.heatPct(v) }], { rows: R.tp.rows, dense: true })],
       alt: tp.alt,
-      foot: tp10 && ok(R.tp.rn10) ? `모형은 10년 금리를 "앞으로 10년 단기금리 평균 예상 ${F.n(R.tp.rn10, 2)}%"와 "기간 프리미엄 ${F.n(tp10.level, 2)}%"로 나눕니다. 기간 프리미엄이 높을수록 장기채를 드는 보상이 크다는 뜻이지만, 모형 추정치라 수준보다 변화를 보는 편이 안전합니다.` : null });
+      foot: tp10 && ok(R.tp.rn10) ? `모형은 10년 금리를 "앞으로 10년 단기금리 평균 예상 ${F.n(R.tp.rn10, 2)}%"와 "기간 프리미엄 ${F.n(tp10.level, 2)}%"로 나눕니다. 기간 프리미엄이 높을수록 장기채를 드는 보상이 크다는 뜻이지만, 모형 추정치라 수준보다 변화를 보는 편이 안전합니다.${kwTxt}` : null });
 
     // ── 종목 상대가치 ──
     let rvCard, listCard = null;
@@ -84,6 +89,46 @@
         h('p', { cls: 'note', style: 'margin:16px 0 4px;color:var(--ink);font-weight:600' }, '버터플라이 (벨리 매수 기준, 윙은 DV01 절반씩)'),
         UI.table(spreadCols('버터플라이'), { rows: S.flies.filter(legOk), dense: true, sortable: true })],
       foot: '재무부 par 커브로 계산한 근사입니다. 버터플라이 수준은 2 × 벨리 − 두 윙이고, z-score가 높으면 벨리가 윙보다 싸다(금리가 높다)는 뜻입니다. 캐리+롤다운이 +면 그 포지션을 들고만 있어도 버는 쪽입니다. 지난 값이 싸 보인다고 해서 되돌아온다는 보장은 없습니다.' });
+
+    // ── 벨리 비중 확대 점검 (프로젝트 질문: 듀레이션을 맞춘 채 벨리를 더 들면 어떤 위험과 수익이 생기나) ──
+    const BELLY = ['3Y', '5Y', '7Y'];
+    const bellyFlies = S.flies.filter((t) => BELLY.includes(t.legs[0]));
+    const live = (D.score && D.score.live) || {};
+    const fly = S.flies.find((t) => t.label === '2s5s10s');
+    const rule = { z: 1 };                        // scoreboard.py FLY_Z_TH와 같은 값
+    const zMet = fly && ok(fly.z3y) && fly.z3y >= rule.z;
+    const gateMet = live.s5_liquidity_vol === 1;
+    const bellyRows = book.positions.filter((p) => p.id === '3-5' || p.id === '5-7');
+    const bellyActive = bellyRows.reduce((t, p) => t + p.dv01 - p.dv01_b, 0);
+    const curvRec = R.backtest.record.curvature;
+    let bellyTitle;                                  // 규칙이 쓰는 2s5s10s Fly로 판정한다
+    if (!fly || !ok(fly.z3y)) bellyTitle = '벨리 버터플라이 값을 계산하지 못했습니다';
+    else {
+      const z = fly.z3y;
+      const val = z >= 1 ? `5년이 양옆보다 싸서(2s5s10s z ${F.s(z, 1)}) 벨리 비중 확대에 값 측면 근거가 있습니다`
+        : z <= -1 ? `5년이 양옆보다 비싸서(2s5s10s z ${F.s(z, 1)}) 벨리 비중 확대에는 불리한 자리입니다`
+        : `5년은 양옆과 비교해 평소 수준이라(2s5s10s z ${F.s(z, 1)}) 값 측면 근거는 약합니다`;
+      const c = ok(fly.cr3m) ? (fly.cr3m < -0.5 ? `. 다만 들고 있는 동안 3개월 ${F.s(fly.cr3m, 1)}bp를 잃고` : fly.cr3m > 0.5 ? `. 들고 있는 동안에도 3개월 ${F.s(fly.cr3m, 1)}bp를 벌고` : '. 들고 있는 비용은 거의 없고') : '';
+      const g = zMet && gateMet ? '규칙상 다음 달 불릿 조건이 켜집니다' : zMet ? '시장 안정 조건이 맞지 않아 포트폴리오는 아직 불릿을 켜지 않습니다' : '포트폴리오 규칙의 불릿 조건은 꺼져 있습니다';
+      bellyTitle = c ? `${val}${c}, ${g}` : `${val}. ${g}`;
+    }
+    const condRow = (name, now, met) => ({ name, now, met });
+    const conds = [condRow(`2s5s10s Fly z-score (3년) ${rule.z} 이상`, fly ? F.s(fly.z3y, 2) : '–', zMet),
+                   condRow('유동성·변동성 점수 +1 (시장이 안정적)', ok(live.s5_liquidity_vol) ? F.s(live.s5_liquidity_vol, 0) : '–', gateMet)];
+    const bellyCard = UI.card({ id: 'belly', span: 'c12', title: '벨리 비중 확대 점검', cap: `우리 핵심 질문 · 듀레이션을 맞춘 채 3~7년을 더 들면 · 기준일 ${D.meta.asof}`,
+      body: [h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, bellyTitle),
+        h('div', { cls: 'grid' },
+          h('div', { cls: 'c7' },
+            h('p', { cls: 'note', style: 'margin:0 0 4px;color:var(--ink);font-weight:600' }, '벨리가 가운데인 버터플라이 (벨리 매수 기준)'),
+            UI.table(spreadCols('버터플라이'), { rows: bellyFlies, dense: true })),
+          h('div', { cls: 'c5' },
+            h('p', { cls: 'note', style: 'margin:0 0 4px;color:var(--ink);font-weight:600' }, '포트폴리오 규칙의 불릿(벨리 비중 확대) 조건'),
+            UI.table([{ label: '조건', align: 'l', get: (x) => x.name }, { label: '지금', get: (x) => x.now },
+              { label: '충족', align: 'c', get: (x) => x.met, fmt: (v) => h('span', { cls: 'pill' + (v ? ' acc' : '') }, v ? '충족' : '미충족') }], { rows: conds, dense: true }),
+            h('p', { cls: 'note' }, `두 조건이 모두 맞아야 다음 달 불릿을 켭니다. 지금은 ${zMet && gateMet ? '둘 다 맞아 불릿 조건이 켜집니다' : zMet ? '값 조건은 맞지만 시장 안정 조건이 맞지 않아 불릿을 켜지 않습니다' : gateMet ? '시장은 안정적이지만 벨리가 충분히 싸지 않아 불릿을 켜지 않습니다' : '두 조건 모두 맞지 않습니다'}. `
+              + `3~7년 구간 DV01은 벤치마크보다 ${F.s(bellyActive, 0)}달러/bp인데, 이는 듀레이션 전체를 길게 둔 결과이지 벨리만 더 든 것이 아닙니다.`),
+            h('p', { cls: 'note' }, curvRec ? `2015년 이후 불릿을 든 달은 ${curvRec.on}개월(맞힌 달 ${curvRec.hits}개월)뿐이라, 이 규칙의 성과는 아직 판단할 표본이 없습니다.` : '')))],
+      foot: '버터플라이 z-score가 +면 벨리 금리가 양옆보다 높다(싸다)는 뜻입니다. 캐리+롤다운은 벨리 매수, 윙 DV01 절반씩 매도 기준입니다. 싸다고 해서 되돌아온다는 보장은 없습니다.' });
 
     // ── Trade Builder ──
     const settle = B.status === 'ok' ? B.settle : BM.ymd(BM.nextBusinessDay(D.meta.asof));
@@ -237,7 +282,7 @@
     }
     return { title, lead, usOnly: true,
       sub: `근거: 커브 스프레드 6개와 버터플라이 6개 가운데 3년 z-score가 평균에서 가장 먼 것을 골랐습니다 (1 미만이면 눈에 띄는 자리가 없다고 봄). 싸 보인다고 되돌아온다는 보장은 없습니다. 10년 금리 ${y10 ? F.n(y10.level, 2) : '–'}% 가운데 기간 프리미엄은 ${tp10 ? F.n(tp10.level, 2) : '–'}%입니다.`,
-      tabs: [['value', '커브 밸류에이션'], ['bonds', '종목 상대가치'], ['screener', '전략 스크리너'], ['builder', 'Trade Builder'], ['backtest', '백테스터'], ['list', '종목 표']],
-      body: [tpCard, rvCard, scrCard, tbCard, btCard, listCard] };
+      tabs: [['value', '커브 밸류에이션'], ['bonds', '종목 상대가치'], ['belly', '벨리 점검'], ['screener', '전략 스크리너'], ['builder', 'Trade Builder'], ['backtest', '백테스터'], ['list', '종목 표']],
+      body: [tpCard, rvCard, bellyCard, scrCard, tbCard, btCard, listCard] };
   };
 })();
