@@ -361,9 +361,52 @@ def g_fedinvest():
         day -= timedelta(days=1)
     raise RuntimeError("종가가 채워진 날을 찾지 못함: " + "; ".join(tried))
 
+def _fomc_statement(url):
+    page = get(url, UA_BROWSER)
+    i = page.find('id="article"')
+    body = page[i:] if i >= 0 else page
+    paras = []
+    for raw in re.findall(r"<p[^>]*>(.*?)</p>", body, re.S):
+        t = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", raw))).strip()
+        if not t:
+            continue
+        if t.startswith("For media inquiries") or t.startswith("Implementation Note"):
+            break
+        if t.startswith("For release at") or t == "Share" or re.fullmatch(r"[A-Z][a-z]+ \d{1,2}, \d{4}", t):
+            continue
+        paras.append(t)
+    if not paras:
+        raise RuntimeError(f"성명 본문을 찾지 못함: {url}")
+    v = re.search(r"by an? (\d+)\s*(?:&ndash;|–|-|to)\s*(\d+) vote", page)
+    return paras, ([int(v.group(1)), int(v.group(2))] if v else None)
+
+
+def g_fomc():
+    """FOMC 성명 최근 6개. 일정 페이지에서 성명 보도자료 링크(monetaryYYYYMMDDa.htm)를 모아 본문 문단을 저장한다."""
+    base = "https://www.federalreserve.gov"
+    cal = get(base + "/monetarypolicy/fomccalendars.htm", UA_BROWSER)
+    links = sorted(set(re.findall(r'href="(/newsevents/pressreleases/monetary(\d{8})a\.htm)"', cal)), key=lambda x: x[1])
+    if not links:
+        raise RuntimeError("FOMC 성명 링크를 찾지 못함")
+    out, miss = [], []
+    for path, d in links[-6:]:
+        try:
+            paras, vote = _fomc_statement(base + path)
+            if not any("Committee" in t for t in paras):
+                miss.append(f"{d}: 성명이 아닌 보도자료로 보여 건너뜀")
+                continue
+            out.append({"date": f"{d[:4]}-{d[4:6]}-{d[6:]}", "url": base + path, "paras": paras, "vote": vote})
+        except Exception as e:
+            miss.append(f"{d}: {e}")
+    if not out:
+        raise RuntimeError("; ".join(miss))
+    log(f"  FOMC 성명 {len(out)}개 ({out[0]['date']} ~ {out[-1]['date']})")
+    return out, miss
+
 
 GROUPS = [("fred_daily", g_fred_daily), ("intl", g_intl), ("yahoo", g_yahoo), ("cftc", g_cftc),
-          ("upcoming", g_upcoming), ("calendar", g_calendar), ("news", g_news), ("fedinvest", g_fedinvest)]
+          ("upcoming", g_upcoming), ("calendar", g_calendar), ("news", g_news), ("fedinvest", g_fedinvest),
+          ("fomc", g_fomc)]
 
 
 def main(argv):

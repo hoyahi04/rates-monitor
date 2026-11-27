@@ -14,7 +14,7 @@
 
 실행:  python3 build_data.py     (표준 라이브러리만)
 """
-import csv, io, math, os, sys
+import csv, difflib, io, math, os, re, sys
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -467,6 +467,63 @@ def book_block(I):
 
 
 # ───────────────────────── 매크로·정책 ─────────────────────────
+def _dissents(paras):
+    """'Voting against' 문장을 규칙으로 읽어 매파/비둘기파 반대표를 센다.
+    raise·easing bias 반대 = 매파, lower·tightening bias 반대 = 비둘기파."""
+    txt = " ".join(p for p in paras if "Voting against" in p)
+    m = re.search(r"Voting against (?:this|the monetary policy) action (?:was|were) (.*)", txt)
+    out = {"hawk": 0, "dove": 0, "other": 0, "names": []}
+    if not m:
+        return out
+    for clause in m.group(1).split(";"):
+        names_part, _, why = clause.partition(", who")
+        names = re.findall(r"[A-Z][a-z]+(?: [A-Z]\.)? [A-Z][a-z]+", names_part)
+        side = ("hawk" if re.search(r"raise|easing bias", why) else "dove" if re.search(r"lower|tightening bias", why) else "other")
+        out[side] += len(names)
+        out["names"] += [{"name": n, "side": side} for n in names]
+    return out
+
+
+def fomc_block(st, grid, cols):
+    """FOMC 성명 리뷰: 최신 성명과 직전 성명의 단어 단위 비교(레드라인), 회의별 반대표와 2년·10년 금리 당일 반응.
+    2년 금리가 성명 당일 ±5bp 이상 움직이면 시장이 예상하지 못한 결과(서프라이즈)로 본다."""
+    if not st or len(st) < 2:
+        return None
+    body = lambda x: [p for p in x["paras"] if not p.startswith("Voting")]
+    a, b = " ".join(body(st[-2])).split(), " ".join(body(st[-1])).split()
+    segs = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == "equal":
+            segs.append(["eq", " ".join(a[i1:i2])])
+        else:
+            if i2 > i1:
+                segs.append(["del", " ".join(a[i1:i2])])
+            if j2 > j1:
+                segs.append(["ins", " ".join(b[j1:j2])])
+    changed = sum(len(t.split()) for k, t in segs if k == "ins")
+    meetings = []
+    for x in st:
+        k = idx_on_or_before(grid, x["date"])
+        dis = _dissents(x["paras"])
+        vote = x.get("vote")
+        if not vote:   # 표결 수가 본문에 없으면 찬성 명단을 센다
+            yes = " ".join(p for p in x["paras"] if p.startswith("Voting for")).split("Voting against")[0]
+            n_yes = len([n for n in re.findall(r"[A-Z][a-z]+(?: [A-Z]\.)? [A-Z][a-z]+", yes) if n != "Vice Chair"])
+            vote = [n_yes, dis["hawk"] + dis["dove"] + dis["other"]] if n_yes else None
+        row = {"date": x["date"], "url": x["url"], "vote": vote, "dissent": dis}
+        if k >= 1 and grid[k] == x["date"]:
+            for key in ("y2", "y10"):
+                v1, v0 = cols[key][k], cols[key][k - 1]
+                row["d_" + key] = None if v1 is None or v0 is None else r((v1 - v0) * 100, 1)
+        else:
+            row["d_y2"] = row["d_y10"] = None
+        d2 = row["d_y2"]
+        row["surprise"] = None if d2 is None else ("매파적" if d2 >= 5 else "비둘기적" if d2 <= -5 else None)
+        meetings.append(row)
+    return {"latest": st[-1]["date"], "prev": st[-2]["date"], "url": st[-1]["url"], "redline": segs,
+            "changed_words": changed, "total_words": len(b), "meetings": meetings[::-1]}
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -574,6 +631,7 @@ def macro_block(I, grid, cols, events):
               "last_change": last_change,
               "next": None if not nxt_fomc else {"date": nxt_fomc["date"], "sep": bool(nxt_fomc.get("sep")),
                                                  "days": (date.fromisoformat(nxt_fomc["date"]) - date.fromisoformat(asof)).days}}
+    policy["fomc"] = fomc_block(I["extra"].get("fomc"), grid, cols)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}

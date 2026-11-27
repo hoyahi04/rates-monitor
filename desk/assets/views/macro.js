@@ -80,6 +80,29 @@
       foot: '과거 시점의 선물 가격은 만기가 지나면 구할 수 없어, 비교 선은 한 달 전과 직전 점도표 발표일 두 개만 있습니다.' })
       : UI.card({ id: 'policy', span: 'c7', title: '정책금리 경로', body: UI.empty('선물 가격을 받지 못했습니다', 'Yahoo Finance의 연방기금금리 선물(ZQ) 수집이 실패했습니다.') });
 
+    // FOMC 성명 리뷰: 직전 성명 대비 바뀐 단어(레드라인), 회의별 반대표와 2년 금리 당일 반응 (±5bp 이상 = 서프라이즈)
+    const FO = P.fomc;
+    let fomcCard = null;
+    if (FO && FO.redline) {
+      const red = h('p', { style: 'line-height:1.75;margin:0 0 10px' }, FO.redline.map(([k, t]) =>
+        k === 'eq' ? t + ' ' : k === 'del' ? h('del', { style: 'color:var(--up-ink)' }, t) : h('ins', { style: 'color:var(--down-ink);font-weight:600' }, t)).flatMap((x) => [x, ' ']));
+      const m0 = FO.meetings[0], ds = m0.dissent;
+      const sideKo = { hawk: '매파(더 긴축)', dove: '비둘기파(더 완화)', other: '기타' };
+      const dTxt = ds.names.length ? ds.names.map((x) => `${x.name} ${sideKo[x.side]}`).join(', ') : '없음';
+      const reac = m0.d_y2 == null ? '당일 금리 자료가 아직 없습니다' : `2년 금리 ${F.bp(m0.d_y2, 0)}, 10년 ${F.bp(m0.d_y10, 0)}` + (m0.surprise ? ` → 시장에는 ${m0.surprise} 서프라이즈였습니다` : ' → 예상 범위 안(±5bp)이었습니다');
+      fomcCard = UI.card({ id: 'fomc', span: 'c12', title: 'FOMC 성명 리뷰', cap: `${F.kdate(FO.latest)} 성명 vs ${F.kdate(FO.prev)} 성명`,
+        body: [UI.concl(`이번 성명은 ${FO.total_words}단어 가운데 ${FO.changed_words}단어가 새로 들어갔고, 표결은 ${m0.vote ? m0.vote.join(' 대 ') : '–'}입니다`,
+            `반대표: ${dTxt}. 시장 반응: ${reac}.`),
+          h('p', { cls: 'note', style: 'margin:0 0 4px;color:var(--ink);font-weight:600' }, '레드라인 ',
+            h('small', null, h('del', { style: 'color:var(--up-ink)' }, '지운 표현'), ' · ', h('ins', { style: 'color:var(--down-ink);font-weight:600' }, '새 표현'))), red,
+          UI.table([{ label: '회의', align: 'l', get: (x) => x.date, fmt: (v) => F.kdate(v) }, { label: '표결', get: (x) => (x.vote ? x.vote.join('–') : null) },
+            { label: '매파 반대', get: (x) => x.dissent.hawk }, { label: '비둘기 반대', get: (x) => x.dissent.dove },
+            { label: '2년 당일', get: (x) => x.d_y2, fmt: (v) => F.bp(v, 0) }, { label: '10년 당일', get: (x) => x.d_y10, fmt: (v) => F.bp(v, 0) },
+            { label: '서프라이즈 (±5bp)', get: (x) => x.surprise || '–' }], { rows: FO.meetings, dense: true })],
+        foot: h('span', null, '성명은 연준 홈페이지에서 자동으로 받습니다. 금리 반응은 재무부 CMT 종가 기준 성명 당일 변화(성명은 오후 2시, 종가에 반영). 반대표는 성명의 "Voting against" 문장을 규칙으로 읽습니다 (인상·완화 편향 반대 = 매파). 원문: ',
+          h('a', { href: FO.url, target: '_blank', rel: 'noopener noreferrer' }, '최신 성명'), '.') });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -153,7 +176,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, cbCard, inflCard] };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '중앙은행 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();
