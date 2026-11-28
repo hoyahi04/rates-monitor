@@ -227,6 +227,7 @@ nav_alt, alt_months = [NAV0], []
 ser_dates = [DATES[starts[0]]]
 months, log, prev_pos, prev_w = [], [], None, None
 explain_rows, ex_from = [], len(DATES) - 1 - EXPLAIN_DAYS
+blotter, held = [], None                 # 종목 단위 거래 기록 (최근 리밸런싱만 내보냄)과 직전 보유
 for i, r in enumerate(rows):
     i0, i1 = starts[i], ends[i]
     dur, slope, curv = float(r["duration_active_yr"]), r["slope_position"], r["curvature_position"]
@@ -249,6 +250,28 @@ for i, r in enumerate(rows):
     a_ret = (a_path[-1] - 1) if a_path else 0.0
     alt_months.append(dict(month=r["apply_month"], dur=a_dur, trend=a_trend, excess_bp=round((a_ret - ret["bm"]) * 1e4, 2),
                            cur_excess_bp=round((ret["all"] - ret["bm"]) * 1e4, 2), partial=(i == len(rows) - 1)))
+    # 종목 단위 거래: 월말마다 들고 있던 모형 국채 여섯 종목을 팔고, 그날 par 금리로 새로 발행된 여섯 종목을 산다
+    w_new, m_new = pos["all"]
+    c_new = [curve(i0, m) for m in m_new]
+    mat_date = lambda j0, m: (date.fromisoformat(DATES[j0]).toordinal() + round(m * 365.25))
+    legs = []
+    if held:
+        el = years(DATES[held["i0"]], DATES[i0])
+        for b in range(NB):
+            c, m, par = held["c"][b], held["m"][b], held["base"] * held["w"][b]
+            y = curve(i0, m - el)
+            dirty = price(c, y, 2 * m, 2 * el)
+            d = (price(c, y - 0.01, 2 * m, 2 * el) - price(c, y + 0.01, 2 * m, 2 * el)) / 2
+            legs.append(dict(bucket=BUCKETS[b][1], side="매도", coupon=c, maturity=date.fromordinal(mat_date(held["i0"], m)).isoformat(),
+                             par=par, price=dirty - c * el, accrued=c * el, ytm=y, amount=par * dirty / 100, dv01=-par * d / 100))
+    for b in range(NB):
+        c, m, par = c_new[b], m_new[b], base["all"] * w_new[b]
+        d = (price(c, c - 0.01, 2 * m, 0) - price(c, c + 0.01, 2 * m, 0)) / 2
+        legs.append(dict(bucket=BUCKETS[b][1], side="매수", coupon=c, maturity=date.fromordinal(mat_date(i0, m)).isoformat(),
+                         par=par, price=100.0, accrued=0.0, ytm=c, amount=par, dv01=par * d / 100))
+    blotter.append(dict(date=DATES[i0], month=r["apply_month"], position=[dur, slope, curv], legs=legs))
+    blotter = blotter[-3:]
+    held = dict(i0=i0, c=c_new, m=m_new, w=w_new, base=base["all"])
     cp, yp = contrib(*pos["all"], i0)
     cb, yb = contrib(*pos["bm"], i0)
     w_p, m_p = pos["all"]
@@ -459,6 +482,8 @@ out = dict(
     risk=dict(te_exante_bp=round(te_ex, 2), te_max_bp=round(te_max, 2), budget=TE_BUDGET, scenarios=[dict(label=s["label"], bp=round(s["bp"], 2)) for s in scen],
               vol_bp=[round(math.sqrt(cov[b][b]), 1) for b in range(NB)], limits=limits),
     explain=dict(keys=[k for k, _ in KEYS], days=explain_days),
+    blotter=[dict(date=t["date"], month=t["month"], position=t["position"],
+                  legs=[{k: (round(v, 4) if isinstance(v, float) else v) for k, v in g.items()} for g in t["legs"]]) for t in blotter[::-1]],
 )
 (HERE / "portfolio.js").write_text("window.PORTFOLIO = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n", encoding="utf-8")
 

@@ -426,6 +426,7 @@ def book_block(I):
         return a
 
     pos, tot_dv01_p, tot_dv01_b = [], 0.0, 0.0
+    settle0 = bm.next_business_day(now["date"])
     krd_rows = []
     for b in now["buckets"]:
         a = model_bond(b["coupon"], b["mat_p"])
@@ -437,18 +438,35 @@ def book_block(I):
         par_b = nav * b["w_b"] / 100 / dirty_b * 100
         kp = krd_per100(b["coupon"], a["maturity"], settle, cx, cy, dirty)
         kb = krd_per100(cb, ab["maturity"], settle, cx, cy, dirty_b)
-        krd_rows.append({"label": b["label"], "p": [r(v * mv / dirty, 0) for v in kp], "b": [r(v * par_b / 100, 0) for v in kb]})
         dv01 = mv * a["mdur"] * 1e-4
         dv01_b = nav * b["w_b"] / 100 * ab["mdur"] * 1e-4
+        # 만기 키별 값의 합이 그 종목의 DV01과 같도록 비율을 맞춘다 (화면의 DV01을 하나로 통일)
+        krd_rows.append({"label": b["label"], "p": [r(v / sum(kp) * dv01, 1) for v in kp], "b": [r(v / sum(kb) * dv01_b, 1) for v in kb]})
+        # 매입 단가와 평가손익: 리밸런싱일에 같은 방식으로 값을 매긴 것과 비교 (그 사이 받은 이자 포함)
+        a0 = bm.analytics(b["coupon"], date.fromisoformat(a["maturity"]), settle0, yield_pct=bm.interp(dx, dy, bm.years_between(settle0, date.fromisoformat(a["maturity"]))))
+        paid = b["coupon"] / 2 if a["accrued"] < a0["accrued"] else 0.0
+        par = mv / dirty * 100
+        upl = par * (dirty + paid - a0["clean"] - a0["accrued"]) / 100
+        # 3개월 캐리(금리 ÷ 4)와 롤다운(커브가 그대로일 때 만기가 3개월 짧아져 금리가 달라지는 몫), 가격 기준 bp
+        roll = lambda x: (x["ytm"] - bm.interp(cx, cy, max(x["ttm"] - 0.25, 0.08))) * 100 * x["mdur"]
         tot_dv01_p += dv01
         tot_dv01_b += dv01_b
         pos.append({"id": b["id"], "label": b["label"], "name": f"모형 국채 {b['label']}", "coupon": r(b["coupon"], 3),
                     "maturity": a["maturity"], "ttm": r(a["ttm"], 2), "price": r(a["clean"], 3), "accrued": r(a["accrued"], 4),
-                    "ytm": r(a["ytm"], 3), "mdur": r(a["mdur"], 3), "conv": r(a["conv"], 2),
-                    "par": r(mv / dirty * 100, 0), "mv": r(mv, 0), "w_p": r(b["w_p"], 2), "w_b": r(b["w_b"], 2),
+                    "ytm": r(a["ytm"], 3), "mdur": r(a["mdur"], 3), "conv": r(a["conv"], 2), "conv_b": r(ab["conv"], 2),
+                    "cost": r(a0["clean"], 3), "upl": r(upl, 0), "carry3m": r(a["ytm"] * 25, 1), "roll3m": r(roll(a), 1),
+                    "carry3m_b": r(ab["ytm"] * 25, 1), "roll3m_b": r(roll(ab), 1),
+                    "par": r(par, 0), "mv": r(mv, 0), "w_p": r(b["w_p"], 2), "w_b": r(b["w_b"], 2),
                     "dur_b": r(ab["mdur"], 3), "mat_b": r(ab["ttm"], 2), "dv01": r(dv01, 0), "dv01_b": r(dv01_b, 0),
                     "c_p": r(b["w_p"] / 100 * a["mdur"], 4), "c_b": r(b["w_b"] / 100 * ab["mdur"], 4),
                     "active": r(b["w_p"] / 100 * a["mdur"] - b["w_b"] / 100 * ab["mdur"], 4)})
+
+    # 종목별 평가손익의 합을 NAV로 본 리밸런싱 이후 손익에 맞춘다 (값 매기는 방식 차이를 비율로 나눠 붙임)
+    since = nav - navp[idx_on_or_before(dts, now["date"])]
+    raw = sum(p["upl"] for p in pos)
+    if abs(raw) > 1:
+        for p in pos:
+            p["upl"] = r(p["upl"] / raw * since, 0)
 
     # 위험: 과거 일별 손익으로 본 VaR
     lo3 = idx_on_or_before(dts, back(asof, years=3))
@@ -476,16 +494,37 @@ def book_block(I):
         for p in pos:
             dy_p = bm.interp(x1, y1, p["ttm"]) - bm.interp(x0, y0, p["ttm"])
             dy_b = bm.interp(x1, y1, p["mat_b"]) - bm.interp(x0, y0, p["mat_b"])
-            rp += -p["w_p"] / 100 * p["mdur"] * dy_p
-            rb += -p["w_b"] / 100 * p["dur_b"] * dy_b
+            rp += p["w_p"] / 100 * (-p["mdur"] * dy_p + 0.5 * p["conv"] * dy_p ** 2 / 100)
+            rb += p["w_b"] / 100 * (-p["dur_b"] * dy_b + 0.5 * p["conv_b"] * dy_b ** 2 / 100)
         d = lambda T: r((bm.interp(x1, y1, T) - bm.interp(x0, y0, T)) * 100, 0)
         stress.append({"label": label, "from": U["dates"][i0], "to": U["dates"][i1], "d2": d(2), "d10": d(10), "d30": d(30),
                        "p_pct": r(rp, 2), "b_pct": r(rb, 2), "active_bp": r((rp - rb) * 100, 1), "p_usd": r(rp / 100 * nav, 0)})
 
     dur_p = sum(p["w_p"] / 100 * p["mdur"] for p in pos)
     dur_b = sum(p["w_b"] / 100 * p["dur_b"] for p in pos)
-    par_shift = [{"bp": s, "p_usd": r(-dur_p * s / 100 / 100 * nav, 0), "p_pct": r(-dur_p * s / 100, 2),
-                  "active_bp": r(-(dur_p - dur_b) * s, 1)} for s in (-100, -50, -25, 25, 50, 100)]
+    # 시나리오: 만기별 금리 변화(bp)를 지금 종목에 적용. 듀레이션과 볼록성까지 쓴다. 포트폴리오와 벤치마크를 같은 방법으로 계산.
+    def scen(label, shift):
+        rp = rb = 0.0
+        for p in pos:
+            a_, b_ = shift(p["ttm"]) / 100, shift(p["mat_b"]) / 100          # % 포인트
+            rp += p["w_p"] / 100 * (-p["mdur"] * a_ + 0.5 * p["conv"] * a_ ** 2 / 100)
+            rb += p["w_b"] / 100 * (-p["dur_b"] * b_ + 0.5 * p["conv_b"] * b_ ** 2 / 100)
+        return {"label": label, "d2": shift(2), "d10": round(shift(10)), "d30": shift(30), "p_usd": r(rp / 100 * nav, 0), "p_pct": r(rp, 2),
+                "b_pct": r(rb, 2), "active_bp": r((rp - rb) * 100, 1), "active_usd": r((rp - rb) / 100 * nav, 0)}
+
+    def twist(y2, y30):                      # 2년과 30년 사이는 직선, 바깥은 평평
+        return lambda T: y2 + (y30 - y2) * (min(max(T, 2), 30) - 2) / 28
+
+    par_shift = [dict(scen(f"평행 {s:+d}bp", lambda T, s=s: s), bp=s) for s in (-100, -50, -25, 25, 50, 100)]
+    curve_scen = [scen("불 스티프닝 (2년 −50, 30년 −10)", twist(-50, -10)), scen("불 플래트닝 (2년 −10, 30년 −50)", twist(-10, -50)),
+                  scen("베어 스티프닝 (2년 +10, 30년 +50)", twist(10, 50)), scen("베어 플래트닝 (2년 +50, 30년 +10)", twist(50, 10))]
+
+    # 만기 키 금리의 일별 변화 공분산 (bp², 연율, 최근 750영업일). 매매 전 추적오차·VaR 비교에 쓴다.
+    kser = [U["yields"][k] for k, _ in KRD_KEYS]
+    lo_c = max(1, ui - 749)
+    chg = [[(ks[t] - ks[t - 1]) * 100 for ks in kser] for t in range(lo_c, ui + 1) if all(ks[t] is not None and ks[t - 1] is not None for ks in kser)]
+    mu_c = [mean([c[j] for c in chg]) for j in range(len(kser))]
+    key_cov = [[r(sum((c[i] - mu_c[i]) * (c[j] - mu_c[j]) for c in chg) / (len(chg) - 1) * 252, 1) for j in range(len(kser))] for i in range(len(kser))]
 
     # 귀속: 달별, 연도별, 전략별 누적
     months, cum = [], {"dur": 0.0, "slope": 0.0, "curv": 0.0}
@@ -516,9 +555,9 @@ def book_block(I):
                                     "months", "months_active", "months_win", "n_rebal", "c_dur", "c_slope", "c_curv", "hit",
                                     "best", "worst")},
         "risk": {"te_exante_bp": P["risk"]["te_exante_bp"], "te_max_bp": P["risk"]["te_max_bp"], "budget": P["risk"]["budget"],
-                 "scenarios": P["risk"]["scenarios"], "var": var, "stress": stress, "parallel": par_shift,
+                 "scenarios": P["risk"]["scenarios"], "var": var, "stress": stress, "parallel": par_shift, "curve": curve_scen, "key_cov": key_cov,
                  "limits": P["risk"].get("limits")},
-        "explain": explain,
+        "explain": explain, "blotter": P.get("blotter"),
         "series": {"dates": dts, "nav_p": [round(x) for x in navp], "nav_b": [round(x) for x in navb], "excess_bp": exc,
                    "alt_excess_bp": alt.get("series")},
         "months": months, "years": P["years"], "cum": cum_series,
