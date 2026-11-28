@@ -607,6 +607,45 @@ def sme_block(sme, policy, asof):
             "rows": rows, "head": head, "target": target}
 
 
+TONE_TAG = 0.10          # 발언 하나: 성향 ≥ +0.10 매파, ≤ −0.10 비둘기파
+TONE_BAND_DAYS = 90      # 위원 성향 띠: 최근 90일 정책 발언 평균
+
+
+def tone_block(T, fomc, asof):
+    """fed_tone.py가 만든 발언별 성향(−1~+1, + = 매파)을 화면용으로 정리: 발언 로그, 위원 성향 띠, 의장 최근 발언."""
+    items = list((T.get("items") or {}).values())
+    if not items:
+        return None
+    voters = set()
+    for st in reversed(fomc):                       # 가장 최근에 찬성 명단이 실린 성명
+        txt = " ".join(p for p in st["paras"] if p.startswith("Voting for"))
+        if txt:
+            voters = {n.split()[-1] for n in re.findall(r"[A-Z][a-z]+(?: [A-Z]\.)? [A-Z][a-z]+", txt) if n != "Vice Chair"}
+            break
+    pcs = sorted((x for x in items if x["kind"] == "기자회견"), key=lambda x: x["date"])
+    chair = pcs[-1]["speaker"] if pcs else None
+    tag = lambda v: "매" if v >= TONE_TAG else "비" if v <= -TONE_TAG else "중"
+    out = []
+    for x in sorted(items, key=lambda x: x["date"], reverse=True):
+        who = x["speaker"]
+        out.append({"date": x["date"], "kind": x["kind"], "speaker": who, "title": x["title"], "url": x["url"], "net": x["net"],
+                    "n": x["n"], "tag": tag(x["net"]), "policy": bool(x["policy"]), "chair": who == chair,
+                    "voter": who in voters or x["kind"] in ("연설", "의회 증언"),   # 이사회 RSS 발언자는 모두 이사(투표권자)
+                    "ex_h": x.get("ex_h", [])[:1], "ex_d": x.get("ex_d", [])[:1]})
+    cut = back(asof, days=TONE_BAND_DAYS)
+    band = {}
+    for x in out:
+        if x["date"] >= cut and x["policy"] and x["kind"] in ("연설", "의회 증언", "기자회견"):
+            band.setdefault(x["speaker"], []).append(x["net"])
+    members = [{"name": k, "avg": r(sum(v) / len(v), 3), "n": len(v), "voter": True, "chair": k == chair}
+               for k, v in band.items()]
+    members.sort(key=lambda m: m["avg"])
+    chair_recent = [x for x in out if x["chair"] and x["policy"]][:3]
+    return {"model": T.get("model"), "generated": T.get("generated"), "items": out[:60], "members": members,
+            "chair": chair, "chair_recent": chair_recent, "band_days": TONE_BAND_DAYS, "tag_th": TONE_TAG,
+            "policy_th": T.get("policy_share_th")}
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -716,6 +755,7 @@ def macro_block(I, grid, cols, events):
                                                  "days": (date.fromisoformat(nxt_fomc["date"]) - date.fromisoformat(asof)).days}}
     policy["fomc"] = fomc_block(I["extra"].get("fomc"), grid, cols)
     policy["sme"] = sme_block(I["extra"].get("sme"), policy, asof)
+    policy["tone"] = tone_block(read_json(RAW / "fed_tone.json", {}) or {}, I["extra"].get("fomc") or [], asof)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
