@@ -9,7 +9,7 @@
   data/raw/korea.json                      fetch_korea.py가 받은 것 (키가 없으면 no_key)
   data/ratings.csv                         (있으면) 손으로 적은 신용등급
 
-화면(index.html, v2.html)은 계산하지 않고 이 파일을 읽어 그리기만 한다. 예외는 채권 상세와 Trade Builder의
+화면(index.html)은 계산하지 않고 이 파일을 읽어 그리기만 한다. 예외는 채권 상세와 Trade Builder의
 가격·물량 계산으로, assets/bondmath.js가 bondmath.py와 같은 수식으로 그 자리에서 계산한다.
 
 실행:  python3 build_data.py     (표준 라이브러리만)
