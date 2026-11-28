@@ -3,7 +3,7 @@
 묶음 (하나가 실패해도 나머지는 계속하고, 실패한 묶음은 지난번 값을 그대로 둔다)
   fred_daily   FRED 일별: 크로스에셋, 실질금리·BEI, 신용 스프레드(등급·만기별 지수 OAS)
   intl         FRED 월별(OECD): 나라별 10년 금리, 3개월 금리, 실업률, 정부부채
-  yahoo        Yahoo Finance: 금 선물, KOSPI (비공식 경로라 막힐 수 있다)
+  yahoo        Yahoo Finance: 금·구리 선물, KOSPI (비공식 경로라 막힐 수 있다)
   cftc         CFTC TFF 보고서: 국채선물 투자자별 포지션 (주 1회)
   upcoming     재무부 잠정 입찰 일정(XML) + TreasuryDirect 공고: 예정 입찰
   calendar     연준 일정(FOMC·연설), BEA 발표일(GDP·PCE), FRED 발표 달력(CPI·고용 등)
@@ -38,7 +38,7 @@ FRED_DAILY = {
 COUNTRIES = [("US", "미국"), ("KR", "한국"), ("JP", "일본"), ("DE", "독일"), ("GB", "영국"), ("FR", "프랑스"),
              ("IT", "이탈리아"), ("CA", "캐나다"), ("AU", "호주")]
 INTL = {"y10": "IRLTLT01{c}M156N", "r3m": "IR3TIB01{c}M156N", "unemp": "LRHUTTTT{c}M156S"}
-YAHOO = {"gold": "GC=F", "kospi": "^KS11"}
+YAHOO = {"gold": "GC=F", "copper": "HG=F", "kospi": "^KS11"}
 CFTC = [("042601", "2Y", "2년 선물"), ("044601", "5Y", "5년 선물"), ("043602", "10Y", "10년 선물"),
         ("043607", "U10", "울트라 10년 선물"), ("020601", "UB20", "T-Bond 선물"), ("020604", "UB30", "울트라 본드 선물")]
 # FRED 발표 달력: (release id, 제목에 들어 있어야 할 말, 화면 이름, 미 동부 시각, 중요도)

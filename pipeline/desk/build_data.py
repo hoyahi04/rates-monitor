@@ -19,6 +19,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import bondmath as bm
+import xasset as xasset_tab
 from common import (DESK, MODEL, RAW, ROOT, back, clean, corr, ffill, idx_on_or_before, last_valid, load_js, log, mean,
                     now_utc, num, pctile, r, read_json, stdev, write_js, write_json, zscore)
 
@@ -1403,7 +1404,8 @@ def main():
     }
     xa = {"sp500": align(fd.get("sp500"), grid), "nasdaq": align(fd.get("nasdaq"), grid), "kospi": align(yh.get("kospi"), grid),
           "dxy": align(fd.get("dxy_broad"), grid), "usdkrw": align(fd.get("usdkrw"), grid), "usdjpy": align(fd.get("usdjpy"), grid),
-          "eurusd": align(fd.get("eurusd"), grid), "wti": align(fd.get("wti"), grid), "gold": align(yh.get("gold"), grid)}
+          "eurusd": align(fd.get("eurusd"), grid), "wti": align(fd.get("wti"), grid), "gold": align(yh.get("gold"), grid),
+          "copper": align(yh.get("copper"), grid)}
 
     # 시장
     us = market_block(grid, ys, TEN)
@@ -1432,7 +1434,8 @@ def main():
                                       ("kospi", "KOSPI", "주식", "", True), ("dxy", "달러 지수 (연준 광의)", "통화", "", True),
                                       ("usdkrw", "원/달러", "통화", "원", True), ("usdjpy", "엔/달러", "통화", "엔", True),
                                       ("eurusd", "달러/유로", "통화", "달러", True), ("wti", "WTI 원유", "원자재", "달러", True),
-                                      ("gold", "금 (선물)", "원자재", "달러", True), ("vix", "VIX (주식 변동성)", "변동성", "", False),
+                                      ("gold", "금 (선물)", "원자재", "달러", True),
+                                      ("copper", "구리 (선물)", "원자재", "달러", True), ("vix", "VIX (주식 변동성)", "변동성", "", False),
                                       ("move", "MOVE (채권 변동성)", "변동성", "", False)]:
         vals = xa.get(key) if key in xa else cols[key]
         s = summarize(grid, vals, 1, pct_change=pc)
@@ -1444,6 +1447,9 @@ def main():
         xasset.append({"key": key, "label": label, "group": grp, "unit": unit, "pct": pc, "level": s["level"], "date": s["date"],
                        "d1": s["chg"]["d1"], "w1": s["chg"]["w1"], "m1": s["chg"]["m1"], "ytd": s["chg"]["ytd"], "y1": s["chg"]["y1"],
                        "pct3y": s["pct3y"], "corr60": r(corr(chg[-60:], d10[-60:]), 2), "spark": spark(vals)})
+
+    log("[크로스에셋]")
+    xa_tab = xasset_tab.build(grid, {**cols, **xa, "intl": ex.get("intl")})
 
     # 일정 (연준·BEA·FRED 달력 + 이표채 입찰)
     events = [dict(e, region="US") for e in (ex.get("calendar") or [])]
@@ -1505,9 +1511,9 @@ def main():
         "meta": {"generated": now_utc(), "asof": asof, "problems": PROBLEMS, "extra_generated": ex.get("generated"),
                  "korea": kr["status"],
                  "sources": ["미 재무부 (CMT 금리, FedInvest 종가, 입찰)", "FRED", "연준 (일정, 보도자료)", "뉴욕 연준 (SOFR, SOMA, ACM)",
-                             "CFTC (TFF 보고서)", "BEA", "ICE BofA 지수 (FRED 경유)", "Yahoo Finance (MOVE, 금, KOSPI, 연방기금 선물)",
+                             "CFTC (TFF 보고서)", "BEA", "ICE BofA 지수 (FRED 경유)", "Yahoo Finance (MOVE, 금, 구리, KOSPI, 연방기금 선물)",
                              "한국은행 ECOS"]},
-        "us": us, "kr": kr, "spreads": spreads, "xasset": xasset,
+        "us": us, "kr": kr, "spreads": spreads, "xasset": xasset, "xa": xa_tab,
         "series": {"dates": grid, "cols": {k: [r(x, 3) for x in v] for k, v in {**{f"y_{t}": ys[t] for t in ys}, **cols, **xa}.items()}},
         "bonds": bonds, "macro": macro, "flows": flows, "rv": rv, "credit": credit, "book": book,
         "events": events, "news": ex.get("news") or [], "score": score,
