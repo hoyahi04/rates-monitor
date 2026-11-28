@@ -56,16 +56,13 @@
   function buildShell() {
     const nav = h('nav', { cls: 'nav', 'aria-label': '메뉴' }, MENU.map((m) => (m.sep ? h('div', { cls: 'sep' })
       : h('a', { href: '#/' + m.id, 'data-route': m.id }, icon(m.icon), h('span', null, m.name, h('small', null, m.q))))));
-    // 버전: index.html이 1(왼쪽 메뉴, 히트맵 중심), v2.html이 2(같은 내용에 모양만 다름)
-    const ver = document.documentElement.dataset.version === '2' ? '2' : '1';
-    const other = ver === '2' ? ['index.html', 'v1 보기'] : ['v2.html', 'v2 보기 (미니멀)'];
-    const verLink = h('a', { cls: 'verlink', href: other[0] }, other[1]);
-    verLink.addEventListener('click', (e) => { e.preventDefault(); location.href = other[0] + location.search + location.hash; });
+    // 버전은 2 하나뿐이다 (2026-11-28 버전 1 정리). index.html이 data-version="2"로 theme-v2.css를 켠다.
+    const ver = '2';
     const side = h('aside', { cls: 'side' },
       h('div', { cls: 'brand' }, h('b', null, 'Rates Desk'), h('span', null, '채권 데스크 대시보드'), h('span', { cls: 'ver' }, 'v' + ver)),
       nav,
       h('div', { cls: 'foot' }, h('span', null, `금리 기준일 ${D.meta.asof}`), h('span', null, `자료 갱신 ${D.meta.generated.slice(5)} UTC`),
-        h('span', null, '일별 종가 · 실시간 아님'), verLink));
+        h('span', null, '일별 종가 · 실시간 아님')));
 
     const sel = (key, label, opts) => {
       const el = h('select', { 'aria-label': label }, opts.map(([v, t, off]) => h('option', { value: v, disabled: off || null }, t)));

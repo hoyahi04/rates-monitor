@@ -16,7 +16,7 @@
 ## 폴더
 
 ```
-desk/                제품. 화면(index.html, v2.html), assets/, 화면용 자료 data/
+desk/                제품. 화면(index.html, 버전 2 하나), assets/, 화면용 자료 data/
 pipeline/
   desk/              desk 자료 수집·가공 (fetch_extra, fetch_korea, build_data, bondmath)
   inputs/curve/      재무부 CMT 금리 (공통 입력) + 수익률 곡선 화면
