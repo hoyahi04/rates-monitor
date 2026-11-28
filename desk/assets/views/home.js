@@ -40,9 +40,21 @@
     const tiles = h('div', { cls: 'tiles c12' },
       rateTile('2Y', '미국 2년'), rateTile('10Y', '미국 10년'), rateTile('30Y', '미국 30년'),
       spTile(sp.s2s10s, '2s10s', 0, 'bp'), sp.real10 ? spTile(sp.real10, '10년 실질금리', 2, '%') : null,
-      move_ ? UI.tile({ lab: 'MOVE (채권 변동성)', val: F.n(move_.level, 0), spark: move_.spark, onClick: () => ctx.go('market', 'xasset'),
+      move_ ? UI.tile({ lab: 'MOVE (채권 변동성)', val: F.n(move_.level, 0), spark: move_.spark, onClick: () => ctx.go('xasset', 'vol'),
         deltas: [{ k: '1일', v: F.s(move_.d1, 1), raw: move_.d1 }, { k: '1주', v: F.s(move_.w1, 1), raw: move_.w1 }] }) : null,
       sp.oas_hy ? spTile(sp.oas_hy, '하이일드 OAS', 0, 'bp') : null);
+
+    // 크로스에셋 국면: 종합 한 줄 + 자산 8개 (누르면 크로스에셋 탭의 그 자산으로)
+    const XA = D.xa;
+    const xaCard = XA && XA.pairs && XA.pairs.length ? UI.card({ span: 'c12', title: '크로스에셋 국면', cap: '다른 시장이 국채에 대해 말하는 것 · 60일 상관 기준',
+      tools: [h('a', { href: '#/xasset', cls: 'cap' }, '크로스에셋 →')],
+      body: [UI.concl(`${XA.pairs.length}개 관계 중 국채에 유리 ${XA.tally.good} · 불리 ${XA.tally.bad} · 중립 ${XA.tally.mid}`),
+        h('div', { cls: 'xchips' }, XA.pairs.map((p) => {
+          const a = h('a', { href: '#/xasset/detail' }, h('b', null, p.label.replace(/ \(.*\)$/, '')), h('small', null, '60일 ' + F.s(p.r60, 2)),
+            h('span', { cls: 'tone ' + p.tone }, p.regime.split(' · ')[0]));
+          a.addEventListener('click', () => { ctx.st.xaSel = p.key; });
+          return a;
+        }))] }) : null;
 
     // 내 포트폴리오
     const te = B.risk.te_exante_bp, bud = B.risk.budget;
@@ -148,6 +160,6 @@
 
     return { q: 'Desk Overview', title, lead, usOnly: true,
       sub: `근거: 한 주 동안 10년 금리 ${F.bp(w)}, 액티브 듀레이션 ${F.s(act, 2)}년, 벤치마크 대비 ${F.bp(exW, 1)}. ${D.meta.asof} 종가 기준이고, 숫자의 빨강은 오름, 파랑은 내림입니다.`,
-      body: [purpose, actCard, tiles, h('div', { cls: 'stack c7' }, bookCard, scoreCard), h('div', { cls: 'stack c5' }, evCard, newsCard)] };
+      body: [purpose, actCard, tiles, xaCard, h('div', { cls: 'stack c7' }, bookCard, scoreCard), h('div', { cls: 'stack c5' }, evCard, newsCard)] };
   };
 })();

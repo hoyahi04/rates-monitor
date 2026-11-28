@@ -182,6 +182,28 @@
     return el;
   }
 
+  /* <?> 단추: 누르면 자세한 설명이 작은 창으로 열린다. 화면에는 짧게 두고 긴 설명은 여기에 넣는다.
+     body는 [제목, 글] 쌍의 목록이나 Node. align:'left'면 단추 왼쪽 끝에 맞춰 연다 */
+  function help(title, body, align) {
+    const pop = h('div', { cls: 'help-pop' + (align === 'left' ? ' l' : ''), role: 'dialog', 'aria-label': title, hidden: true },
+      h('b', { cls: 'ht' }, title),
+      Array.isArray(body) ? body.map(([k, v]) => h('div', { cls: 'hs' }, k ? h('em', null, k) : null, h('p', null, v))) : body);
+    const btn = h('button', { cls: 'help', type: 'button', 'aria-label': title + ' 설명 보기', 'aria-expanded': 'false', title: '설명 보기' }, '?');
+    const close = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); document.removeEventListener('click', outside, true); };
+    const outside = (e) => { if (!wrap.contains(e.target)) close(); };
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!pop.hidden) { close(); return; }
+      document.querySelectorAll('.help-pop:not([hidden])').forEach((x) => { x.hidden = true; });
+      pop.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('click', outside, true);
+    });
+    pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { close(); btn.focus(); } });
+    const wrap = h('span', { cls: 'help-wrap' }, btn, pop);
+    wrap.addEventListener('click', (e) => e.stopPropagation());
+    return wrap;
+  }
+
   // ───────── 작은 그림 ─────────
   function spark(vals, o) {
     const w = (o && o.w) || 72, hh = (o && o.h) || 20, v = (vals || []).filter(ok);
@@ -413,7 +435,7 @@
       const xs = o.points.map((p) => p.x), ys = o.points.map((p) => p.y).concat((o.curve || []).map((c) => c[1]));
       if (!xs.length) { el.appendChild(empty('그릴 종목이 없습니다', '만기 필터를 바꿔 보세요.')); return; }
       let x0 = o.xMin != null ? o.xMin : Math.min(...xs), x1 = o.xMax != null ? o.xMax : Math.max(...xs);
-      let lo = Math.min(...ys), hi = Math.max(...ys);
+      let lo = Math.min(...ys, ...(o.yRefs || [])), hi = Math.max(...ys, ...(o.yRefs || []));
       const padY = (hi - lo || 1) * 0.08;
       lo -= padY; hi += padY;
       if (x1 <= x0) x1 = x0 + 1;
@@ -427,6 +449,9 @@
       const xt = niceTicks(x0, x1, Math.max(3, Math.round(pw / 90)));
       for (const t of xt.ticks) svg.appendChild(s('text', { x: X(t), y: H - 14, 'text-anchor': 'middle' }, (o.xFmt || tickFmt(xt.step))(t)));
       if (o.xLabel) svg.appendChild(s('text', { x: W - m.r, y: H - 1, 'text-anchor': 'end' }, o.xLabel));
+      for (const v of o.xRefs || []) svg.appendChild(s('line', { cls: 'ref', x1: X(v), x2: X(v), y1: m.t, y2: m.t + ph }));
+      for (const v of o.yRefs || []) svg.appendChild(s('line', { cls: 'ref', x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v) }));
+      for (const t of o.labels || []) svg.appendChild(s('text', { cls: 'lab', x: t.right ? W - m.r - 4 : m.l + 4, y: t.top ? m.t + 12 : m.t + ph - 6, 'text-anchor': t.right ? 'end' : 'start' }, t.text));
       if (o.curve && o.curve.length) {
         const cv = o.curve.filter((c) => c[0] >= x0 && c[0] <= x1);
         svg.appendChild(s('path', { d: cv.map((c, i) => (i ? 'L' : 'M') + X(c[0]).toFixed(1) + ' ' + Y(c[1]).toFixed(1)).join(''), fill: 'none', stroke: 'var(--ink2)', 'stroke-width': 1.5 }));
@@ -512,6 +537,6 @@
       { rows, dense: true });
   }
 
-  window.UI = { h, s, F, ok, dirCls, heat, heatPct, tip, table, card, concl, empty, tile, spark, range, legend, scaleKey, line, bars, scatter, donut,
+  window.UI = { h, s, F, ok, dirCls, heat, heatPct, tip, table, card, concl, empty, tile, help, spark, range, legend, scaleKey, line, bars, scatter, donut,
                 seriesTable, cut, chartBox };
 })();
