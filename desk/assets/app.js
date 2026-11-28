@@ -13,6 +13,7 @@
     { sep: true },
     { id: 'market', name: '시장 모니터', q: '무엇이 움직였나', icon: 'M3 12h4l3-8 4 16 3-8h4' },
     { id: 'macro', name: '매크로·정책', q: '왜 움직였나', icon: 'M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-6 10 6' },
+    { id: 'xasset', name: '크로스에셋', q: '다른 시장은 뭐라 하나', icon: 'M4 17l5-5 4 4 7-8M15 8h5v5' },
     { id: 'flows', name: '수급·펀딩', q: '누가 사고, 조달비용은', icon: 'M4 7h13l-3-3M20 17H7l3 3' },
     { id: 'rv', name: 'RV·전략', q: '어디에 투자할까', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M7 12a5 5 0 1 0 10 0a5 5 0 1 0-10 0' },
     { id: 'credit', name: '크레딧·소버린', q: '발행자는 안전한가', icon: 'M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6l8-3z' },
@@ -39,6 +40,8 @@
   const ctx = {
     D, st, F, UI, krOk,
     go(route, anchor) { location.hash = '#/' + route + (anchor ? '/' + anchor : ''); },
+    /* 같은 화면을 다시 그린다 (scroll: 'keep'이면 제자리, 아니면 주소의 카드로) */
+    rerender(scroll) { render(scroll === 'keep'); },
     matOk: (years) => st.mat === 'all' || matGroup(years) === st.mat,
     /* 일별 시계열을 기간 필터에 맞춰 잘라 선 차트로. defs: [{key,name,color,scale}] */
     lineOf(defs, o) {

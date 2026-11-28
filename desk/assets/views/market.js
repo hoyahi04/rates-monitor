@@ -1,4 +1,4 @@
-/* 1. 시장 모니터 — 무엇이 움직였나: 커브 모니터, 금리 히트맵, 스프레드 보드, 크로스에셋, 지표물 */
+/* 1. 시장 모니터 — 무엇이 움직였나: 커브 모니터, 금리 히트맵, 스프레드 보드, 크로스에셋 요약(자세한 것은 xasset.js), 지표물 */
 (function () {
   'use strict';
   const { h, F, ok } = UI;
@@ -105,18 +105,14 @@
       body: srows.length ? [spreadTable(), h('div', { style: 'height:14px' }), chartSlot] : UI.empty('이 조건에 맞는 스프레드가 없습니다', '자산군이나 지역 필터를 바꿔 보세요.'),
       foot: '신용 스프레드(ICE BofA 지수)는 FRED가 최근 3년치만 제공합니다. 기준일이 금리보다 하루 늦을 수 있습니다.' });
 
-    // ── 크로스에셋 ──
-    const pc = (label, key, max) => ({ label, get: (r) => r[key], fmt: (v, r) => (r.pct ? F.s(v, 2) + '%' : F.s(v, 1)), heat: (v, r) => UI.heat(v, r.pct ? max : max * 3) });
-    const xCard = UI.card({ id: 'xasset', span: 'c12', title: '크로스에셋', cap: '주식·통화·원자재는 등락률(%), 변동성 지수는 포인트 변화', flush: true,
-      tools: [UI.scaleKey('내림', '오름')],
-      body: UI.table([{ label: '자산', align: 'l', get: (r) => r.label },
-        { label: '수준', get: (r) => r.level, fmt: (v, r) => F.n(v, v >= 1000 ? 0 : 2) + (r.unit ? ' ' + r.unit : '') },
-        pc('1일', 'd1', 2.5), pc('1주', 'w1', 5), pc('1달', 'm1', 8), pc('연초 이후', 'ytd', 20), pc('1년', 'y1', 25),
-        { label: '10년 금리와의 상관 (60일)', title: '최근 60영업일 일별 변화의 상관계수. +면 금리가 오르는 날 같이 오름', get: (r) => r.corr60, fmt: (v) => F.s(v, 2), heat: (v) => UI.heat(v, 0.8) },
-        { label: '1년 추이', align: 'c', sort: false, get: (r) => r.key, fmt: (_, r) => UI.spark(r.spark) },
-        { label: '기준일', get: (r) => r.date, fmt: (v) => F.md(v) }],
-        { rows: D.xasset, dense: true, group: (r) => r.group }),
-      foot: '원/달러, 엔/달러가 오르면 달러 강세입니다. 금과 KOSPI는 Yahoo Finance, 나머지는 FRED 값입니다.' });
+    // ── 크로스에셋: 자세한 표와 국면은 크로스에셋 탭으로 옮겼다. 여기에는 요약 한 줄과 링크만 ──
+    const XA = D.xa;
+    const xCard = UI.card({ id: 'xasset', span: 'c12', title: '크로스에셋', cap: '주식·통화·원자재·변동성과 국채의 관계',
+      tools: [h('a', { href: '#/xasset', cls: 'cap' }, '크로스에셋 →')],
+      body: XA && XA.tally ? UI.concl(`${XA.pairs.length}개 관계 중 국채에 유리 ${XA.tally.good} · 불리 ${XA.tally.bad} · 중립 ${XA.tally.mid}`,
+        XA.pairs.map((p) => `${p.label.replace(/ \(.*\)$/, '')}: ${p.regime}`).join(' · '))
+        : UI.empty('크로스에셋 자료가 없습니다', ''),
+      foot: '자산별 등락 표, 국면 보드, 변동성 지도는 크로스에셋 탭에 있습니다.' });
 
     // ── 지표물 ──
     let bondCard;
