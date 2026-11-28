@@ -20,7 +20,7 @@ from pathlib import Path
 
 import bondmath as bm
 from common import (DESK, MODEL, RAW, ROOT, back, clean, corr, ffill, idx_on_or_before, last_valid, load_js, log, mean,
-                    now_utc, num, pctile, r, read_json, stdev, write_js, zscore)
+                    now_utc, num, pctile, r, read_json, stdev, write_js, write_json, zscore)
 
 START = "2015-01-02"          # 화면에 싣는 시계열의 시작
 TEN = [("1M", 1 / 12), ("3M", .25), ("6M", .5), ("1Y", 1), ("2Y", 2), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10),
@@ -578,8 +578,9 @@ def fomc_block(st, grid, cols):
             for key in ("y2", "y10"):
                 v1, v0 = cols[key][k], cols[key][k - 1]
                 row["d_" + key] = None if v1 is None or v0 is None else r((v1 - v0) * 100, 1)
+            row["d_2s10s"] = None if row["d_y2"] is None or row["d_y10"] is None else r(row["d_y10"] - row["d_y2"], 1)
         else:
-            row["d_y2"] = row["d_y10"] = None
+            row["d_y2"] = row["d_y10"] = row["d_2s10s"] = None
         d2 = row["d_y2"]
         row["surprise"] = None if d2 is None else ("매파적" if d2 >= 5 else "비둘기적" if d2 <= -5 else None)
         meetings.append(row)
@@ -612,6 +613,323 @@ def sme_block(sme, policy, asof):
     head = min(have, key=lambda x: abs(int(x["month"][:4]) * 12 + int(x["month"][5:]) - yr * 12 - int(asof[5:7]))) if have else None
     return {"survey": sme["survey"], "url": sme["url"], "lr": sme.get("lr"), "avg10": sme.get("avg10"),
             "rows": rows, "head": head, "target": target}
+
+
+TONE_TAG = 0.10          # 발언 하나: 성향 ≥ +0.10 매파, ≤ −0.10 비둘기파
+TONE_BAND_DAYS = 90      # 위원 성향 띠: 최근 90일 정책 발언 평균
+
+
+def tone_block(T, fomc, asof):
+    """fed_tone.py가 만든 발언별 성향(−1~+1, + = 매파)을 화면용으로 정리: 발언 로그, 위원 성향 띠, 의장 최근 발언."""
+    items = list((T.get("items") or {}).values())
+    if not items:
+        return None
+    voters = set()
+    for st in reversed(fomc):                       # 가장 최근에 찬성 명단이 실린 성명
+        txt = " ".join(p for p in st["paras"] if p.startswith("Voting for"))
+        if txt:
+            voters = {n.split()[-1] for n in re.findall(r"[A-Z][a-z]+(?: [A-Z]\.)? [A-Z][a-z]+", txt) if n != "Vice Chair"}
+            break
+    pcs = sorted((x for x in items if x["kind"] == "기자회견"), key=lambda x: x["date"])
+    chair = pcs[-1]["speaker"] if pcs else None
+    tag = lambda v: "매" if v >= TONE_TAG else "비" if v <= -TONE_TAG else "중"
+    out = []
+    for x in sorted(items, key=lambda x: x["date"], reverse=True):
+        who = x["speaker"]
+        out.append({"date": x["date"], "kind": x["kind"], "speaker": who, "title": x["title"], "url": x["url"], "net": x["net"],
+                    "n": x["n"], "tag": tag(x["net"]), "policy": bool(x["policy"]), "chair": who == chair,
+                    "voter": who in voters or x["kind"] in ("연설", "의회 증언"),   # 이사회 RSS 발언자는 모두 이사(투표권자)
+                    "ex_h": x.get("ex_h", [])[:1], "ex_d": x.get("ex_d", [])[:1]})
+    cut = back(asof, days=TONE_BAND_DAYS)
+    band = {}
+    for x in out:
+        if x["date"] >= cut and x["policy"] and x["kind"] in ("연설", "의회 증언", "기자회견"):
+            band.setdefault(x["speaker"], []).append(x["net"])
+    members = [{"name": k, "avg": r(sum(v) / len(v), 3), "n": len(v), "voter": True, "chair": k == chair}
+               for k, v in band.items()]
+    members.sort(key=lambda m: m["avg"])
+    chair_recent = [x for x in out if x["chair"] and x["policy"]][:3]
+    return {"model": T.get("model"), "generated": T.get("generated"), "items": out[:60], "members": members,
+            "chair": chair, "chair_recent": chair_recent, "band_days": TONE_BAND_DAYS, "tag_th": TONE_TAG,
+            "policy_th": T.get("policy_share_th")}
+# 우리 의견 기울기(tilt) 규칙: 연준 트래커 확장안(2026-11-26) 05장
+TILT_BP_PER_PT = 25.0               # 점수 1점당 25bp (인하 한 번)
+TILT_CAPS = {"start": 25.0, "wide": 50.0, "off": 0.0}
+TILT_HIT_WIDE, TILT_HIT_OFF, TILT_MIN_OBS = 0.55, 0.45, 6
+GAPB_TH = (25.0, 50.0)              # 괴리 B 신호 문턱 (bp)
+
+
+def _interp_month(points, ym):
+    """[(YYYY-MM, 값)] 정렬 목록에서 ym 값을 월 단위로 선형 보간 (범위 밖이면 None)."""
+    toi = lambda m: int(m[:4]) * 12 + int(m[5:7])
+    x = toi(ym)
+    for (m0, v0), (m1, v1) in zip(points, points[1:]):
+        a, b = toi(m0), toi(m1)
+        if a <= x <= b and v0 is not None and v1 is not None:
+            return v0 + (v1 - v0) * (x - a) / (b - a) if b > a else v0
+    return None
+
+
+def _tilt(s2, s3, cap):
+    raw = -TILT_BP_PER_PT * ((s2 or 0) + (s3 or 0)) / 2 + 0.0
+    return raw, max(-cap, min(cap, raw))
+
+
+def _gapb_signal(g):
+    if g is None:
+        return None
+    a, b = GAPB_TH
+    if g >= b: return {"code": -2, "ko": "듀레이션 축소 (강)", "why": "하우스 뷰가 시장보다 훨씬 매파"}
+    if g >= a: return {"code": -1, "ko": "듀레이션 축소 (약)", "why": "하우스 뷰가 시장보다 조금 더 매파"}
+    if g <= -b: return {"code": 2, "ko": "듀레이션 확대 (강)", "why": "하우스 뷰가 시장보다 훨씬 비둘기파"}
+    if g <= -a: return {"code": 1, "ko": "듀레이션 확대 (약)", "why": "하우스 뷰가 시장보다 조금 더 비둘기파"}
+    return {"code": 0, "ko": "중립 (포지션 없음)", "why": "차이가 인하 한 번(25bp) 미만"}
+
+
+def view_block(policy, score, gro, inf, asof):
+    """컨센서스(SME 중간값) + 우리 기울기 = 우리 12개월 경로, 괴리 B = 우리 − 선물 → 듀레이션 신호.
+    기울기 = −25bp × (P2 성장·고용 + P3 물가) ÷ 2, 한도 밖은 자른다. P2·P3는 팀 스코어보드 점수(+1 = 채권 강세).
+    한도는 최근 12개월 적중률로 정한다: 기울기 방향(+ = 금리 상승 예상)과 다음 달 2년 금리 변화 방향이 같으면 적중."""
+    sme = policy.get("sme")
+    if not sme:
+        return None
+    # 적중 기록: 팀 스코어보드 월별 점수(2015~)로 거꾸로 계산
+    rows = []
+    for x in _sig_rows(gro, inf):
+        raw, _ = _tilt(x["s2"], x["s3"], 999)
+        if raw == 0 or x["d2y"] is None:
+            continue
+        rows.append({"month": x["apply_month"], "tilt_dir": 1 if raw > 0 else -1, "d2y": x["d2y"],
+                     "hit": (raw > 0) == (x["d2y"] > 0)})
+    last12 = [x for x in rows if x["month"] > f"{int(asof[:4]) - 1}-{asof[5:7]}"]
+    hits = sum(x["hit"] for x in last12)
+    rate = hits / len(last12) if last12 else None
+    if rate is None or len(last12) < TILT_MIN_OBS:
+        cap_key = "start"
+    else:
+        cap_key = "wide" if rate >= TILT_HIT_WIDE else "off" if rate < TILT_HIT_OFF else "start"
+    cap = TILT_CAPS[cap_key]
+    all_rate = sum(x["hit"] for x in rows) / len(rows) if rows else None
+    # 12개월 뒤 시점
+    y, m = int(asof[:4]) + 1, int(asof[5:7])
+    target = f"{y}-{m:02d}"
+    pts = [(p["month"], p["sme"]) for p in sme["rows"]]
+    cons = _interp_month(pts, target)
+    now = next((x for x in policy.get("snaps") or [] if x["key"] == "now"), None)
+    fut = dict(zip(now["months"], now["rates"])).get(target) if now else None
+    out = {"target": target, "consensus": r(cons, 3), "futures": r(fut, 3), "cap": cap, "cap_key": cap_key,
+           "hit": {"n12": len(last12), "hits12": hits, "rate12": None if rate is None else r(rate, 3),
+                   "n_all": len(rows), "rate_all": None if all_rate is None else r(all_rate, 3),
+                   "recent": rows[-12:][::-1]},
+           "rules": {"bp_per_pt": TILT_BP_PER_PT, "caps": TILT_CAPS, "hit_wide": TILT_HIT_WIDE, "hit_off": TILT_HIT_OFF,
+                     "min_obs": TILT_MIN_OBS, "gapb_th": GAPB_TH}}
+    for key, lab in (("current", "적용 중"), ("live", "잠정")):
+        L = score.get(key) or {}
+        if "s2_growth" not in L:
+            continue
+        raw, t = _tilt(L["s2_growth"], L["s3_inflation"], cap)
+        ours = None if cons is None else cons + t / 100
+        gb = None if ours is None or fut is None else (ours - fut) * 100
+        out[key] = {"label": lab, "apply_month": L.get("apply_month"), "decision_date": L.get("decision_date"),
+                    "p2": L["s2_growth"], "p3": L["s3_inflation"], "tilt_raw": r(raw, 1), "tilt": r(t, 1),
+                    "ours": r(ours, 3), "gap_b": r(gb, 1), "signal": _gapb_signal(gb)}
+    return out
+
+
+def _sig_rows(gro, inf):
+    """성장·고용, 인플레이션 섹션의 월별 신호 CSV를 판정일로 붙인다."""
+    m = ROOT / "macro"
+    def rd(folder):
+        with open(m / folder / "signals_monthly.csv", encoding="utf-8-sig") as f:
+            return {x["decision_date"]: x for x in csv.DictReader(f)}
+    G, F_ = rd("02_growth_jobs"), rd("03_inflation")
+    out = []
+    for d in sorted(set(G) & set(F_)):
+        a, b = G[d], F_[d]
+        try:
+            s2, s3 = int(float(a["score_growth"])), int(float(b["score_momentum"]))
+        except (TypeError, ValueError):
+            continue
+        d2 = a.get("next_d2y_bp")
+        out.append({"decision_date": d, "apply_month": a["apply_month"], "s2": s2, "s3": s3,
+                    "d2y": float(d2) if d2 not in (None, "") else None})
+    return out
+
+
+# 기조 판정표 (확장안 ③): 다섯 항목 −2~+2, + = 매파
+STANCE_W = {"S1": 0.25, "S2": 0.20, "S3": 0.25, "S4": 0.15, "S5": 0.15}
+STANCE_GRADES = [(1.0, "매파 강"), (0.3, "매파"), (-0.3, "중립"), (-1.0, "비둘기파")]   # 그 아래 = 비둘기파 강
+TONE_STEP = (0.05, 0.15)      # 성향(기준 대비) → 점수: ±0.05 넘으면 ±1, ±0.15 넘으면 ±2  (모델 치우침을 뺀 값 기준, 잠정)
+STANCE_LOG = RAW / "fed_stance_log.json"
+
+
+def _bucket(v, a, b):
+    if v is None:
+        return None
+    return 2 if v >= b else 1 if v >= a else -2 if v <= -b else -1 if v <= -a else 0
+
+
+def stance_block(policy, sep, T, asof):
+    """S1 성명, S2 점도표, S3 의장, S4 위원, S5 반대표 → 기조 점수·등급, 괴리 A(점도표 − 선물, 1년 뒤), 교차 점검.
+    S1·S3·S4는 FOMC-RoBERTa 성향에서 '모델 기준선'(최근 1년 정책 발언 성향의 중간값)을 뺀 값으로 매긴다."""
+    items = [x for x in (T.get("items") or {}).values() if x.get("policy")]
+    if not items:
+        return None
+    year_ago = back(asof, years=1)
+    recent = sorted(x["net"] for x in items if x["date"] >= year_ago)
+    base = recent[len(recent) // 2] if recent else 0.0
+    parts = {}
+    # S1 성명: 최신 성명 성향 − 기준선
+    st = sorted((x for x in items if x["kind"] == "성명"), key=lambda x: x["date"])
+    if st:
+        v = st[-1]["net"] - base
+        parts["S1"] = {"name": "성명서", "score": _bucket(v, *TONE_STEP), "basis": f"{st[-1]['date']} 성명 성향 {st[-1]['net']:+.2f} (기준선 {base:+.2f} 대비 {v:+.2f})"}
+    # S2 점도표: 내년 말 중간값의 직전 SEP 대비 변화
+    if sep and sep.get("median"):
+        ny = str(int(sep["date"][:4]) + 1)
+        a, b = sep["median"].get(ny), (sep.get("prev_median") or {}).get(ny)
+        if a is not None and b is not None:
+            dv = (a - b) * 100
+            parts["S2"] = {"name": "점도표", "score": _bucket(dv, 20, 45), "basis": f"{ny}년 말 중간값 {b:.1f}% → {a:.1f}% ({dv:+.0f}bp, {sep['date']} SEP)"}
+    # S3 의장: 최근 45일 의장 발언(기자회견·연설·증언) 평균, 없으면 마지막 기자회견
+    pcs = sorted((x for x in items if x["kind"] == "기자회견"), key=lambda x: x["date"])
+    chair = pcs[-1]["speaker"] if pcs else None
+    if chair:
+        c45 = [x for x in items if x["speaker"] == chair and x["date"] >= back(asof, days=45)] or [pcs[-1]]
+        v = sum(x["net"] for x in c45) / len(c45) - base
+        parts["S3"] = {"name": f"의장 ({chair})", "score": _bucket(v, *TONE_STEP), "basis": f"최근 발언 {len(c45)}건 평균, 기준선 대비 {v:+.2f}"}
+    # S4 위원: 지난 30일 위원 발언 평균 (투표권자 2배; 이사회 RSS 발언자는 모두 투표권자)
+    mem = [x for x in items if x["kind"] in ("연설", "의회 증언") and x["speaker"] != chair and x["date"] >= back(asof, days=30)]
+    if mem:
+        v = sum(x["net"] * 2 for x in mem) / (2 * len(mem)) - base
+        parts["S4"] = {"name": "위원 발언", "score": _bucket(v, *TONE_STEP), "basis": f"최근 30일 {len(mem)}건 (투표권자 2배) 평균, 기준선 대비 {v:+.2f}"}
+    # S5 반대표: 최근 회의
+    fm = policy.get("fomc")
+    if fm and fm.get("meetings"):
+        ds = fm["meetings"][0]["dissent"]
+        net = ds["hawk"] - ds["dove"]
+        parts["S5"] = {"name": "반대표", "score": max(-2, min(2, net)), "basis": f"{fm['meetings'][0]['date']} 회의 매파 반대 {ds['hawk']}명, 비둘기파 반대 {ds['dove']}명"}
+    have = {k: v for k, v in parts.items() if v["score"] is not None}
+    wsum = sum(STANCE_W[k] for k in have)
+    score = sum(STANCE_W[k] * v["score"] for k, v in have.items()) / wsum if wsum else None   # 빠진 항목은 나머지로 다시 나눈다
+    grade = None if score is None else next((g for th, g in STANCE_GRADES if score >= th), "비둘기파 강")
+    # 괴리 A: 점도표 경로(오늘 정책금리 → 연말 중간값 선형) 1년 뒤 − 선물 1년 뒤.  + = 시장이 연준보다 인하를 더 기대
+    V = policy.get("view") or {}
+    target = V.get("target") or f"{int(asof[:4]) + 1}-{asof[5:7]}"
+    mid = (policy["upper"] + policy["lower"]) / 2
+    pts = [(asof[:7], mid)] + [(f"{y}-12", v) for y, v in sorted((policy.get("dots") or {}).items())]
+    dot12 = _interp_month(pts, target)
+    fut = V.get("futures")
+    gap_a = None if dot12 is None or fut is None else (dot12 - fut) * 100
+    # 지난달 대비 변화(기조 전환 경고): 월별 기록 파일에 이번 달 값을 남긴다
+    log_ = read_json(STANCE_LOG, {}) or {}
+    ym = asof[:7]
+    prev = next((log_[k] for k in sorted(log_, reverse=True) if k < ym), None)
+    if score is not None:
+        log_[ym] = {"asof": asof, "score": r(score, 2), "grade": grade, "parts": {k: v["score"] for k, v in parts.items()}}
+        write_json(STANCE_LOG, log_)
+    chg = None if prev is None or score is None else score - prev["score"]
+    return {"score": r(score, 2), "grade": grade, "parts": parts, "weights": STANCE_W, "baseline": r(base, 3),
+            "gap_a": r(gap_a, 1), "dots_12m": r(dot12, 3), "futures_12m": fut, "target": target,
+            "distrust": bool(score is not None and score >= 0.3 and gap_a is not None and gap_a >= 25),
+            "prev": prev, "chg": r(chg, 2), "shift_alert": bool(chg is not None and abs(chg) >= 0.5),
+            "sep": None if not sep else {"date": sep["date"], "url": sep["url"]}, "tone_step": TONE_STEP}
+
+
+def _last_rows(folder, n=4):
+    with open(ROOT / "macro" / folder / "signals_monthly.csv", encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    return rows[-n:]
+
+
+def brief_block(policy, sep, score, asof):
+    """연준 기조 브리핑 (확장안 ②): 한 줄 결론, 현재 진단, 매크로 요소 표, 컨센서스 vs 하우스 뷰, 주의할 점.
+    모든 칸은 이미 계산된 값(5필라 신호, SEP, 기조 판정표, 우리 기울기)을 같은 틀에 채운다. 손으로 쓰는 칸 없음."""
+    ST, V = policy.get("stance"), policy.get("view")
+    if not ST or not V or not V.get("current"):
+        return None
+    vc = V["current"]
+    cur = score.get("current") or {}
+    yr = asof[:4]
+    E = (sep or {}).get("econ") or {}
+    f = lambda x: None if x in (None, "") else float(x)
+    G, IN, SU, LQ = _last_rows("02_growth_jobs"), _last_rows("03_inflation"), _last_rows("04_supply_tp"), _last_rows("05_liquidity_vol")
+    g, g3, i_, i3, su, lq = G[-1], G[0], IN[-1], IN[0], SU[-1], LQ[-1]
+    ism = []
+    with open(ROOT / "macro" / "02_growth_jobs" / "ism_manufacturing.csv", encoding="utf-8-sig") as fh:
+        ism = [x for x in csv.DictReader(fh) if f(x.get("pmi")) is not None]
+    arrow = lambda a, b, eps: None if a is None or b is None else ("↑" if a - b > eps else "↓" if b - a > eps else "→")
+    word = {1: "채권 강세 쪽 (+1)", 0: "중립 (0)", -1: "채권 약세 쪽 (−1)"}
+    pce12, pce3, une = f(i_["core_pce_12m"]), f(i_["core_pce_3m_ann"]), f(g["unrate"])
+    sep_pce, sep_une = E.get("core_pce", {}).get(yr), E.get("unemp", {}).get(yr)
+    s2, s3, s4, s5 = cur.get("s2_growth"), cur.get("s3_inflation"), cur.get("s4_supply"), cur.get("s5_liquidity_vol")
+    rows = [
+        {"factor": "물가", "now": f"근원 PCE {pce12:.2f}% (3개월 연율 {pce3:.2f}%)", "dir": arrow(pce12, f(i3["core_pce_12m"]), 0.05),
+         "cons": None if sep_pce is None else f"SEP {yr}년 {sep_pce:.1f}%", "score": word.get(s3, "–"),
+         "confirm": "3개월 연율이 12개월보다 계속 낮음" if s3 == 1 else "3개월 연율이 12개월보다 계속 높음" if s3 == -1 else "3개월−12개월 격차가 문턱을 넘음",
+         "refute": f"3개월 연율이 SEP 전망({sep_pce}%)보다 0.5%p 이상 높음" if s3 != -1 else "3개월 연율이 12개월보다 낮아짐"},
+        {"factor": "고용", "now": f"실업률 {une:.1f}%, 비농업 고용 3개월 평균 {f(g['nfp_3m_avg_k']):.0f}천 명", "dir": arrow(une, f(g3["unrate"]), 0.05),
+         "cons": None if sep_une is None else f"SEP {yr}년 실업률 {sep_une:.1f}%", "score": word.get(s2, "–"),
+         "confirm": "실업률 3개월 평균 상승, 고용 증가 둔화" if s2 == 1 else "실업률 하락, 고용 증가 가속" if s2 == -1 else "고용 격차나 실업률 변화가 문턱을 넘음",
+         "refute": "실업률이 SEP 전망 아래로 떨어짐" if s2 == 1 else "실업률이 SEP 전망보다 0.3%p 이상 높아짐"},
+        {"factor": "성장", "now": f"ISM 제조업 {f(ism[-1]['pmi']):.1f} ({ism[-1]['ref_month']})" if ism else "ISM 자료 없음 (팀 파이프라인 ism_manufacturing.csv가 비어 있음)",
+         "dir": arrow(f(ism[-1]["pmi"]), f(ism[-4]["pmi"]), 0.5) if len(ism) >= 4 else None,
+         "cons": None if not E.get("gdp", {}).get(yr) else f"SEP {yr}년 GDP {E['gdp'][yr]:.1f}%", "score": "5필라에 따로 없음 (성장·고용에 포함)",
+         "confirm": "ISM 50 위 유지 = 인하 늦출 근거", "refute": "ISM 48 아래로 하락"},
+        {"factor": "금융여건", "now": f"MOVE 월 최고 {f(lq['move_month_peak']):.0f} (3년 {f(lq['vol_pct']):.0f}%분위), VIX {f(lq['vix_pct']):.0f}%분위, Baa 스프레드 {f(lq['baa_spread']):.2f}%",
+         "dir": None, "cons": None, "score": word.get(s5, "–").replace("채권 강세 쪽", "안정").replace("채권 약세 쪽", "스트레스"),
+         "confirm": "변동성·스프레드 3년 90%분위 아래", "refute": "MOVE·VIX·스프레드 중 2개가 90%분위 위"},
+        {"factor": "재정·국채 공급", "now": f"장기물 순발행 가속 {f(su['supply_accel_pct']) * 100:+.0f}%, 10년 기간 프리미엄 {f(su['tp10']):.2f}%",
+         "dir": None, "cons": None, "score": {1: "공급 가속 (+1, 스티프닝)", 0: "중립 (0)", -1: "공급 둔화 (−1)"}.get(s4, "–"),
+         "confirm": "다음 분기 재무부 발행 계획에서 장기물 비중 유지", "refute": "기간 프리미엄 3개월 +25bp 이상 상승"}]
+    # 현재 진단: 두 목표가 연준 전망보다 위/아래
+    dp = None if sep_pce is None else pce12 - sep_pce
+    du = None if sep_une is None else une - sep_une
+    if dp is not None and du is not None:
+        worry = "물가" if dp > 0 and dp >= du else "고용" if du > 0.2 else "양쪽 균형"
+        diag = (f"근원 물가는 연준 {yr}년 전망보다 {dp:+.1f}%p, 실업률은 {du:+.1f}%p" +
+                (" → 물가 쪽 걱정이 우위" if worry == "물가" else " → 고용 쪽 걱정이 우위" if worry == "고용" else " → 양쪽이 균형"))
+    else:
+        worry, diag = None, "SEP 전망이 없어 진단을 만들지 못했습니다"
+    # 주의할 점
+    flags = []
+    if sep_pce is not None and pce3 - sep_pce >= 0.5:
+        flags.append(f"근원 PCE 3개월 연율({pce3:.2f}%)이 연준 전망({sep_pce:.1f}%)보다 0.5%p 이상 높음")
+    if du is not None and du >= 0.3:
+        flags.append(f"실업률이 연준 전망보다 {du:.1f}%p 높음")
+    if ST.get("distrust"):
+        flags.append("기조는 매파인데 시장은 연준보다 인하를 더 가격 (시장이 연준을 안 믿는 중)")
+    if ST.get("shift_alert"):
+        flags.append(f"기조 점수가 지난달보다 {ST['chg']:+.2f} 움직임 (기조 전환 가능성)")
+    if lq.get("funding_alarm") not in (None, "", "0"):
+        flags.append("단기자금시장 경보 (SOFR−IORB 20일)")
+    sig = vc["signal"]
+    if ST["score"] is not None and ((ST["score"] >= 0.3 and sig["code"] > 0) or (ST["score"] <= -0.3 and sig["code"] < 0)):
+        flags.append("하우스 뷰 듀레이션 신호가 연준 기조와 반대 방향")
+    head = (f"연준은 {ST['grade']}(기조 {ST['score']:+.2f})이고, 1년 뒤 기준 하우스 뷰는 선물보다 {vc['gap_b']:+.0f}bp → {sig['ko']}.")
+    if ST.get("gap_a") is not None:
+        head += f" 시장은 점도표보다 {abs(ST['gap_a']):.0f}bp {'높게' if ST['gap_a'] < 0 else '낮게'} 가격 중."
+    return {"asof": asof, "headline": head, "diagnosis": diag, "worry": worry, "factors": rows, "flags": flags,
+            "three": {"consensus": V["consensus"], "tilt": vc["tilt"], "ours": vc["ours"], "futures": V["futures"], "gap_b": vc["gap_b"],
+                      "signal": sig["ko"], "p2": vc["p2"], "p3": vc["p3"], "cap": V["cap"]}}
+
+
+def meeting_scorecard(policy, sep):
+    """회의 리뷰 ⑤: 회의가 있던 달에 적용 중이던 우리 기울기 방향과 회의 당일 2년 금리 방향이 같았나 (○/×).
+    기울기가 0이면 채점하지 않는다(–). 점도표 분포(SEP 그림 2)도 회의 리뷰에 붙인다."""
+    fm = policy.get("fomc")
+    if not fm:
+        return
+    tilt_by_month = {x["apply_month"]: -TILT_BP_PER_PT * (x["s2"] + x["s3"]) / 2 + 0.0 for x in _sig_rows(None, None)}
+    for m in fm["meetings"]:
+        t = tilt_by_month.get(m["date"][:7])
+        m["tilt"] = t
+        m["ox"] = None if t in (None, 0) or m["d_y2"] in (None, 0) else ("○" if (t > 0) == (m["d_y2"] > 0) else "×")
+    scored = [m for m in fm["meetings"] if m["ox"]]
+    fm["ox_hits"], fm["ox_n"] = sum(m["ox"] == "○" for m in scored), len(scored)
+    if sep and sep.get("dots"):
+        fm["dots"] = {"date": sep["date"], "url": sep["url"], "dist": sep["dots"], "median": sep.get("median"),
+                      "prev_median": sep.get("prev_median"), "prev_label": sep.get("prev_label")}
 
 
 def macro_block(I, grid, cols, events):
@@ -723,6 +1041,11 @@ def macro_block(I, grid, cols, events):
                                                  "days": (date.fromisoformat(nxt_fomc["date"]) - date.fromisoformat(asof)).days}}
     policy["fomc"] = fomc_block(I["extra"].get("fomc"), grid, cols)
     policy["sme"] = sme_block(I["extra"].get("sme"), policy, asof)
+    policy["tone"] = tone_block(read_json(RAW / "fed_tone.json", {}) or {}, I["extra"].get("fomc") or [], asof)
+    policy["view"] = view_block(policy, I["score"], gro, inf, asof)
+    policy["stance"] = stance_block(policy, I["extra"].get("sep"), read_json(RAW / "fed_tone.json", {}) or {}, asof)
+    policy["brief"] = brief_block(policy, I["extra"].get("sep"), I["score"], asof)
+    meeting_scorecard(policy, I["extra"].get("sep"))
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
