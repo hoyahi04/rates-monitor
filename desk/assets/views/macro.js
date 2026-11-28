@@ -136,6 +136,25 @@
           h('a', { href: S.url, target: '_blank', rel: 'noopener noreferrer' }, 'SME 결과 PDF'), '.') });
     }
 
+    // 기조 판정표 (확장안 ③): S1~S5 → 기조 점수·등급, 괴리 A, 교차 점검
+    const ST = P.stance;
+    let stanceCard = null;
+    if (ST && ST.score != null) {
+      const keys = ['S1', 'S2', 'S3', 'S4', 'S5'];
+      const gA = ST.gap_a;
+      const aTxt = gA == null ? '괴리 A 자료 없음' : `괴리 A(점도표 − 선물, ${ST.target.slice(0, 4)}년 ${Number(ST.target.slice(5))}월) ${F.bp(gA, 0)}: ` +
+        (gA >= 25 ? '시장이 연준보다 인하를 더 기대합니다' : gA <= -25 ? '시장이 연준보다 금리를 더 높게 봅니다 (연준 점도표보다 매파적 가격)' : '시장과 연준이 비슷합니다');
+      stanceCard = UI.card({ id: 'stance', span: 'c12', title: '기조 판정표', cap: '연준은 얼마나 매파인가, 시장은 그걸 얼마나 믿나',
+        body: [UI.concl(`연준 기조 점수 ${F.s(ST.score, 2)} → ${ST.grade}` + (ST.chg != null ? ` (지난달 ${F.s(ST.prev.score, 2)}에서 ${F.s(ST.chg, 2)})` : ''),
+            aTxt + '.' + (ST.distrust ? ' ⚠ 시장이 연준을 안 믿는 중: 기조는 매파인데 시장은 인하를 더 가격하고 있습니다.' : '') + (ST.shift_alert ? ' ⚠ 기조 전환 경고: 지난달보다 0.5 넘게 움직였습니다.' : '')),
+          UI.table([{ label: '항목', align: 'l', get: (k) => `${k} ${ST.parts[k] ? ST.parts[k].name : ''}` }, { label: '가중치', get: (k) => ST.weights[k], fmt: (v) => Math.round(v * 100) + '%' },
+            { label: '점수 (−2~+2)', get: (k) => (ST.parts[k] ? ST.parts[k].score : null), fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 2) },
+            { label: '근거', align: 'l', get: (k) => (ST.parts[k] ? ST.parts[k].basis : '자료 없음') }], { rows: keys, dense: true }),
+          h('p', { cls: 'note' }, '등급: −1.0 이하 비둘기파 강 · −1.0~−0.3 비둘기파 · ±0.3 중립 · +0.3~+1.0 매파 · +1.0 이상 매파 강. 빠진 항목이 있으면 나머지 가중치로 다시 나눕니다.')],
+        foot: `S1·S3·S4는 FOMC-RoBERTa 문장 분류 성향에서 모델 기준선(최근 1년 정책 발언 성향 중간값 ${F.s(ST.baseline, 2)})을 뺀 값으로 매깁니다: ±${ST.tone_step[0]} 넘으면 ±1, ±${ST.tone_step[1]} 넘으면 ±2 (잠정 문턱). ` +
+          `S2는 SEP 내년 말 중간값의 직전 대비 변화(±25bp = ±1, ±50bp = ±2). S5는 최근 회의 반대표. 점도표 경로는 오늘 정책금리에서 연말 중간값까지 월 단위 선형.` });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -157,25 +176,62 @@
     const talks = D.events.filter((e) => (e.kind === '연설' || e.kind === '의회 증언' || e.kind === 'FOMC' || e.kind === '연준 자료') && e.date >= from).slice(0, 8);
     const talkList = h('ul', { cls: 'list' }, talks.length ? talks.map((e) => h('li', null, h('span', { cls: 'when' }, `${F.md(e.date)} ${e.time || ''}`),
       h('span', { cls: 'what' }, e.title, h('small', null, [e.kind, e.note].filter(Boolean).join(' · '))))) : h('li', null, h('span'), h('span', { cls: 'mute' }, '공개된 예정 일정이 없습니다')));
-    // 연준 커뮤니케이션 로그: 이사회 연설·의회 증언·통화정책 보도자료(성명, 의사록)를 RSS에서 자동 수집 (최근 45일)
+    // 연준 커뮤니케이션 로그: 연설·증언·성명·기자회견(성향은 FOMC-RoBERTa 문장 분류, fed_tone.py) + 의사록(RSS)
+    const TN = P.tone;
     const cut = new Date(new Date(asof).getTime() - 45 * 864e5).toISOString().slice(0, 10);
-    const comms = (D.news || []).filter((n) => n.src === '연준' && n.ts.slice(0, 10) >= cut &&
-      (n.kind === '연설' || n.kind === '의회 증언' || (n.kind === '보도자료' && /monetary/i.test(n.cat || ''))));
-    const who = (n) => (n.kind === '보도자료' ? 'FOMC' : (n.title.split(',')[0] || '').trim());
-    const tally = {};
-    for (const n of comms) if (n.kind !== '보도자료') tally[who(n)] = (tally[who(n)] || 0) + 1;
-    const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(' · ');
-    const commsList = h('ul', { cls: 'list' }, comms.length ? comms.slice(0, 8).map((n) => {
-      const safe = /^https?:\/\//.test(n.link) ? n.link : null, ttl = n.kind === '보도자료' ? n.title : n.title.slice(n.title.indexOf(',') + 1).trim();
-      return h('li', null, h('span', { cls: 'when' }, F.md(n.ts)),
-        h('span', { cls: 'what' }, safe ? h('a', { href: safe, target: '_blank', rel: 'noopener noreferrer' }, ttl) : ttl, h('small', null, `${who(n)} · ${n.kind}`)));
-    }) : h('li', null, h('span'), h('span', { cls: 'mute' }, '최근 45일 연준 발언이 없습니다')));
-    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '연준 트래커', cap: '정책 현황 · 최근 발언 로그 · 예정 일정',
-      body: h('div', { cls: 'grid' },
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 8px;color:var(--ink);font-weight:600' }, '정책 현황'), kv(fed, true)),
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '최근 발언 로그 (45일)'), commsList,
-          h('p', { cls: 'note', style: 'margin:6px 0 0' }, comms.length ? `이사별 연설·증언 횟수: ${tallyTxt || '없음'}. 연준 이사회 RSS 기준이라 지역 연은 총재 발언은 빠져 있습니다.` : '')),
-        h('div', { cls: 'c4' }, h('p', { cls: 'note', style: 'margin:0 0 2px;color:var(--ink);font-weight:600' }, '연준 예정 일정 (미 동부 시각)'), talkList)) });
+    const minutes = (D.news || []).filter((n) => n.src === '연준' && n.kind === '보도자료' && /minutes of the federal open/i.test(n.title) && n.ts.slice(0, 10) >= cut)
+      .map((n) => ({ date: n.ts.slice(0, 10), kind: '의사록', speaker: 'FOMC', title: n.title, url: n.link, policy: true, voter: false }));
+    const logAll = (TN ? TN.items.filter((x) => x.date >= cut) : []).concat(minutes).sort((x, y) => (x.date < y.date ? 1 : -1));
+    const grp = { all: '전체', stmt: '성명·의사록', chair: '의장', member: '위원' };
+    const inGrp = (x, g) => g === 'all' || (g === 'stmt' ? (x.kind === '성명' || x.kind === '의사록') : g === 'chair' ? x.chair : !x.chair && (x.kind === '연설' || x.kind === '의회 증언'));
+    const tagCls = { 매: 'up', 비: 'down', 중: 'mute' };
+    const commsList = h('ul', { cls: 'list' });
+    const logState = { g: 'all', noise: false };
+    const drawLog = () => {
+      commsList.replaceChildren();
+      const rows = logAll.filter((x) => inGrp(x, logState.g) && (logState.noise || x.policy));
+      for (const x of rows.slice(0, 10)) {
+        const safe = /^https?:\/\//.test(x.url || '') ? x.url : null;
+        commsList.appendChild(h('li', null, h('span', { cls: 'when' }, F.md(x.date)),
+          h('span', { cls: 'what' }, safe ? h('a', { href: safe, target: '_blank', rel: 'noopener noreferrer' }, x.title) : x.title,
+            h('small', null, `${x.speaker}${x.voter ? ' ●' : ''} · ${x.kind}`, x.tag ? h('span', { cls: tagCls[x.tag], style: 'margin-left:6px;font-weight:600' }, `${x.tag} ${F.s(x.net, 2)}`) : null,
+              x.policy ? null : h('span', { cls: 'mute', style: 'margin-left:6px' }, '정책 무관')))));
+      }
+      if (!rows.length) commsList.appendChild(h('li', null, h('span'), h('span', { cls: 'mute' }, '해당하는 발언이 없습니다')));
+    };
+    const gBtns = Object.entries(grp).map(([k, lab]) => { const b = h('button', { cls: 'mini', type: 'button' }, lab); b.addEventListener('click', () => { logState.g = k; drawLog(); }); return b; });
+    const noiseBtn = h('button', { cls: 'mini', type: 'button' }, '정책 무관 포함');
+    noiseBtn.addEventListener('click', () => { logState.noise = !logState.noise; noiseBtn.textContent = logState.noise ? '정책 관련만' : '정책 무관 포함'; drawLog(); });
+    drawLog();
+    // 위원 성향 띠: 최근 90일 정책 발언 평균 (−0.5 비둘기 ~ +0.5 매파)
+    let band = null;
+    if (TN && TN.members.length) {
+      const W = 900, H0 = 44 + TN.members.length * 18, X = (v) => 20 + (Math.max(-0.5, Math.min(0.5, v)) + 0.5) * (W - 40);
+      const svg = UI.s('svg', { viewBox: `0 0 ${W} ${H0}`, width: '100%', role: 'img', 'aria-label': '위원 성향 띠' },
+        UI.s('line', { x1: X(-0.5), x2: X(0.5), y1: 14, y2: 14, stroke: 'var(--grid)', 'stroke-width': 6, 'stroke-linecap': 'round' }),
+        UI.s('line', { x1: X(0), x2: X(0), y1: 6, y2: H0 - 4, stroke: 'var(--mute)', 'stroke-dasharray': '2 3' }),
+        UI.s('text', { x: X(-0.5), y: H0 - 2, 'font-size': 10, fill: 'var(--mute)' }, '← 비둘기파'),
+        UI.s('text', { x: X(0.5), y: H0 - 2, 'font-size': 10, fill: 'var(--mute)', 'text-anchor': 'end' }, '매파 →'),
+        ...TN.members.flatMap((m, i) => [
+          UI.s('circle', { cx: X(m.avg), cy: 14, r: m.chair ? 6 : 4.5, fill: m.chair ? 'var(--s1)' : 'var(--ink)', 'fill-opacity': m.voter ? 0.9 : 0.35 }),
+          UI.s('line', { x1: X(m.avg), x2: X(m.avg), y1: 19, y2: 30 + i * 18 - 4, stroke: 'var(--axis)' }),
+          UI.s('text', { x: X(m.avg) + 6, y: 30 + i * 18 + 4, 'font-size': 11, fill: 'var(--ink)' }, `${m.name}${m.chair ? ' (의장)' : ''} ${F.s(m.avg, 2)} · ${m.n}건`)]));
+      band = svg;
+    }
+    const chairList = TN && TN.chair_recent.length ? h('ul', { cls: 'list' }, TN.chair_recent.map((x) => h('li', null, h('span', { cls: 'when' }, F.md(x.date)),
+      h('span', { cls: 'what' }, h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer' }, x.title), h('small', null, x.kind, h('span', { cls: tagCls[x.tag], style: 'margin-left:6px;font-weight:600' }, `${x.tag} ${F.s(x.net, 2)}`)),
+        x.ex_h[0] ? h('small', { style: 'display:block' }, `매파 문장 예: “${x.ex_h[0].slice(0, 90)}…”`) : null)))) : h('p', { cls: 'mute' }, '의장 발언 성향 자료가 없습니다 (fed_tone.py 실행 필요)');
+    const sub = (t) => h('p', { cls: 'note', style: 'margin:0 0 6px;color:var(--ink);font-weight:600' }, t);
+    const cbCard = UI.card({ id: 'cb', span: 'c12', title: '연준 트래커', cap: '정책 현황 · 커뮤니케이션 로그 · 위원 성향 · 예정 일정',
+      body: [h('div', { cls: 'grid' },
+        h('div', { cls: 'c4' }, sub('정책 현황'), kv(fed, true)),
+        h('div', { cls: 'c4' }, sub('커뮤니케이션 로그 (45일)'), h('div', { style: 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px' }, ...gBtns, noiseBtn), commsList),
+        h('div', { cls: 'c4' }, sub('연준 예정 일정 (미 동부 시각)'), talkList)),
+        h('div', { cls: 'grid', style: 'margin-top:14px' },
+          h('div', { cls: 'c8' }, sub(`위원 성향 띠 (최근 ${TN ? TN.band_days : 90}일 정책 발언 평균, 진한 점 = 투표권자)`), band || h('p', { cls: 'mute' }, '성향 자료가 없습니다')),
+          h('div', { cls: 'c4' }, sub(`의장${TN && TN.chair ? ' ' + TN.chair : ''} 최근 발언`), chairList))],
+      foot: `성향 = (매파 문장 − 비둘기파 문장) ÷ 전체 문장, −1~+1. 문장마다 FOMC-RoBERTa(Shah et al. 2023)로 분류합니다. 한 발언은 ±${TN ? TN.tag_th : 0.1} 넘으면 매·비로 표시하고, 판정에는 한 달 평균만 씁니다. ` +
+        `정책 키워드 문장이 ${TN && TN.policy_th ? Math.round(TN.policy_th * 100) : 20}% 미만이면 '정책 무관'으로 가립니다. ● = 올해 투표권자. 연준 이사회 RSS 기준이라 지역 연은 총재 연설은 아직 빠져 있습니다.` });
 
     // ── 인플레이션 ──
     const sp = Object.fromEntries(D.spreads.map((r) => [r.key, r]));
@@ -218,7 +274,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, fomcCard, cbCard, inflCard].filter(Boolean) };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['stance', '기조 판정표'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, stanceCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();
