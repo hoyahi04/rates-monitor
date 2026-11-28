@@ -405,6 +405,11 @@ def book_block(I):
     perf = {k: {"p": r(ret(navp, t), 3), "b": r(ret(navb, t), 3), "ex_bp": r(exc_since(t), 2)} for k, t in marks.items()}
     perf["itd"] = {"p": r(S["cum_p"], 3), "b": r(S["cum_b"], 3), "ex_bp": r(S["excess_cum_bp"], 2)}
     pnl_d1 = navp[-1] - navp[-2]
+    # 일별 손익 설명(backtest.py가 만든 것). 마지막 날이 같으면 일간 손익을 그 합으로 맞춘다 (반올림 전 값).
+    explain = P.get("explain")
+    if explain and explain["days"] and explain["days"][-1]["date"] == asof:
+        e = explain["days"][-1]
+        pnl_d1 = (e["p"]["c"] + e["p"]["r"] + sum(e["p"]["k"]) + e["p"]["x"]) / 1e4 * e["nav_p"]
 
     # 포지션: 구간마다 모형 채권 한 종목. 리밸런싱일의 par 금리를 쿠폰으로 발행됐다고 보고 오늘 금리로 다시 값을 매긴다.
     # 벤치마크 쪽 모형 채권도 같은 방법으로 오늘 값을 매겨야 듀레이션 차이가 같은 날 기준이 된다.
@@ -511,7 +516,9 @@ def book_block(I):
                                     "months", "months_active", "months_win", "n_rebal", "c_dur", "c_slope", "c_curv", "hit",
                                     "best", "worst")},
         "risk": {"te_exante_bp": P["risk"]["te_exante_bp"], "te_max_bp": P["risk"]["te_max_bp"], "budget": P["risk"]["budget"],
-                 "scenarios": P["risk"]["scenarios"], "var": var, "stress": stress, "parallel": par_shift},
+                 "scenarios": P["risk"]["scenarios"], "var": var, "stress": stress, "parallel": par_shift,
+                 "limits": P["risk"].get("limits")},
+        "explain": explain,
         "series": {"dates": dts, "nav_p": [round(x) for x in navp], "nav_b": [round(x) for x in navb], "excess_bp": exc,
                    "alt_excess_bp": alt.get("series")},
         "months": months, "years": P["years"], "cum": cum_series,
