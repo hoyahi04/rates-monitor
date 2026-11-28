@@ -646,6 +646,110 @@ def tone_block(T, fomc, asof):
             "policy_th": T.get("policy_share_th")}
 
 
+# 우리 의견 기울기(tilt) 규칙: 연준 트래커 확장안(2026-11-26) 05장
+TILT_BP_PER_PT = 25.0               # 점수 1점당 25bp (인하 한 번)
+TILT_CAPS = {"start": 25.0, "wide": 50.0, "off": 0.0}
+TILT_HIT_WIDE, TILT_HIT_OFF, TILT_MIN_OBS = 0.55, 0.45, 6
+GAPB_TH = (25.0, 50.0)              # 괴리 B 신호 문턱 (bp)
+
+
+def _interp_month(points, ym):
+    """[(YYYY-MM, 값)] 정렬 목록에서 ym 값을 월 단위로 선형 보간 (범위 밖이면 None)."""
+    toi = lambda m: int(m[:4]) * 12 + int(m[5:7])
+    x = toi(ym)
+    for (m0, v0), (m1, v1) in zip(points, points[1:]):
+        a, b = toi(m0), toi(m1)
+        if a <= x <= b and v0 is not None and v1 is not None:
+            return v0 + (v1 - v0) * (x - a) / (b - a) if b > a else v0
+    return None
+
+
+def _tilt(s2, s3, cap):
+    raw = -TILT_BP_PER_PT * ((s2 or 0) + (s3 or 0)) / 2 + 0.0
+    return raw, max(-cap, min(cap, raw))
+
+
+def _gapb_signal(g):
+    if g is None:
+        return None
+    a, b = GAPB_TH
+    if g >= b: return {"code": -2, "ko": "듀레이션 축소 (강)", "why": "우리가 시장보다 훨씬 매파"}
+    if g >= a: return {"code": -1, "ko": "듀레이션 축소 (약)", "why": "우리가 시장보다 조금 더 매파"}
+    if g <= -b: return {"code": 2, "ko": "듀레이션 확대 (강)", "why": "우리가 시장보다 훨씬 비둘기파"}
+    if g <= -a: return {"code": 1, "ko": "듀레이션 확대 (약)", "why": "우리가 시장보다 조금 더 비둘기파"}
+    return {"code": 0, "ko": "중립 (포지션 없음)", "why": "차이가 인하 한 번(25bp) 미만"}
+
+
+def view_block(policy, score, gro, inf, asof):
+    """컨센서스(SME 중간값) + 우리 기울기 = 우리 12개월 경로, 괴리 B = 우리 − 선물 → 듀레이션 신호.
+    기울기 = −25bp × (P2 성장·고용 + P3 물가) ÷ 2, 한도 밖은 자른다. P2·P3는 팀 스코어보드 점수(+1 = 채권 강세).
+    한도는 최근 12개월 적중률로 정한다: 기울기 방향(+ = 금리 상승 예상)과 다음 달 2년 금리 변화 방향이 같으면 적중."""
+    sme = policy.get("sme")
+    if not sme:
+        return None
+    # 적중 기록: 팀 스코어보드 월별 점수(2015~)로 거꾸로 계산
+    rows = []
+    for x in _sig_rows(gro, inf):
+        raw, _ = _tilt(x["s2"], x["s3"], 999)
+        if raw == 0 or x["d2y"] is None:
+            continue
+        rows.append({"month": x["apply_month"], "tilt_dir": 1 if raw > 0 else -1, "d2y": x["d2y"],
+                     "hit": (raw > 0) == (x["d2y"] > 0)})
+    last12 = [x for x in rows if x["month"] > f"{int(asof[:4]) - 1}-{asof[5:7]}"]
+    hits = sum(x["hit"] for x in last12)
+    rate = hits / len(last12) if last12 else None
+    if rate is None or len(last12) < TILT_MIN_OBS:
+        cap_key = "start"
+    else:
+        cap_key = "wide" if rate >= TILT_HIT_WIDE else "off" if rate < TILT_HIT_OFF else "start"
+    cap = TILT_CAPS[cap_key]
+    all_rate = sum(x["hit"] for x in rows) / len(rows) if rows else None
+    # 12개월 뒤 시점
+    y, m = int(asof[:4]) + 1, int(asof[5:7])
+    target = f"{y}-{m:02d}"
+    pts = [(p["month"], p["sme"]) for p in sme["rows"]]
+    cons = _interp_month(pts, target)
+    now = next((x for x in policy.get("snaps") or [] if x["key"] == "now"), None)
+    fut = dict(zip(now["months"], now["rates"])).get(target) if now else None
+    out = {"target": target, "consensus": r(cons, 3), "futures": r(fut, 3), "cap": cap, "cap_key": cap_key,
+           "hit": {"n12": len(last12), "hits12": hits, "rate12": None if rate is None else r(rate, 3),
+                   "n_all": len(rows), "rate_all": None if all_rate is None else r(all_rate, 3),
+                   "recent": rows[-12:][::-1]},
+           "rules": {"bp_per_pt": TILT_BP_PER_PT, "caps": TILT_CAPS, "hit_wide": TILT_HIT_WIDE, "hit_off": TILT_HIT_OFF,
+                     "min_obs": TILT_MIN_OBS, "gapb_th": GAPB_TH}}
+    for key, lab in (("current", "적용 중"), ("live", "잠정")):
+        L = score.get(key) or {}
+        if "s2_growth" not in L:
+            continue
+        raw, t = _tilt(L["s2_growth"], L["s3_inflation"], cap)
+        ours = None if cons is None else cons + t / 100
+        gb = None if ours is None or fut is None else (ours - fut) * 100
+        out[key] = {"label": lab, "apply_month": L.get("apply_month"), "decision_date": L.get("decision_date"),
+                    "p2": L["s2_growth"], "p3": L["s3_inflation"], "tilt_raw": r(raw, 1), "tilt": r(t, 1),
+                    "ours": r(ours, 3), "gap_b": r(gb, 1), "signal": _gapb_signal(gb)}
+    return out
+
+
+def _sig_rows(gro, inf):
+    """성장·고용, 인플레이션 섹션의 월별 신호 CSV를 판정일로 붙인다."""
+    m = ROOT / "macro"
+    def rd(folder):
+        with open(m / folder / "signals_monthly.csv", encoding="utf-8-sig") as f:
+            return {x["decision_date"]: x for x in csv.DictReader(f)}
+    G, F_ = rd("02_growth_jobs"), rd("03_inflation")
+    out = []
+    for d in sorted(set(G) & set(F_)):
+        a, b = G[d], F_[d]
+        try:
+            s2, s3 = int(float(a["score_growth"])), int(float(b["score_momentum"]))
+        except (TypeError, ValueError):
+            continue
+        d2 = a.get("next_d2y_bp")
+        out.append({"decision_date": d, "apply_month": a["apply_month"], "s2": s2, "s3": s3,
+                    "d2y": float(d2) if d2 not in (None, "") else None})
+    return out
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -756,6 +860,7 @@ def macro_block(I, grid, cols, events):
     policy["fomc"] = fomc_block(I["extra"].get("fomc"), grid, cols)
     policy["sme"] = sme_block(I["extra"].get("sme"), policy, asof)
     policy["tone"] = tone_block(read_json(RAW / "fed_tone.json", {}) or {}, I["extra"].get("fomc") or [], asof)
+    policy["view"] = view_block(policy, I["score"], gro, inf, asof)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
