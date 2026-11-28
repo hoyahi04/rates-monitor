@@ -155,6 +155,30 @@
           `S2는 SEP 내년 말 중간값의 직전 대비 변화(±25bp = ±1, ±50bp = ±2). S5는 최근 회의 반대표. 점도표 경로는 오늘 정책금리에서 연말 중간값까지 월 단위 선형.` });
     }
 
+    // 연준 기조 브리핑 (확장안 ②): 매달 같은 틀, 모든 칸 자동
+    const BR = P.brief;
+    let briefCard = null;
+    if (BR) {
+      const T3 = BR.three;
+      briefCard = UI.card({ id: 'brief', span: 'c12', title: '연준 기조 브리핑', cap: `${BR.asof} 기준 · 매달 같은 틀로 자동 작성`,
+        body: [UI.concl(BR.headline, `현재 진단: ${BR.diagnosis}.`),
+          h('p', { cls: 'note', style: 'margin:10px 0 4px;color:var(--ink);font-weight:600' }, '매크로 요소'),
+          UI.table([{ label: '요소', align: 'l', get: (x) => x.factor }, { label: '현재 값', align: 'l', get: (x) => x.now }, { label: '3개월', get: (x) => x.dir || '' },
+            { label: '연준 전망', align: 'l', get: (x) => x.cons || '' }, { label: '우리 점수', align: 'l', get: (x) => x.score },
+], { rows: BR.factors, dense: true }),
+          h('p', { cls: 'note', style: 'margin:10px 0 4px;color:var(--ink);font-weight:600' }, '미리 정한 확인 신호'),
+          UI.table([{ label: '요소', align: 'l', get: (x) => x.factor }, { label: '맞았다는 신호', align: 'l', get: (x) => x.confirm }, { label: '틀렸다는 신호', align: 'l', get: (x) => x.refute }], { rows: BR.factors, dense: true }),
+          h('p', { cls: 'note', style: 'margin:10px 0 4px;color:var(--ink);font-weight:600' }, '컨센서스 vs 우리'),
+          h('ul', { cls: 'note', style: 'margin:0 0 8px 18px' },
+            h('li', null, `컨센서스: SME 중간값 ${F.n(T3.consensus, 2)}% (1년 뒤), 선물 ${F.n(T3.futures, 2)}%`),
+            h('li', null, `우리 기울기: ${F.bp(T3.tilt, 1)} (한도 ±${T3.cap}bp) · 근거 P2 ${F.s(T3.p2, 0)}, P3 ${F.s(T3.p3, 0)}`),
+            h('li', null, `결과: 우리 경로 ${F.n(T3.ours, 2)}% − 선물 = 괴리 B ${F.bp(T3.gap_b, 0)} → ${T3.signal}`)),
+          h('p', { cls: 'note', style: 'margin:10px 0 4px;color:var(--ink);font-weight:600' }, '주의할 점'),
+          BR.flags.length ? h('ul', { style: 'margin:0 0 0 18px;color:var(--up-ink)' }, BR.flags.map((t) => h('li', null, t)))
+            : h('p', { cls: 'note' }, '켜진 경고 없음 (물가·실업률이 연준 전망에서 크게 벗어나지 않았고, 시장과 연준의 괴리 경고도 없음)')],
+        foot: '한 줄 결론은 기조 판정표와 우리 기울기에서, 현재 진단은 SEP 전망 대비 실제 값에서, 매크로 요소 점수는 팀 5필라 스코어보드(적용 중인 달)에서 가져옵니다. 맞았다/틀렸다는 신호는 미리 정한 규칙입니다.' });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -274,7 +298,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['stance', '기조 판정표'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, stanceCard, fomcCard, cbCard, inflCard].filter(Boolean) };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['brief', '기조 브리핑'], ['cons', '컨센서스 vs 우리'], ['stance', '기조 판정표'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, briefCard, consCard, stanceCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();

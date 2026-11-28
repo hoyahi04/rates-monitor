@@ -828,6 +828,84 @@ def stance_block(policy, sep, T, asof):
             "sep": None if not sep else {"date": sep["date"], "url": sep["url"]}, "tone_step": TONE_STEP}
 
 
+def _last_rows(folder, n=4):
+    with open(ROOT / "macro" / folder / "signals_monthly.csv", encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    return rows[-n:]
+
+
+def brief_block(policy, sep, score, asof):
+    """연준 기조 브리핑 (확장안 ②): 한 줄 결론, 현재 진단, 매크로 요소 표, 컨센서스 vs 우리, 주의할 점.
+    모든 칸은 이미 계산된 값(5필라 신호, SEP, 기조 판정표, 우리 기울기)을 같은 틀에 채운다. 손으로 쓰는 칸 없음."""
+    ST, V = policy.get("stance"), policy.get("view")
+    if not ST or not V or not V.get("current"):
+        return None
+    vc = V["current"]
+    cur = score.get("current") or {}
+    yr = asof[:4]
+    E = (sep or {}).get("econ") or {}
+    f = lambda x: None if x in (None, "") else float(x)
+    G, IN, SU, LQ = _last_rows("02_growth_jobs"), _last_rows("03_inflation"), _last_rows("04_supply_tp"), _last_rows("05_liquidity_vol")
+    g, g3, i_, i3, su, lq = G[-1], G[0], IN[-1], IN[0], SU[-1], LQ[-1]
+    ism = []
+    with open(ROOT / "macro" / "02_growth_jobs" / "ism_manufacturing.csv", encoding="utf-8-sig") as fh:
+        ism = [x for x in csv.DictReader(fh) if f(x.get("pmi")) is not None]
+    arrow = lambda a, b, eps: None if a is None or b is None else ("↑" if a - b > eps else "↓" if b - a > eps else "→")
+    word = {1: "채권 강세 쪽 (+1)", 0: "중립 (0)", -1: "채권 약세 쪽 (−1)"}
+    pce12, pce3, une = f(i_["core_pce_12m"]), f(i_["core_pce_3m_ann"]), f(g["unrate"])
+    sep_pce, sep_une = E.get("core_pce", {}).get(yr), E.get("unemp", {}).get(yr)
+    s2, s3, s4, s5 = cur.get("s2_growth"), cur.get("s3_inflation"), cur.get("s4_supply"), cur.get("s5_liquidity_vol")
+    rows = [
+        {"factor": "물가", "now": f"근원 PCE {pce12:.2f}% (3개월 연율 {pce3:.2f}%)", "dir": arrow(pce12, f(i3["core_pce_12m"]), 0.05),
+         "cons": None if sep_pce is None else f"SEP {yr}년 {sep_pce:.1f}%", "score": word.get(s3, "–"),
+         "confirm": "3개월 연율이 12개월보다 계속 낮음" if s3 == 1 else "3개월 연율이 12개월보다 계속 높음" if s3 == -1 else "3개월−12개월 격차가 문턱을 넘음",
+         "refute": f"3개월 연율이 SEP 전망({sep_pce}%)보다 0.5%p 이상 높음" if s3 != -1 else "3개월 연율이 12개월보다 낮아짐"},
+        {"factor": "고용", "now": f"실업률 {une:.1f}%, 비농업 고용 3개월 평균 {f(g['nfp_3m_avg_k']):.0f}천 명", "dir": arrow(une, f(g3["unrate"]), 0.05),
+         "cons": None if sep_une is None else f"SEP {yr}년 실업률 {sep_une:.1f}%", "score": word.get(s2, "–"),
+         "confirm": "실업률 3개월 평균 상승, 고용 증가 둔화" if s2 == 1 else "실업률 하락, 고용 증가 가속" if s2 == -1 else "고용 격차나 실업률 변화가 문턱을 넘음",
+         "refute": "실업률이 SEP 전망 아래로 떨어짐" if s2 == 1 else "실업률이 SEP 전망보다 0.3%p 이상 높아짐"},
+        {"factor": "성장", "now": f"ISM 제조업 {f(ism[-1]['pmi']):.1f} ({ism[-1]['ref_month']})" if ism else "ISM 자료 없음 (팀 파이프라인 ism_manufacturing.csv가 비어 있음)",
+         "dir": arrow(f(ism[-1]["pmi"]), f(ism[-4]["pmi"]), 0.5) if len(ism) >= 4 else None,
+         "cons": None if not E.get("gdp", {}).get(yr) else f"SEP {yr}년 GDP {E['gdp'][yr]:.1f}%", "score": "5필라에 따로 없음 (성장·고용에 포함)",
+         "confirm": "ISM 50 위 유지 = 인하 늦출 근거", "refute": "ISM 48 아래로 하락"},
+        {"factor": "금융여건", "now": f"MOVE 월 최고 {f(lq['move_month_peak']):.0f} (3년 {f(lq['vol_pct']):.0f}%분위), VIX {f(lq['vix_pct']):.0f}%분위, Baa 스프레드 {f(lq['baa_spread']):.2f}%",
+         "dir": None, "cons": None, "score": word.get(s5, "–").replace("채권 강세 쪽", "안정").replace("채권 약세 쪽", "스트레스"),
+         "confirm": "변동성·스프레드 3년 90%분위 아래", "refute": "MOVE·VIX·스프레드 중 2개가 90%분위 위"},
+        {"factor": "재정·국채 공급", "now": f"장기물 순발행 가속 {f(su['supply_accel_pct']) * 100:+.0f}%, 10년 기간 프리미엄 {f(su['tp10']):.2f}%",
+         "dir": None, "cons": None, "score": {1: "공급 가속 (+1, 스티프닝)", 0: "중립 (0)", -1: "공급 둔화 (−1)"}.get(s4, "–"),
+         "confirm": "다음 분기 재무부 발행 계획에서 장기물 비중 유지", "refute": "기간 프리미엄 3개월 +25bp 이상 상승"}]
+    # 현재 진단: 두 목표가 연준 전망보다 위/아래
+    dp = None if sep_pce is None else pce12 - sep_pce
+    du = None if sep_une is None else une - sep_une
+    if dp is not None and du is not None:
+        worry = "물가" if dp > 0 and dp >= du else "고용" if du > 0.2 else "양쪽 균형"
+        diag = (f"근원 물가는 연준 {yr}년 전망보다 {dp:+.1f}%p, 실업률은 {du:+.1f}%p" +
+                (" → 물가 쪽 걱정이 우위" if worry == "물가" else " → 고용 쪽 걱정이 우위" if worry == "고용" else " → 양쪽이 균형"))
+    else:
+        worry, diag = None, "SEP 전망이 없어 진단을 만들지 못했습니다"
+    # 주의할 점
+    flags = []
+    if sep_pce is not None and pce3 - sep_pce >= 0.5:
+        flags.append(f"근원 PCE 3개월 연율({pce3:.2f}%)이 연준 전망({sep_pce:.1f}%)보다 0.5%p 이상 높음")
+    if du is not None and du >= 0.3:
+        flags.append(f"실업률이 연준 전망보다 {du:.1f}%p 높음")
+    if ST.get("distrust"):
+        flags.append("기조는 매파인데 시장은 연준보다 인하를 더 가격 (시장이 연준을 안 믿는 중)")
+    if ST.get("shift_alert"):
+        flags.append(f"기조 점수가 지난달보다 {ST['chg']:+.2f} 움직임 (기조 전환 가능성)")
+    if lq.get("funding_alarm") not in (None, "", "0"):
+        flags.append("단기자금시장 경보 (SOFR−IORB 20일)")
+    sig = vc["signal"]
+    if ST["score"] is not None and ((ST["score"] >= 0.3 and sig["code"] > 0) or (ST["score"] <= -0.3 and sig["code"] < 0)):
+        flags.append("우리 듀레이션 신호가 연준 기조와 반대 방향")
+    head = (f"연준은 {ST['grade']}(기조 {ST['score']:+.2f})이고, 1년 뒤 기준 우리 경로는 선물보다 {vc['gap_b']:+.0f}bp → {sig['ko']}.")
+    if ST.get("gap_a") is not None:
+        head += f" 시장은 점도표보다 {abs(ST['gap_a']):.0f}bp {'높게' if ST['gap_a'] < 0 else '낮게'} 가격 중."
+    return {"asof": asof, "headline": head, "diagnosis": diag, "worry": worry, "factors": rows, "flags": flags,
+            "three": {"consensus": V["consensus"], "tilt": vc["tilt"], "ours": vc["ours"], "futures": V["futures"], "gap_b": vc["gap_b"],
+                      "signal": sig["ko"], "p2": vc["p2"], "p3": vc["p3"], "cap": V["cap"]}}
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -940,6 +1018,7 @@ def macro_block(I, grid, cols, events):
     policy["tone"] = tone_block(read_json(RAW / "fed_tone.json", {}) or {}, I["extra"].get("fomc") or [], asof)
     policy["view"] = view_block(policy, I["score"], gro, inf, asof)
     policy["stance"] = stance_block(policy, I["extra"].get("sep"), read_json(RAW / "fed_tone.json", {}) or {}, asof)
+    policy["brief"] = brief_block(policy, I["extra"].get("sep"), I["score"], asof)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
