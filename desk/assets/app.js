@@ -140,7 +140,7 @@
     else if (st.region === 'KR' && v.usOnly) notes.push(h('div', { cls: 'banner' }, '이 화면은 미국 자료만 있습니다. 한국 자료는 시장 모니터, 매크로·정책의 중앙은행, 크레딧·소버린에 있습니다.'));
     view.replaceChildren(
       h('div', { cls: 'vhead' }, h('p', { cls: 'q' }, m.name + ' · ' + (v.q || m.q)), h('h1', null, v.title), v.lead ? h('p', { cls: 'lead', role: 'doc-subtitle' }, v.lead) : null, v.sub ? h('p', { cls: 'sub' }, v.sub) : null,
-        v.tabs ? h('div', { cls: 'tabs' }, v.tabs.map(([id, t]) => { const a = h('a', { href: '#/' + route + '/' + id }, t); return a; })) : null),
+        v.tabs ? h('div', { cls: 'tabs' }, v.tabs.map(([id, t]) => h('a', { href: '#/' + route + '/' + id, 'aria-current': v.tab === id ? 'page' : null }, t))) : null),
       notes, h('div', { cls: 'grid' }, v.body));
     document.title = m.name + ' · Rates Desk';
     if (keepScroll) window.scrollTo(0, y);
