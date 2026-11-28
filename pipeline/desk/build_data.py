@@ -385,6 +385,23 @@ def krd_per100(coupon, maturity, settle, cx, cy, dirty):
     return out
 
 
+SIZING_DELTA_KRW = 1e7      # 세미나 기준: "델타 천만 원" = 금리 1bp에 손익 천만 원
+
+
+def sizing_rows(cx, cy, settle):
+    """만기마다 오늘 par 금리로 새로 발행된 국채 한 종목을 놓고 1bp당 손익과 볼록성을 잰다.
+    화면은 이걸로 '1bp당 천만 원'에 필요한 액면을 원·달러로 계산한다 (환율은 화면에서 곱한다)."""
+    out = []
+    for name, T in KRD_KEYS:
+        y = bm.interp(cx, cy, T)
+        mat = date(settle.year + T, settle.month, min(settle.day, 28))
+        a = bm.analytics(y, mat, settle, yield_pct=y)
+        dv01 = a["dirty"] / 100 * a["mdur"] * 1e-4              # 액면 1달러당 1bp 손익 (달러)
+        out.append({"tenor": name, "years": T, "ytm": r(y, 3), "mdur": r(a["mdur"], 3), "conv": r(a["conv"], 2),
+                    "dv01_per_usd": dv01, "gamma100_per_usd": 0.5 * a["conv"] * 1e-4 * a["dirty"] / 100})
+    return {"delta_krw": SIZING_DELTA_KRW, "rows": out}
+
+
 def book_block(I):
     P, U = I["pf"], I["U"]
     S, ser, now = P["stats"], P["series"], P["now"]
@@ -421,7 +438,7 @@ def book_block(I):
         return a
 
     pos, tot_dv01_p, tot_dv01_b = [], 0.0, 0.0
-    krd_rows = []
+    krd_rows, gam = [], []      # gam: 감마(볼록성) 보정과 재평가에 쓰는 (포트폴리오 채권, 벤치마크 채권, 액면들)
     for b in now["buckets"]:
         a = model_bond(b["coupon"], b["mat_p"])
         cb = bm.interp(dx, dy, b["mat_b"])
@@ -437,11 +454,12 @@ def book_block(I):
         dv01_b = nav * b["w_b"] / 100 * ab["mdur"] * 1e-4
         tot_dv01_p += dv01
         tot_dv01_b += dv01_b
+        gam.append((b["coupon"], a, mv / dirty * 100, cb, ab, par_b))
         pos.append({"id": b["id"], "label": b["label"], "name": f"모형 국채 {b['label']}", "coupon": r(b["coupon"], 3),
                     "maturity": a["maturity"], "ttm": r(a["ttm"], 2), "price": r(a["clean"], 3), "accrued": r(a["accrued"], 4),
                     "ytm": r(a["ytm"], 3), "mdur": r(a["mdur"], 3), "conv": r(a["conv"], 2),
                     "par": r(mv / dirty * 100, 0), "mv": r(mv, 0), "w_p": r(b["w_p"], 2), "w_b": r(b["w_b"], 2),
-                    "dur_b": r(ab["mdur"], 3), "mat_b": r(ab["ttm"], 2), "dv01": r(dv01, 0), "dv01_b": r(dv01_b, 0),
+                    "dur_b": r(ab["mdur"], 3), "conv_b": r(ab["conv"], 2), "mat_b": r(ab["ttm"], 2), "dv01": r(dv01, 0), "dv01_b": r(dv01_b, 0),
                     "c_p": r(b["w_p"] / 100 * a["mdur"], 4), "c_b": r(b["w_b"] / 100 * ab["mdur"], 4),
                     "active": r(b["w_p"] / 100 * a["mdur"] - b["w_b"] / 100 * ab["mdur"], 4)})
 
@@ -467,20 +485,43 @@ def book_block(I):
             continue
         x0, y0 = curve_at(U, i0)
         x1, y1 = curve_at(U, i1)
-        rp = rb = 0.0
+        rp = rb = gp = gb = 0.0
         for p in pos:
             dy_p = bm.interp(x1, y1, p["ttm"]) - bm.interp(x0, y0, p["ttm"])
             dy_b = bm.interp(x1, y1, p["mat_b"]) - bm.interp(x0, y0, p["mat_b"])
+            # 1차(델타) = −듀레이션 × Δy, 2차(감마) = ½ × 볼록성 × Δy² (Δy는 %p라 /100을 한 번 더)
+            gp += p["w_p"] / 100 * 0.5 * p["conv"] * dy_p ** 2 / 100
+            gb += p["w_b"] / 100 * 0.5 * p["conv_b"] * dy_b ** 2 / 100
             rp += -p["w_p"] / 100 * p["mdur"] * dy_p
             rb += -p["w_b"] / 100 * p["dur_b"] * dy_b
+        rp, rb = rp + gp, rb + gb
         d = lambda T: r((bm.interp(x1, y1, T) - bm.interp(x0, y0, T)) * 100, 0)
         stress.append({"label": label, "from": U["dates"][i0], "to": U["dates"][i1], "d2": d(2), "d10": d(10), "d30": d(30),
-                       "p_pct": r(rp, 2), "b_pct": r(rb, 2), "active_bp": r((rp - rb) * 100, 1), "p_usd": r(rp / 100 * nav, 0)})
+                       "p_pct": r(rp, 2), "b_pct": r(rb, 2), "active_bp": r((rp - rb) * 100, 1), "p_usd": r(rp / 100 * nav, 0),
+                       "g_usd": r(gp / 100 * nav, 0)})
 
     dur_p = sum(p["w_p"] / 100 * p["mdur"] for p in pos)
     dur_b = sum(p["w_b"] / 100 * p["dur_b"] for p in pos)
-    par_shift = [{"bp": s, "p_usd": r(-dur_p * s / 100 / 100 * nav, 0), "p_pct": r(-dur_p * s / 100, 2),
-                  "active_bp": r(-(dur_p - dur_b) * s, 1)} for s in (-100, -50, -25, 25, 50, 100)]
+    conv_p = sum(p["w_p"] / 100 * p["conv"] for p in pos)
+    conv_b = sum(p["w_b"] / 100 * p["conv_b"] for p in pos)
+
+    def reprice(s):
+        """커브 전체를 s bp 평행 이동하고 채권마다 가격을 다시 매긴 손익 (포트폴리오, 벤치마크, 달러)"""
+        out = [0.0, 0.0]
+        for c, a, par, cb, ab, par_bb in gam:
+            for k, (cp, x, pr) in enumerate(((c, a, par), (cb, ab, par_bb))):
+                new = bm.dirty_from_yield(cp, x["maturity"], settle, x["ytm"] + s / 100)
+                out[k] += (new - x["dirty"]) * pr / 100
+        return out
+
+    par_shift = []
+    for s in (-100, -50, -25, 25, 50, 100):
+        d_usd, g_usd = -dur_p * s / 1e4 * nav, 0.5 * conv_p * (s / 1e4) ** 2 * nav
+        full_p, full_b = reprice(s)
+        par_shift.append({"bp": s, "d_usd": r(d_usd, 0), "g_usd": r(g_usd, 0), "p_usd": r(d_usd + g_usd, 0),
+                          "full_usd": r(full_p, 0), "p_pct": r((d_usd + g_usd) / nav * 100, 2),
+                          "active_bp": r(-(dur_p - dur_b) * s + 0.5 * (conv_p - conv_b) * s ** 2 / 1e4, 1),
+                          "full_active_bp": r((full_p - full_b) / nav * 1e4, 1)})
 
     # 귀속: 달별, 연도별, 전략별 누적
     months, cum = [], {"dur": 0.0, "slope": 0.0, "curv": 0.0}
@@ -519,6 +560,8 @@ def book_block(I):
                         "ex": r(x["excess_bp"], 1), "partial": x["partial"]} for x in P["rebalances"]],
         "alt": {k: alt.get(k) for k in ("name", "rule", "excess_cum_bp", "excess_ann_bp", "te_bp", "ir", "now", "train", "test")},
         "initial": P["initial"],
+        "conv_p": r(conv_p, 2), "conv_b": r(conv_b, 2),
+        "sizing": sizing_rows(cx, cy, settle),
     }
 
 
@@ -1045,6 +1088,46 @@ def macro_block(I, grid, cols, events):
 
 
 # ───────────────────────── 수급·펀딩 ─────────────────────────
+OIS_HORIZONS = [("1M", 30, 1 / 12), ("3M", 91, .25), ("6M", 182, .5), ("1Y", 365, 1)]
+
+
+def tsy_ois_block(I):
+    """국채 − OIS 스프레드의 대용치 (1년 이하만).
+    스왑 호가가 없으므로 OIS 금리를 연방기금금리 선물(월물별 내재 금리)로 만든다:
+    그 기간의 월물 금리를 날짜 수로 가중해 복리로 쌓고(Act/360), 365일 기준으로 바꾼 뒤, 최근 20영업일 SOFR − EFFR 평균을 더해 SOFR OIS로 본다.
+    국채는 같은 날 재무부 CMT(1·3·6개월, 1년) 금리다. 2년 이상은 선물 월물이 모자라 만들지 않는다."""
+    fut = (I["pol_s"].get("futures") or {})
+    snap = next((s for s in fut.get("snaps") or [] if s.get("key") == "now"), None)
+    if not snap:
+        return None
+    d0 = date.fromisoformat(snap["date"])
+    strip = dict(zip(snap["months"], snap["rates"]))
+    ld = I["liq_d"]["daily"]
+    pairs = [(s, e) for s, e in zip(ld["sofr"], ld["effr"]) if s is not None and e is not None][-20:]
+    basis = mean([s - e for s, e in pairs]) if pairs else 0.0
+    U = I["U"]
+    ui = idx_on_or_before(U["dates"], snap["date"])
+    rows = []
+    for name, days, yrs in OIS_HORIZONS:
+        grow, cover, t = 1.0, 0, d0
+        end = d0 + timedelta(days=days)
+        while t < end:                                      # 하루씩: 그날이 든 달의 선물 금리로 하루치 이자
+            v = strip.get(t.isoformat()[:7])
+            if v is None:
+                break
+            grow *= 1 + v / 100 / 360
+            cover += 1
+            t += timedelta(days=1)
+        tsy = U["yields"][name][ui] if name in U["yields"] else None
+        if cover < days or tsy is None:
+            continue
+        ff = (grow - 1) * 360 / days * 100 * 365 / 360       # 연방기금 OIS (365일 기준, %)
+        so = ff + basis
+        rows.append({"tenor": name, "years": yrs, "tsy": r(tsy, 3), "ois_ff": r(ff, 3), "ois_sofr": r(so, 3),
+                     "spread_bp": r((tsy - so) * 100, 1)})
+    return {"date": snap["date"], "basis_bp": r(basis * 100, 1), "n_basis": len(pairs), "rows": rows}
+
+
 def flows_block(I, grid, cols):
     sup, sd, liq = I["sup_s"], I["sup_d"], I["liq_d"]
     ex = I["extra"]
@@ -1118,13 +1201,15 @@ def flows_block(I, grid, cols):
             fund_rows.append({"key": key, "label": label, "unit": "십억 달러", "level": s["level"], "date": s["date"],
                               "d1": None, "w1": s["chg"]["d1"], "m1": s["chg"]["m1"], "y1": s["chg"]["y1"],
                               "pct3y": s["pct3y"], "chg_unit": "십억 달러"})
+    tsy_ois = tsy_ois_block(I)
     lc = I["liq_s"]["current"]
     off = lc.get("mtd") or lc.get("official") or {}
     th = I["liq_s"]["thresholds"]
     funding = {"rows": fund_rows, "alarm_bp": th.get("fund"), "alarm_days": th.get("fund_days"),
                "fund_avg_bp": off.get("fund"), "alarm_on": bool(off.get("alarm"))}
     return {"auctions": {"upcoming": up, "recent": recent, "tail_note": "발행 전 거래(WI) 금리가 없어 tail은 계산하지 못합니다"},
-            "demand": demand, "issuance": issuance, "soma": soma, "cftc": cftc, "funding": funding}
+            "demand": demand, "issuance": issuance, "soma": soma, "cftc": cftc, "funding": funding,
+            "tsy_ois": tsy_ois}
 
 
 # ───────────────────────── 크레딧·소버린 ─────────────────────────

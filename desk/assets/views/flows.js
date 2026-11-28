@@ -100,6 +100,28 @@
         h('p', { cls: 'note' }, `경보는 SOFR − IORB의 ${fu.alarm_days}영업일 평균이 +${fu.alarm_bp}bp를 넘을 때 켜집니다. 지금 평균은 ${F.s(fu.fund_avg_bp, 1)}bp입니다. 금리 변화는 bp, 잔액 변화는 억 달러입니다.`)] });
     const fundChart = UI.card({ span: 'c6', title: 'SOFR·EFFR − IORB', cap: 'bp · 0보다 크게 오르면 지급준비금이 빠듯하다는 신호', body: sofr.chart, alt: sofr.alt });
 
+    // ── 국채 − OIS 스프레드 (대용치): 같은 만기의 국채 금리가 정책금리 기대(OIS)보다 얼마나 높은가 ──
+    const TO = FL.tsy_ois;
+    let toCard;
+    if (TO && TO.rows.length) {
+      const wide = TO.rows.reduce((a, x) => (Math.abs(x.spread_bp) > Math.abs(a.spread_bp) ? x : a), TO.rows[0]);
+      const y1 = TO.rows.find((x) => x.tenor === '1Y') || TO.rows[TO.rows.length - 1];
+      const word = (v) => (v >= 0 ? `OIS보다 ${F.n(v, 1)}bp 높음` : `OIS보다 ${F.n(-v, 1)}bp 낮음`);
+      toCard = UI.card({ id: 'tsyois', span: 'c12', title: '국채 − OIS 스프레드 (대용치)', cap: `1년 이하 · ${TO.date} · bp`, flush: true,
+        body: [UI.concl(`${y1.tenor} 국채 금리는 ${word(y1.spread_bp)}이고, 차이가 가장 큰 만기는 ${wide.tenor} (${F.bp(wide.spread_bp, 1)})입니다`,
+            `국채가 OIS보다 높으면(+) 국채 공급이 많거나 담보 수요가 약해 국채가 싼 쪽, 낮으면(−) 국채가 비싼 쪽입니다. SOFR − EFFR 최근 ${TO.n_basis}영업일 평균 ${F.bp(TO.basis_bp, 1)}를 더해 SOFR 기준으로 맞췄습니다.`),
+          UI.bars({ cats: TO.rows.map((x) => x.tenor), h: 160, sign: true, unit: '', xEvery: 1, tipFmt: (v) => F.bp(v, 1), aria: '만기별 국채 − SOFR OIS 스프레드',
+            series: [{ name: '국채 − SOFR OIS', color: 'var(--s1)', values: TO.rows.map((x) => x.spread_bp) }] }),
+          UI.table([{ label: '만기', align: 'l', get: (x) => x.tenor },
+            { label: '국채 (CMT)', get: (x) => x.tsy, fmt: (v) => F.n(v, 3) + '%' },
+            { label: '연방기금 OIS (선물)', title: '연방기금금리 선물 월물 금리를 그 기간 날짜 수로 복리로 쌓은 값 (365일 기준)', get: (x) => x.ois_ff, fmt: (v) => F.n(v, 3) + '%' },
+            { label: 'SOFR OIS 환산', title: '연방기금 OIS + SOFR − EFFR 평균', get: (x) => x.ois_sofr, fmt: (v) => F.n(v, 3) + '%' },
+            { label: '국채 − SOFR OIS', get: (x) => x.spread_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 20) }], { rows: TO.rows, dense: true })],
+        foot: '세미나 사례(국채-OIS 스프레드 전략)는 블룸버그 스왑 호가로 OIS 제로커브를 만들고, 스프레드를 국채 수급 요인(연준 보유 국채, 재무부 일반계정·발행)에 회귀해 적정 가치에서 벌어지면 진입해 평균 복귀(보유 약 6주)를 노립니다. 무료 자료에는 스왑 호가가 없어 여기서는 연방기금금리 선물로 1년 이하 OIS만 근사했습니다. 그래서 (1) 2년 이상 만기는 만들 수 없고, (2) Yahoo는 만료된 선물 월물을 주지 않아 과거 시계열과 z-score를 만들 수 없으며, (3) 국채는 채권 환산 수익률, OIS는 단리 환산이라 몇 bp 오차가 있을 수 있습니다. 회귀에 쓸 수급 요인(연준 보유, TGA, 순발행)은 이 화면의 다른 카드에 있습니다.' });
+    } else {
+      toCard = UI.card({ id: 'tsyois', span: 'c12', title: '국채 − OIS 스프레드', body: UI.empty('자료 없음', '연방기금금리 선물 자료가 없어 OIS 대용치를 만들지 못했습니다. 2년 이상 만기의 스왑 스프레드는 무료 스왑 호가가 없어 만들 수 없습니다.') });
+    }
+
     // ── FX 헤지 비용 ──
     let fxCard;
     if (ctx.krOk && D.kr.series.cols.hedge_3m) {
@@ -132,7 +154,7 @@
       sofrRow ? `SOFR − IORB의 3년 백분위 ${F.n(sofrRow.pct3y, 0)} (80부터 빠듯한 편으로 봄)` : null].filter(Boolean).join(' · ');
     return { title: `${stem}이고, ${fundVerdict}`, lead: `${aucTxt}, ${fundTxt}`, usOnly: true,
       sub: `근거: ${why}. 수급 신호는 과거에 커브 방향을 잘 맞히지 못했으므로 예측이 아니라 지금 상태의 요약으로 읽으세요. 입찰은 재무부, 포지션은 CFTC(주 1회), 조달 금리는 뉴욕 연준과 FRED 자료입니다.`,
-      tabs: [['auctions', '입찰·발행 캘린더'], ['issuance', '순발행'], ['positioning', '포지셔닝'], ['funding', '레포·펀딩'], ['fx', 'FX 헤지 비용']],
-      body: [upCard, resCard, issCard, somaCard, cfCard, fundCard, fundChart, fxCard] };
+      tabs: [['auctions', '입찰·발행 캘린더'], ['issuance', '순발행'], ['positioning', '포지셔닝'], ['funding', '레포·펀딩'], ['tsyois', '국채−OIS'], ['fx', 'FX 헤지 비용']],
+      body: [upCard, resCard, issCard, somaCard, cfCard, fundCard, fundChart, toCard, fxCard] };
   };
 })();

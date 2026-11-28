@@ -205,22 +205,66 @@
                  ['1일 VaR 95%', F.usd(V.d1_95_usd), `${F.n(V.d1_95_pct, 2)}%`], ['1일 VaR 99%', F.usd(V.d1_99_usd), `${F.n(V.d1_99_pct, 2)}%`], ['상대 VaR 95%', F.n(V.rel_95_bp, 1), 'bp / 일'],
                  ['연 변동성', F.n(V.vol_ann_pct, 2), '%'], ['최대 일간 손실', F.n(V.worst_day, 2), '%'], ['규칙상 최대 추적오차', F.n(R.te_max_bp, 0), 'bp']]),
              h('p', { cls: 'note' }, `VaR는 최근 3년(${V.n}영업일) 일별 손익을 크기순으로 늘어놓고 5%, 1% 자리의 값을 읽은 것입니다. 상대 VaR는 벤치마크 대비 하루 손실입니다. 규칙이 낼 수 있는 가장 큰 포지션에서도 추적오차가 위험예산 하단에 못 미칩니다.`)] });
-    const scenCard = UI.card({ id: 'scenario', span: 'c7', title: '시나리오', cap: '금리가 한 번에 움직이면', flush: true,
-      body: [UI.table([{ label: '평행 이동', align: 'l', get: (x) => x.bp, fmt: (v) => F.bp(v) }, { label: '포트폴리오 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v), heat: (v) => UI.heat(v, 700000) },
-        { label: '수익률', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%' }, { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 25) }],
-        { rows: R.parallel, dense: true }),
+    // 평행 이동: 1차(델타 = −듀레이션 × Δy)에 2차(감마 = ½ × 볼록성 × Δy²)를 더하고, 채권마다 다시 값을 매긴 값과 맞춰 본다
+    const hasG = R.parallel.length && ok(R.parallel[0].g_usd);
+    const shock = R.parallel.reduce((a, x) => (Math.abs(x.bp) > Math.abs(a.bp) ? x : a), R.parallel[0] || { bp: 0 });
+    const gammaNote = hasG ? UI.concl(`금리가 ${Math.abs(shock.bp)}bp 움직이면 감마(볼록성)가 방향과 상관없이 ${F.usdS(shock.g_usd)}를 보태 줍니다`,
+      `델타만 보면 ${F.usdS(shock.d_usd)}, 감마까지 더하면 ${F.usdS(shock.p_usd)}, 채권마다 다시 값을 매기면 ${F.usdS(shock.full_usd)}입니다. 포트폴리오 볼록성 ${F.n(B.conv_p, 1)} (벤치마크 ${F.n(B.conv_b, 1)}).`) : null;
+    const parCols = hasG
+      ? [{ label: '평행 이동', align: 'l', get: (x) => x.bp, fmt: (v) => F.bp(v) },
+        { label: '델타 (1차)', title: '−듀레이션 × 금리 변화 × NAV', get: (x) => x.d_usd, fmt: (v) => F.usdS(v) },
+        { label: '감마 보정', title: '½ × 볼록성 × 금리 변화² × NAV. 금리가 어느 쪽으로 움직여도 +', get: (x) => x.g_usd, fmt: (v) => F.usdS(v) },
+        { label: '델타 + 감마', get: (x) => x.p_usd, fmt: (v) => F.usdS(v), heat: (v) => UI.heat(v, 700000) },
+        { label: '다시 값 매김', title: '채권마다 수익률을 그만큼 옮겨 가격을 다시 계산한 손익 (정답). 델타 + 감마와의 차이는 3차 이상 항', get: (x) => x.full_usd, fmt: (v) => F.usdS(v) },
+        { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 25) }]
+      : [{ label: '평행 이동', align: 'l', get: (x) => x.bp, fmt: (v) => F.bp(v) }, { label: '포트폴리오 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v), heat: (v) => UI.heat(v, 700000) },
+        { label: '수익률', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%' }, { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 25) }];
+    const scenCard = UI.card({ id: 'scenario', span: 'c7', title: '시나리오', cap: '금리가 한 번에 움직이면 · 델타와 감마', flush: true,
+      body: [gammaNote, UI.table(parCols, { rows: R.parallel, dense: true }),
         h('div', { style: 'height:10px' }),
         UI.table([{ label: '커브 모양 변화', align: 'l', get: (x) => x.label }, { label: '벤치마크 대비', get: (x) => x.bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 15) }],
           { rows: R.scenarios.filter((x) => !x.label.startsWith('평행')), dense: true })],
-      foot: '듀레이션만으로 계산한 근사입니다 (볼록성과 그동안 받는 이자는 뺌).' });
+      foot: hasG ? '평행 이동 표: 델타는 듀레이션으로 본 1차 손익, 감마 보정은 볼록성으로 본 2차 손익입니다. 둘을 더하면 채권마다 다시 값을 매긴 손익과 거의 같아집니다 (남은 오차는 3차 이상 항). 금리가 0% 근처로 낮거나 장기물이 많을수록 감마가 커집니다. 그동안 받는 이자(캐리)는 뺐습니다. 커브 모양 변화 표는 듀레이션만으로 본 근사입니다.'
+        : '듀레이션만으로 계산한 근사입니다 (볼록성과 그동안 받는 이자는 뺌).' });
     const stressCard = UI.card({ id: 'stress', span: 'c12', title: '스트레스 테스트', cap: '과거 국면의 금리 변화를 지금 포트폴리오에 그대로 적용하면', flush: true,
       body: UI.table([{ label: '국면', align: 'l', get: (x) => x.label }, { label: '기간', align: 'l', get: (x) => x.from, fmt: (_, x) => `${x.from} ~ ${x.to}` },
         { label: '2년', get: (x) => x.d2, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) }, { label: '10년', get: (x) => x.d10, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) },
         { label: '30년', get: (x) => x.d30, fmt: (v) => F.bp(v), heat: (v) => UI.heat(v, 150) },
-        { label: '포트폴리오 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v) }, { label: '포트폴리오', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%', heat: (v) => UI.heat(v, 9) },
+        { label: '포트폴리오 손익', get: (x) => x.p_usd, fmt: (v) => F.usdS(v) },
+        ...(R.stress.length && ok(R.stress[0].g_usd) ? [{ label: '그중 감마', title: '½ × 볼록성 × 금리 변화². 손익에 이미 들어 있음', get: (x) => x.g_usd, fmt: (v) => F.usdS(v) }] : []),
+        { label: '포트폴리오', get: (x) => x.p_pct, fmt: (v) => F.s(v, 2) + '%', heat: (v) => UI.heat(v, 9) },
         { label: '벤치마크', get: (x) => x.b_pct, fmt: (v) => F.s(v, 2) + '%' }, { label: '벤치마크 대비', get: (x) => x.active_bp, fmt: (v) => F.bp(v, 1), heat: (v) => UI.heat(v, 30) }],
         { rows: R.stress, dense: true }),
-      foot: '금리 변화 색은 오름이 빨강이고, 손익 색은 이익이 빨강입니다. 듀레이션만으로 계산한 근사라 금리가 크게 움직인 국면에서는 손실이 실제보다 조금 크게 나옵니다.' });
+      foot: R.stress.length && ok(R.stress[0].g_usd)
+        ? '금리 변화 색은 오름이 빨강이고, 손익 색은 이익이 빨강입니다. 손익은 델타(듀레이션)에 감마(볼록성) 보정을 더한 값입니다. 그동안 받는 이자는 뺐습니다.'
+        : '금리 변화 색은 오름이 빨강이고, 손익 색은 이익이 빨강입니다. 듀레이션만으로 계산한 근사라 금리가 크게 움직인 국면에서는 손실이 실제보다 조금 크게 나옵니다.' });
+
+    // ── 포지션 사이징: "델타 천만 원" (금리 1bp에 손익 천만 원)이 되려면 만기마다 얼마를 사야 하나 ──
+    let sizeCard = null;
+    const SZ = B.sizing, fxRow = (D.xasset || []).find((x) => x.key === 'usdkrw');
+    if (SZ && SZ.rows.length && fxRow && ok(fxRow.level)) {
+      const fx = fxRow.level, dk = SZ.delta_krw;
+      const eok = (v) => F.n(v / 1e8, 0) + '억 원';
+      const rows = SZ.rows.map((x) => {
+        const usd = dk / fx / x.dv01_per_usd;                    // 필요한 액면 (달러)
+        return Object.assign({}, x, { usd, krw: usd * fx, rough: dk / (x.years * 1e-4), g100: x.gamma100_per_usd * usd * fx });
+      });
+      const bookKrw = B.dv01 * fx, units = bookKrw / dk;
+      const r1 = rows.find((x) => x.years === 1), r10 = rows.find((x) => x.years === 10), r30 = rows.find((x) => x.years === 30);
+      sizeCard = UI.card({ id: 'sizing', span: 'c12', title: '포지션 사이징', cap: `델타 천만 원 (금리 1bp에 손익 ${F.n(dk / 1e4, 0)}만 원) 기준 · 원/달러 ${F.n(fx, 1)} (${fxRow.date})`, flush: true,
+        body: [UI.concl(`같은 델타 천만 원이라도 1년물은 ${eok(r1.krw)}, 10년물은 ${eok(r10.krw)}, 30년물은 ${eok(r30.krw)}어치입니다`,
+            `만기가 길수록 1bp당 손익이 커서 같은 위험에 필요한 금액이 줄어듭니다. 지금 모형 포트폴리오의 DV01 ${F.usd(B.dv01)}는 원화로 약 ${F.n(bookKrw / 1e4, 0)}만 원 / bp, 델타 천만 원의 ${F.n(units, 2)}배입니다.`),
+          UI.table([{ label: '만기', align: 'l', get: (x) => x.tenor },
+            { label: '오늘 금리', title: '재무부 par 금리', get: (x) => x.ytm, fmt: (v) => F.n(v, 2) + '%' },
+            { label: '수정듀레이션', title: '오늘 par 금리로 새로 발행된 국채 기준 (년)', get: (x) => x.mdur, fmt: (v) => F.n(v, 2) },
+            { label: '필요 금액 (원)', title: '1bp에 천만 원이 움직이는 액면 = 천만 원 ÷ (가격 × 수정듀레이션 × 0.0001)', get: (x) => x.krw, fmt: (v) => eok(v) },
+            { label: '필요 금액 (달러)', get: (x) => x.usd, fmt: (v) => '$' + F.n(v / 1e6, 1) + 'M' },
+            { label: '어림 (듀레이션 = 만기)', title: '천만 원 ÷ (만기 × 0.0001). 세미나의 손계산 방식', get: (x) => x.rough, fmt: (v) => eok(v) },
+            { label: '볼록성', get: (x) => x.conv, fmt: (v) => F.n(v, 1) },
+            { label: '100bp 움직일 때 감마', title: '그 금액을 들고 금리가 100bp 움직일 때 ½ × 볼록성 × (1%)² 만큼 더 버는 금액', get: (x) => x.g100, fmt: (v) => '+' + F.n(v / 1e4, 0) + '만 원' }],
+          { rows, dense: true })],
+        foot: '세미나에서 말한 "델타 천만 원"을 만기별로 계산한 표입니다. 필요 금액은 오늘 par 금리로 새로 발행된 국채 한 종목 기준이고, 실제 종목은 쿠폰과 잔존만기에 따라 조금 다릅니다. 어림 열은 듀레이션을 만기로 본 손계산(1년 1,000억, 3년 333억, 10년 100억, 30년 33억)이고, 이자를 반기마다 받는 효과 때문에 장기물일수록 실제 듀레이션이 만기보다 짧아 필요 금액이 어림보다 큽니다 (30년물 듀레이션은 약 15년). 같은 델타라도 장기물은 감마가 훨씬 커서, 금리가 크게 움직이면 손익이 델타만으로 본 것과 달라집니다.' });
+    }
 
     const act = B.active_dur;
     const lead = `포트폴리오 듀레이션은 벤치마크보다 ${Math.abs(act).toFixed(2)}년 ${act >= 0 ? '길고' : '짧고'} DV01은 ${F.usd(B.dv01)}입니다. ${B.start.slice(0, 4)}년 말 이후 초과수익은 ${F.bp(ex('itd'), 0)}, 올해는 ${F.bp(ex('ytd'), 0)}입니다.${ranked.length ? ` 액티브 KRD가 가장 큰 만기는 ${ranked[0][0]} (${F.usdS(ranked[0][1])} / bp)입니다` : ''}`;
@@ -232,7 +276,7 @@
     const title = `포트폴리오는 ${posWord}, ${perfWord}`;
     return { title, lead, usOnly: true,
       sub: `근거: 사전 추적오차 ${F.n(te, 0)}bp는 위험예산 하단 ${bud[0]}bp의 ${F.n(use * 100, 0)}% (60% 미만이면 소폭으로 봄). 정보비율 ${F.n(S.ir, 2)} × √${F.n(S.years, 1)}년 = t ${F.n(tStat, 2)} (절댓값이 2에 못 미치면 우연과 구분되지 않는다고 봄). 가상 USD 10M을 미국 국채에 규칙대로 운용한 모형 포트폴리오이고, 벤치마크는 공개 자료로 만든 미국 국채 대용 지수입니다.`,
-      tabs: [['krd', 'KRD'], ['adjust', '조정'], ['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
-      body: [tiles, krdCard, adjustCard, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard] };
+      tabs: [['krd', 'KRD'], ['adjust', '조정'], ['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트'], ...(sizeCard ? [['sizing', '포지션 사이징']] : [])],
+      body: [tiles, krdCard, adjustCard, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard, sizeCard] };
   };
 })();
