@@ -103,39 +103,26 @@
         foot: `임시 기준입니다. 연 한도는 위험예산 하단(${L.budget_bp}bp)만큼, 월 한도는 그 절반으로 두었고, 한도의 ${F.n(L.warn * 100, 0)}%를 쓰면 주의로 표시합니다. 모형 포트폴리오는 한도를 넘어도 규칙대로 운용을 계속하므로, 이 카드는 표시만 합니다.` });
     }
 
-    // ── 구성 (도넛): 만기 구간별 비중. 평가금액 기준과 DV01 기준을 바꿔 볼 수 있다 ──
-    const BK = B.positions, bcol = (i) => `var(--b${i + 1})`;
-    const mUsd = (v) => '$' + F.n(v / 1e6, 2) + 'M';
-    let basis = 'dv01';   // 운용에서는 금액보다 금리 위험(DV01)으로 본다
-    const donutSlot = h('div');
-    const drawDonut = () => donutSlot.replaceChildren(UI.donut({ h: 230, aria: '만기 구간별 포트폴리오 구성',
-      center: basis === 'mv' ? [mUsd(B.nav), `듀레이션 ${F.n(B.dur_p, 2)}년`] : [F.usd(B.dv01), 'DV01 / bp'],
-      segments: BK.map((p, i) => ({ name: `${p.label} · 모형 국채 ${F.n(p.coupon, 3)}% ${p.maturity}`, value: basis === 'mv' ? p.mv : p.dv01, color: bcol(i),
-        tipRows: [{ name: '평가금액', value: F.usd(p.mv) }, { name: '듀레이션', value: F.n(p.mdur, 2) + '년' }, { name: 'DV01', value: F.usd(p.dv01) }, { name: '벤치마크 비중', value: F.n(p.w_b, 1) + '%' }] })) }));
-    drawDonut();
-    const bBtn = (key, text) => {
-      const b = h('button', { cls: 'mini', type: 'button', 'aria-pressed': String(basis === key) }, text);
-      b.dataset.k = key;
-      b.addEventListener('click', () => { basis = key; b.parentNode.querySelectorAll('[data-k]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.k === key))); drawDonut(); });
-      return b;
-    };
+    // ── 구성: 만기별 금리 위험(키레이트 DV01)을 벤치마크와 나란히. 금액 비중이 아니라 1bp당 손익으로 본다 ──
+    const BK = B.positions;
+    const K = B.krd || { keys: [], rows: [] }, nk = K.keys.length;
+    const sumRow = (k) => K.keys.map((_, j) => K.rows.reduce((t, x) => t + x[k][j], 0));
+    const krdP = sumRow('p'), krdB = sumRow('b'), krdA = krdP.map((v, j) => v - krdB[j]);
+    const tot = (a) => a.reduce((t, v) => t + v, 0);
     const dvTot = BK.reduce((t, p) => t + p.dv01, 0), dvTotB = BK.reduce((t, p) => t + p.dv01_b, 0);
-    const composeCard = UI.card({ id: 'compose', span: 'c5', title: '내 포트폴리오', cap: '만기 구간별 구성',
-      tools: [h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, bBtn('dv01', 'DV01'), bBtn('mv', '평가금액'))],
-      body: [donutSlot, h('div', { style: 'height:6px' }),
-        UI.table([{ label: '만기 구간', align: 'l', get: (p) => p.label, fmt: (v, p) => [h('i', { cls: 'sw', style: `background:${bcol(BK.indexOf(p))}` }), v] },
+    const composeCard = UI.card({ id: 'compose', span: 'c5', title: '내 포트폴리오', cap: '만기별 금리 위험 · 달러 / bp',
+      body: [UI.bars({ cats: K.keys, h: 230, unit: '', tipFmt: (v) => F.usd(v) + ' / bp', aria: '만기별 키레이트 DV01, 포트폴리오와 벤치마크',
+               series: [{ name: '포트폴리오', color: 'var(--s1)', values: krdP }, { name: '벤치마크', color: 'var(--s-mute)', values: krdB }] }),
+        h('div', { style: 'height:6px' }),
+        UI.table([{ label: '만기 구간', align: 'l', get: (p) => p.label },
           { label: 'DV01', title: '금리 1bp 하락 때 이 구간에서 버는 금액', get: (p) => p.dv01, fmt: (v) => F.usd(v) },
           { label: 'DV01 비중', title: '포트폴리오 전체 DV01 가운데 이 구간이 차지하는 몫', get: (p) => p.dv01 / dvTot * 100, fmt: (v) => F.n(v, 1) + '%' },
           { label: '벤치마크', title: '벤치마크 DV01 가운데 이 구간의 몫', get: (p) => p.dv01_b / dvTotB * 100, fmt: (v) => F.n(v, 1) + '%' },
           { label: '평가금액 비중', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }],
           { rows: BK, dense: true, foot: ['합계', F.usd(dvTot), '100%', '100%', '100%'] })],
-      foot: `${B.asof} 평가. 기본은 DV01 기준(금리가 1bp 움직일 때 손익)이고, 평가금액 기준으로 바꿔 볼 수 있습니다. 평가금액 비중은 벤치마크와 같지만 구간 안에서 만기를 옮겨 DV01이 달라집니다. 국채만 보유하고 현금은 없습니다.` });
+      foot: `${B.asof} 평가. 막대는 그 만기 금리만 1bp 내릴 때 버는 금액(키레이트 DV01)이고, 포트폴리오와 벤치마크의 차이가 액티브 포지션입니다. 표는 보유 구간별 DV01입니다. 평가금액 비중은 벤치마크와 같지만 구간 안에서 만기를 옮겨 DV01이 달라집니다. 국채만 보유하고 현금은 없습니다.` });
 
     // ── 키레이트 듀레이션 (KRD) 행렬: 종목 × 만기, 그 만기 금리만 ±1bp 움직였을 때 손익 ──
-    const K = B.krd || { keys: [], rows: [] }, nk = K.keys.length;
-    const sumRow = (k) => K.keys.map((_, j) => K.rows.reduce((t, x) => t + x[k][j], 0));
-    const krdP = sumRow('p'), krdB = sumRow('b'), krdA = krdP.map((v, j) => v - krdB[j]);
-    const tot = (a) => a.reduce((t, v) => t + v, 0);
     let kMode = 'p';
     const krdSlot = h('div');
     const drawKrd = () => {
@@ -218,14 +205,15 @@
     const settle = BondMath.ymd(BondMath.nextBusinessDay(B.asof));
     const posCard = UI.card({ id: 'blotter', span: 'c12', title: '보유 종목', cap: `${B.asof} 평가 · ${F.md(B.decision_date)} 리밸런싱 · ${posTxt(B.position)} · 줄을 누르면 채권 상세`, flush: true,
       body: UI.table([{ label: '구간', align: 'l', get: (p) => p.label }, { label: '종목', align: 'l', get: (p) => p.maturity, fmt: (_, p) => `모형 국채 ${F.n(p.coupon, 3)}% ${p.maturity}` },
-        { label: '액면', get: (p) => p.par, fmt: (v) => F.usd(v) }, { label: '가격', get: (p) => p.price, fmt: (v) => F.n(v, 3) }, { label: '평가금액', get: (p) => p.mv, fmt: (v) => F.usd(v) },
-        { label: '비중', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }, { label: '벤치마크 비중', get: (p) => p.w_b, fmt: (v) => F.n(v, 1) + '%' },
-        { label: 'YTM', get: (p) => p.ytm, fmt: (v) => F.n(v, 2) + '%' }, { label: '듀레이션', get: (p) => p.mdur, fmt: (v) => F.n(v, 2) },
-        { label: '벤치마크 듀레이션', get: (p) => p.dur_b, fmt: (v) => F.n(v, 2) }, { label: 'DV01', get: (p) => p.dv01, fmt: (v) => F.usd(v) },
-        { label: '액티브 듀레이션 기여도', title: '비중 × 듀레이션의 포트폴리오와 벤치마크 차이 (년)', get: (p) => p.active, fmt: (v) => F.s(v, 3), heat: (v) => UI.heat(v, 0.1) }],
+        { label: 'DV01', title: '금리 1bp 하락 때 버는 금액', get: (p) => p.dv01, fmt: (v) => F.usd(v) }, { label: '벤치마크 DV01', get: (p) => p.dv01_b, fmt: (v) => F.usd(v) },
+        { label: '듀레이션', get: (p) => p.mdur, fmt: (v) => F.n(v, 2) }, { label: '벤치마크 듀레이션', get: (p) => p.dur_b, fmt: (v) => F.n(v, 2) },
+        { label: '액티브 듀레이션 기여도', title: '비중 × 듀레이션의 포트폴리오와 벤치마크 차이 (년)', get: (p) => p.active, fmt: (v) => F.s(v, 3), heat: (v) => UI.heat(v, 0.1) },
+        { label: 'YTM', get: (p) => p.ytm, fmt: (v) => F.n(v, 2) + '%' }, { label: '가격', get: (p) => p.price, fmt: (v) => F.n(v, 3) },
+        { label: '액면', get: (p) => p.par, fmt: (v) => F.usd(v) }, { label: '평가금액', get: (p) => p.mv, fmt: (v) => F.usd(v) },
+        { label: '비중', title: '평가금액 비중. 벤치마크와 같게 둔다', get: (p) => p.w_p, fmt: (v) => F.n(v, 1) + '%' }],
         { rows: pos, dense: true, onRow: (p) => ctx.openBond({ title: `모형 국채 ${F.n(p.coupon, 3)}% ${p.maturity}`, sub: `${p.label} 구간 · 실제 종목이 아닌 모형 채권`, coupon: p.coupon, maturity: p.maturity, settle, ytm: p.ytm,
             tags: ['모형 종목'], source: '가격은 그날 재무부 par 커브에서 읽은 금리로 계산했습니다.' }),
-          foot: pos.length === B.positions.length ? ['합계', '', '', '', F.usd(B.nav), '100%', '100%', '', F.n(B.dur_p, 2), F.n(B.dur_b, 2), F.usd(B.dv01), F.s(B.active_dur, 3)] : null }),
+          foot: pos.length === B.positions.length ? ['합계', '', F.usd(B.dv01), F.usd(B.dv01_b), F.n(B.dur_p, 2), F.n(B.dur_b, 2), F.s(B.active_dur, 3), '', '', '', F.usd(B.nav), '100%'] : null }),
       foot: B.model_note + ` 비중은 벤치마크와 같게 두고, 구간 안에서 만기를 옮겨 포지션을 만듭니다. 액티브 듀레이션은 오늘 금리로 다시 계산한 값이라 리밸런싱일의 ${F.s(B.rule_active_dur, 2)}년과 조금 다릅니다. 평균 매입가와 실현·미실현 손익은 실제 종목으로 바꾼 뒤에 채울 수 있습니다.` });
 
     // ── 거래 내역 ──
