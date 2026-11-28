@@ -109,8 +109,24 @@
     if (S && S.rows && S.rows.length) {
       const hd = S.head, g = hd ? hd.gap_bp : null;
       const word = g == null ? null : g >= 25 ? '컨센서스보다 매파적으로(금리를 높게) 가격하고 있습니다' : g <= -25 ? '컨센서스보다 비둘기적으로(금리를 낮게) 가격하고 있습니다' : '컨센서스와 비슷하게 가격하고 있습니다';
-      consCard = UI.card({ id: 'cons', span: 'c12', title: '시장 가격 vs 컨센서스', cap: `연방기금금리 선물 vs 뉴욕 연은 시장참가자 설문(SME, ${S.survey}) vs 점도표`,
-        body: [hd ? UI.concl(`약 1년 뒤(${hd.label}) 기준으로 선물은 ${F.n(hd.fut, 2)}%, SME 중간값은 ${F.n(hd.sme, 2)}%라서 시장은 ${word}`,
+      // 컨센서스 + 우리 기울기 = 우리 경로 → 괴리 B (우리 − 선물) → 듀레이션 신호
+      const V = P.view, vc = V && V.current, vl = V && V.live;
+      const tiltWhy = (x) => `P2 성장·고용 ${F.s(x.p2, 0)}, P3 물가 ${F.s(x.p3, 0)} → −25bp × (${F.s(x.p2, 0)} ${x.p3 < 0 ? '−' : '+'} ${Math.abs(x.p3)}) ÷ 2 = ${F.bp(x.tilt_raw, 1)}` + (x.tilt !== x.tilt_raw ? ` → 한도에서 잘라 ${F.bp(x.tilt, 1)}` : '');
+      const capKo = { start: '시작 한도', wide: '확대 한도 (적중률 55% 이상)', off: '0 (적중률 45% 미만, 컨센서스만 사용)' };
+      const viewPart = vc ? [
+        UI.concl(`우리 기울기는 ${F.bp(vc.tilt, 1)}라서 1년 뒤(${V.target.slice(0, 4)}년 ${Number(V.target.slice(5))}월) 우리 경로는 ${F.n(vc.ours, 2)}%, 선물은 ${F.n(V.futures, 2)}%입니다. 괴리 B ${F.bp(vc.gap_b, 0)} → ${vc.signal.ko}`,
+          `${vc.label} 점수(${F.mon(vc.apply_month + '-01')} 적용, ${vc.decision_date} 판정) 기준. ` + (vl ? `잠정 점수(${F.mon(vl.apply_month + '-01')})로 바꾸면 기울기 ${F.bp(vl.tilt, 1)}, 괴리 B ${F.bp(vl.gap_b, 0)} → ${vl.signal.ko}.` : '')),
+        UI.table([{ label: '줄', align: 'l', get: (x) => x[0] }, { label: '1년 뒤 금리', get: (x) => x[1], fmt: (v) => (v == null ? '' : F.n(v, 2) + '%') }, { label: '내용', align: 'l', get: (x) => x[2] }],
+          { rows: [['① 컨센서스 (SME 중간값)', V.consensus, `뉴욕 연은 시장참가자 설문 ${S.survey}, 1년 뒤 시점은 월 단위 보간`],
+            ['② 우리 기울기', null, `${F.bp(vc.tilt, 1)} (한도 ±${V.cap}bp, ${capKo[V.cap_key]}) · 근거: ${tiltWhy(vc)}`],
+            ['③ 우리 경로 = ① + ②', vc.ours, ''],
+            ['④ 선물 가격', V.futures, '연방기금금리 선물 월평균'],
+            ['⑤ 괴리 B = ③ − ④', null, `${F.bp(vc.gap_b, 0)} → ${vc.signal.ko} (${vc.signal.why}). 기준 ±${V.rules.gapb_th[0]}bp 약, ±${V.rules.gapb_th[1]}bp 강`]], dense: true }),
+        h('p', { cls: 'note' }, `한도를 정하는 적중률: 최근 12개월 동안 기울기가 있었던 ${V.hit.n12}개월 중 ${V.hit.hits12}번 적중(${V.hit.rate12 == null ? '–' : F.n(V.hit.rate12 * 100, 0) + '%'}). ` +
+          `2015년부터 전체 ${V.hit.n_all}개월 적중률 ${V.hit.rate_all == null ? '–' : F.n(V.hit.rate_all * 100, 0) + '%'}. 적중 = 기울기 방향과 다음 달 2년 금리 변화 방향이 같음. 과거 기록은 팀 스코어보드 월별 점수로 거꾸로 계산한 값입니다.`),
+        h('p', { cls: 'note', style: 'margin:14px 0 4px;color:var(--ink);font-weight:600' }, '참고: 시장 가격 vs 컨센서스 (시점별)')] : [];
+      consCard = UI.card({ id: 'cons', span: 'c12', title: '컨센서스 vs 우리', cap: `컨센서스(SME ${S.survey}) + 우리 기울기 → 우리 경로 vs 선물 → 듀레이션 신호`,
+        body: [...viewPart, hd ? (vc ? (a, b) => h('p', { cls: 'note' }, a + '. ' + b) : UI.concl)(`약 1년 뒤(${hd.label}) 기준으로 선물은 ${F.n(hd.fut, 2)}%, SME 중간값은 ${F.n(hd.sme, 2)}%라서 시장은 ${word}`,
             `갭 ${F.bp(g, 0)}. 기준: ±25bp 안이면 비슷, 넘으면 시장과 컨센서스가 갈린 것으로 봅니다. SME 장기 금리 ${F.n(S.lr, 2)}%, 향후 10년 평균 ${F.n(S.avg10, 2)}%.`) : null,
           UI.table([{ label: '시점', align: 'l', get: (x) => x.label }, { label: '선물 내재', get: (x) => x.fut, fmt: (v) => F.n(v, 2) },
             { label: 'SME 중간값', get: (x) => x.sme, fmt: (v) => F.n(v, 2) }, { label: 'SME 25~75%', get: (x) => `${F.n(x.p25, 2)}~${F.n(x.p75, 2)}` },
@@ -239,7 +255,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '시장 vs 컨센서스'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
       body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();
