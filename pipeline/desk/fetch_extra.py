@@ -492,7 +492,12 @@ def g_sep():
     med = [val(x) for x in rows[k][1:1 + len(years)]]
     prev_row = rows[k + 1] if k + 1 < len(rows) and "projection" in rows[k + 1][0] else None
     prev = [val(x) for x in prev_row[1:1 + len(years)]] if prev_row else []
-    out = {"date": f"{d[:4]}-{d[4:6]}-{d[6:]}", "url": base + path,
+    econ = {}
+    for name, key in (("Change in real GDP", "gdp"), ("Unemployment rate", "unemp"), ("PCE inflation", "pce"), ("Core PCE inflation", "core_pce")):
+        row = next((r_ for r_ in rows if r_ and r_[0].startswith(name)), None)
+        if row:
+            econ[key] = {y: v for y, v in zip(years, [val(x) for x in row[1:1 + len(years)]]) if v is not None}
+    out = {"date": f"{d[:4]}-{d[4:6]}-{d[6:]}", "url": base + path, "econ": econ,
            "median": dict(zip(years, med)), "prev_label": prev_row[0] if prev_row else None,
            "prev_median": {y: v for y, v in zip(years, prev) if v is not None}}
     t2 = next((t for t in tables if "Midpoint of target range" in t or "midpoint of target range" in t), None)
