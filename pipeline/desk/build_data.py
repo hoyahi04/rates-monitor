@@ -571,8 +571,9 @@ def fomc_block(st, grid, cols):
             for key in ("y2", "y10"):
                 v1, v0 = cols[key][k], cols[key][k - 1]
                 row["d_" + key] = None if v1 is None or v0 is None else r((v1 - v0) * 100, 1)
+            row["d_2s10s"] = None if row["d_y2"] is None or row["d_y10"] is None else r(row["d_y10"] - row["d_y2"], 1)
         else:
-            row["d_y2"] = row["d_y10"] = None
+            row["d_y2"] = row["d_y10"] = row["d_2s10s"] = None
         d2 = row["d_y2"]
         row["surprise"] = None if d2 is None else ("매파적" if d2 >= 5 else "비둘기적" if d2 <= -5 else None)
         meetings.append(row)
@@ -906,6 +907,24 @@ def brief_block(policy, sep, score, asof):
                       "signal": sig["ko"], "p2": vc["p2"], "p3": vc["p3"], "cap": V["cap"]}}
 
 
+def meeting_scorecard(policy, sep):
+    """회의 리뷰 ⑤: 회의가 있던 달에 적용 중이던 우리 기울기 방향과 회의 당일 2년 금리 방향이 같았나 (○/×).
+    기울기가 0이면 채점하지 않는다(–). 점도표 분포(SEP 그림 2)도 회의 리뷰에 붙인다."""
+    fm = policy.get("fomc")
+    if not fm:
+        return
+    tilt_by_month = {x["apply_month"]: -TILT_BP_PER_PT * (x["s2"] + x["s3"]) / 2 + 0.0 for x in _sig_rows(None, None)}
+    for m in fm["meetings"]:
+        t = tilt_by_month.get(m["date"][:7])
+        m["tilt"] = t
+        m["ox"] = None if t in (None, 0) or m["d_y2"] in (None, 0) else ("○" if (t > 0) == (m["d_y2"] > 0) else "×")
+    scored = [m for m in fm["meetings"] if m["ox"]]
+    fm["ox_hits"], fm["ox_n"] = sum(m["ox"] == "○" for m in scored), len(scored)
+    if sep and sep.get("dots"):
+        fm["dots"] = {"date": sep["date"], "url": sep["url"], "dist": sep["dots"], "median": sep.get("median"),
+                      "prev_median": sep.get("prev_median"), "prev_label": sep.get("prev_label")}
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -1019,6 +1038,7 @@ def macro_block(I, grid, cols, events):
     policy["view"] = view_block(policy, I["score"], gro, inf, asof)
     policy["stance"] = stance_block(policy, I["extra"].get("sep"), read_json(RAW / "fed_tone.json", {}) or {}, asof)
     policy["brief"] = brief_block(policy, I["extra"].get("sep"), I["score"], asof)
+    meeting_scorecard(policy, I["extra"].get("sep"))
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
