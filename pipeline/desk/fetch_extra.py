@@ -466,10 +466,54 @@ def g_sme():
     return {"survey": f"{yr}-{_MON[mon]:02d}", "url": base + path, "points": pts,
             "avg10": lr[0] if len(lr) > 1 else None, "lr": lr[-1]}, []
 
+def _cells(tr):
+    return [re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", c))).strip() for c in re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", tr, re.S)]
+
+
+def g_sep():
+    """최신 SEP(경제전망 요약): 표 1의 정책금리 중간값(이번·직전)과 그림 2의 점도표 분포(위원별 점 개수)."""
+    base = "https://www.federalreserve.gov"
+    cal = get(base + "/monetarypolicy/fomccalendars.htm", UA_BROWSER)
+    links = sorted(set(re.findall(r'href="(/monetarypolicy/fomcprojtabl(\d{8})\.htm)"', cal)), key=lambda x: x[1])
+    if not links:
+        raise RuntimeError("SEP 링크를 찾지 못함")
+    path, d = links[-1]
+    page = get(base + path, UA_BROWSER)
+    tables = re.findall(r"<table.*?</table>", page, re.S)
+    t1 = next((t for t in tables if "Federal funds rate" in t), None)
+    if not t1:
+        raise RuntimeError("SEP 표 1을 찾지 못함")
+    rows = [_cells(tr) for tr in re.findall(r"<tr.*?</tr>", t1, re.S)]
+    head = next(r for r in rows if any(c.startswith("Longer") for c in r))
+    nlr = next(i for i, c in enumerate(head) if c.startswith("Longer"))
+    years = head[:nlr] + ["LR"]
+    k = next(i for i, r in enumerate(rows) if r and r[0].startswith("Federal funds rate"))
+    val = lambda x: float(x) if re.fullmatch(r"-?\d+(\.\d+)?", x or "") else None
+    med = [val(x) for x in rows[k][1:1 + len(years)]]
+    prev_row = rows[k + 1] if k + 1 < len(rows) and "projection" in rows[k + 1][0] else None
+    prev = [val(x) for x in prev_row[1:1 + len(years)]] if prev_row else []
+    out = {"date": f"{d[:4]}-{d[4:6]}-{d[6:]}", "url": base + path,
+           "median": dict(zip(years, med)), "prev_label": prev_row[0] if prev_row else None,
+           "prev_median": {y: v for y, v in zip(years, prev) if v is not None}}
+    t2 = next((t for t in tables if "Midpoint of target range" in t or "midpoint of target range" in t), None)
+    if t2:
+        rows2 = [_cells(tr) for tr in re.findall(r"<tr.*?</tr>", t2, re.S)]
+        h2 = next((r for r in rows2 if any(re.fullmatch(r"\d{4}", c) for c in r)), [])
+        cols = [c for c in h2 if re.fullmatch(r"\d{4}", c) or c.startswith("Longer")]
+        dots = {c if c[0].isdigit() else "LR": {} for c in cols}
+        for r in rows2:
+            if r and re.fullmatch(r"\d\.\d{3}", r[0]):
+                for c, v in zip(cols, r[1:]):
+                    if v.isdigit():
+                        dots[c if c[0].isdigit() else "LR"][r[0]] = int(v)
+        out["dots"] = dots
+    log(f"  SEP {out['date']}: 중간값 {out['median']} (직전 {out['prev_median']})")
+    return out, []
+
 
 GROUPS = [("fred_daily", g_fred_daily), ("intl", g_intl), ("yahoo", g_yahoo), ("cftc", g_cftc),
           ("upcoming", g_upcoming), ("calendar", g_calendar), ("news", g_news), ("fedinvest", g_fedinvest),
-          ("sme", g_sme), ("fomc", g_fomc)]
+          ("sme", g_sme), ("fomc", g_fomc), ("sep", g_sep)]
 
 
 def main(argv):

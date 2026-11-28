@@ -136,6 +136,25 @@
           h('a', { href: S.url, target: '_blank', rel: 'noopener noreferrer' }, 'SME 결과 PDF'), '.') });
     }
 
+    // 기조 판정표 (확장안 ③): S1~S5 → 기조 점수·등급, 괴리 A, 교차 점검
+    const ST = P.stance;
+    let stanceCard = null;
+    if (ST && ST.score != null) {
+      const keys = ['S1', 'S2', 'S3', 'S4', 'S5'];
+      const gA = ST.gap_a;
+      const aTxt = gA == null ? '괴리 A 자료 없음' : `괴리 A(점도표 − 선물, ${ST.target.slice(0, 4)}년 ${Number(ST.target.slice(5))}월) ${F.bp(gA, 0)}: ` +
+        (gA >= 25 ? '시장이 연준보다 인하를 더 기대합니다' : gA <= -25 ? '시장이 연준보다 금리를 더 높게 봅니다 (연준 점도표보다 매파적 가격)' : '시장과 연준이 비슷합니다');
+      stanceCard = UI.card({ id: 'stance', span: 'c12', title: '기조 판정표', cap: '연준은 얼마나 매파인가, 시장은 그걸 얼마나 믿나',
+        body: [UI.concl(`연준 기조 점수 ${F.s(ST.score, 2)} → ${ST.grade}` + (ST.chg != null ? ` (지난달 ${F.s(ST.prev.score, 2)}에서 ${F.s(ST.chg, 2)})` : ''),
+            aTxt + '.' + (ST.distrust ? ' ⚠ 시장이 연준을 안 믿는 중: 기조는 매파인데 시장은 인하를 더 가격하고 있습니다.' : '') + (ST.shift_alert ? ' ⚠ 기조 전환 경고: 지난달보다 0.5 넘게 움직였습니다.' : '')),
+          UI.table([{ label: '항목', align: 'l', get: (k) => `${k} ${ST.parts[k] ? ST.parts[k].name : ''}` }, { label: '가중치', get: (k) => ST.weights[k], fmt: (v) => Math.round(v * 100) + '%' },
+            { label: '점수 (−2~+2)', get: (k) => (ST.parts[k] ? ST.parts[k].score : null), fmt: (v) => F.s(v, 0), heat: (v) => UI.heat(v, 2) },
+            { label: '근거', align: 'l', get: (k) => (ST.parts[k] ? ST.parts[k].basis : '자료 없음') }], { rows: keys, dense: true }),
+          h('p', { cls: 'note' }, '등급: −1.0 이하 비둘기파 강 · −1.0~−0.3 비둘기파 · ±0.3 중립 · +0.3~+1.0 매파 · +1.0 이상 매파 강. 빠진 항목이 있으면 나머지 가중치로 다시 나눕니다.')],
+        foot: `S1·S3·S4는 FOMC-RoBERTa 문장 분류 성향에서 모델 기준선(최근 1년 정책 발언 성향 중간값 ${F.s(ST.baseline, 2)})을 뺀 값으로 매깁니다: ±${ST.tone_step[0]} 넘으면 ±1, ±${ST.tone_step[1]} 넘으면 ±2 (잠정 문턱). ` +
+          `S2는 SEP 내년 말 중간값의 직전 대비 변화(±25bp = ±1, ±50bp = ±2). S5는 최근 회의 반대표. 점도표 경로는 오늘 정책금리에서 연말 중간값까지 월 단위 선형.` });
+    }
+
     const meetCard = UI.card({ span: 'c5', title: 'FOMC 회의별 가격', cap: '선물이 가격한 회의 뒤 금리', flush: true,
       body: UI.table([{ label: '회의', align: 'l', get: (m) => m.date, fmt: (v) => `${v.slice(2, 4)}.${v.slice(5, 7)}.${v.slice(8)}` },
         { label: '회의 뒤 금리', get: (m) => m.post, fmt: (v) => F.n(v, 3) + '%' },
@@ -255,7 +274,7 @@
     else title = `매크로 신호는 엇갈립니다. ${F.josa(dn.join('·'), '은', '는')} 금리 하락 쪽, ${F.josa(up.join('·'), '은', '는')} 금리 상승 쪽이라 방향은 중립입니다`;
     return { title, lead, usOnly: true,
       sub: `근거: ${F.md(L.decision_date)} 기준 점수는 ${three.map(([k, n]) => `${n} ${F.s(L[k], 0)}`).join(', ')}이고 합은 ${F.s(L.view_level, 0)}입니다 (+1이 금리 하락 쪽). 세 신호 모두 지나간 발표에 반응하는 값이라 예측이 아닙니다. 선물 가격은 ${P.asof || '–'} 기준, 정책금리 목표 범위는 ${F.n(P.lower, 2)}~${F.n(P.upper, 2)}%입니다.`,
-      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
-      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, fomcCard, cbCard, inflCard].filter(Boolean) };
+      tabs: [['releases', '지표 일정·서프라이즈'], ['cycle', '월별 지표 표'], ['policy', '정책금리 경로'], ['cons', '컨센서스 vs 우리'], ['stance', '기조 판정표'], ['fomc', 'FOMC 성명 리뷰'], ['cb', '연준 트래커'], ['infl', '인플레이션']],
+      body: [relCard, surChart('nfp', '고용', '천 명', 150), surChart('cpi', '근원 CPI', 'bp', 15), heatCard, pathCard, meetCard, consCard, stanceCard, fomcCard, cbCard, inflCard].filter(Boolean) };
   };
 })();

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import bondmath as bm
 from common import (DESK, MODEL, RAW, ROOT, back, clean, corr, ffill, idx_on_or_before, last_valid, load_js, log, mean,
-                    now_utc, num, pctile, r, read_json, stdev, write_js, zscore)
+                    now_utc, num, pctile, r, read_json, stdev, write_js, write_json, zscore)
 
 START = "2015-01-02"          # 화면에 싣는 시계열의 시작
 TEN = [("1M", 1 / 12), ("3M", .25), ("6M", .5), ("1Y", 1), ("2Y", 2), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10),
@@ -748,6 +748,86 @@ def _sig_rows(gro, inf):
     return out
 
 
+# 기조 판정표 (확장안 ③): 다섯 항목 −2~+2, + = 매파
+STANCE_W = {"S1": 0.25, "S2": 0.20, "S3": 0.25, "S4": 0.15, "S5": 0.15}
+STANCE_GRADES = [(1.0, "매파 강"), (0.3, "매파"), (-0.3, "중립"), (-1.0, "비둘기파")]   # 그 아래 = 비둘기파 강
+TONE_STEP = (0.05, 0.15)      # 성향(기준 대비) → 점수: ±0.05 넘으면 ±1, ±0.15 넘으면 ±2  (모델 치우침을 뺀 값 기준, 잠정)
+STANCE_LOG = RAW / "fed_stance_log.json"
+
+
+def _bucket(v, a, b):
+    if v is None:
+        return None
+    return 2 if v >= b else 1 if v >= a else -2 if v <= -b else -1 if v <= -a else 0
+
+
+def stance_block(policy, sep, T, asof):
+    """S1 성명, S2 점도표, S3 의장, S4 위원, S5 반대표 → 기조 점수·등급, 괴리 A(점도표 − 선물, 1년 뒤), 교차 점검.
+    S1·S3·S4는 FOMC-RoBERTa 성향에서 '모델 기준선'(최근 1년 정책 발언 성향의 중간값)을 뺀 값으로 매긴다."""
+    items = [x for x in (T.get("items") or {}).values() if x.get("policy")]
+    if not items:
+        return None
+    year_ago = back(asof, years=1)
+    recent = sorted(x["net"] for x in items if x["date"] >= year_ago)
+    base = recent[len(recent) // 2] if recent else 0.0
+    parts = {}
+    # S1 성명: 최신 성명 성향 − 기준선
+    st = sorted((x for x in items if x["kind"] == "성명"), key=lambda x: x["date"])
+    if st:
+        v = st[-1]["net"] - base
+        parts["S1"] = {"name": "성명서", "score": _bucket(v, *TONE_STEP), "basis": f"{st[-1]['date']} 성명 성향 {st[-1]['net']:+.2f} (기준선 {base:+.2f} 대비 {v:+.2f})"}
+    # S2 점도표: 내년 말 중간값의 직전 SEP 대비 변화
+    if sep and sep.get("median"):
+        ny = str(int(sep["date"][:4]) + 1)
+        a, b = sep["median"].get(ny), (sep.get("prev_median") or {}).get(ny)
+        if a is not None and b is not None:
+            dv = (a - b) * 100
+            parts["S2"] = {"name": "점도표", "score": _bucket(dv, 20, 45), "basis": f"{ny}년 말 중간값 {b:.1f}% → {a:.1f}% ({dv:+.0f}bp, {sep['date']} SEP)"}
+    # S3 의장: 최근 45일 의장 발언(기자회견·연설·증언) 평균, 없으면 마지막 기자회견
+    pcs = sorted((x for x in items if x["kind"] == "기자회견"), key=lambda x: x["date"])
+    chair = pcs[-1]["speaker"] if pcs else None
+    if chair:
+        c45 = [x for x in items if x["speaker"] == chair and x["date"] >= back(asof, days=45)] or [pcs[-1]]
+        v = sum(x["net"] for x in c45) / len(c45) - base
+        parts["S3"] = {"name": f"의장 ({chair})", "score": _bucket(v, *TONE_STEP), "basis": f"최근 발언 {len(c45)}건 평균, 기준선 대비 {v:+.2f}"}
+    # S4 위원: 지난 30일 위원 발언 평균 (투표권자 2배; 이사회 RSS 발언자는 모두 투표권자)
+    mem = [x for x in items if x["kind"] in ("연설", "의회 증언") and x["speaker"] != chair and x["date"] >= back(asof, days=30)]
+    if mem:
+        v = sum(x["net"] * 2 for x in mem) / (2 * len(mem)) - base
+        parts["S4"] = {"name": "위원 발언", "score": _bucket(v, *TONE_STEP), "basis": f"최근 30일 {len(mem)}건 (투표권자 2배) 평균, 기준선 대비 {v:+.2f}"}
+    # S5 반대표: 최근 회의
+    fm = policy.get("fomc")
+    if fm and fm.get("meetings"):
+        ds = fm["meetings"][0]["dissent"]
+        net = ds["hawk"] - ds["dove"]
+        parts["S5"] = {"name": "반대표", "score": max(-2, min(2, net)), "basis": f"{fm['meetings'][0]['date']} 회의 매파 반대 {ds['hawk']}명, 비둘기파 반대 {ds['dove']}명"}
+    have = {k: v for k, v in parts.items() if v["score"] is not None}
+    wsum = sum(STANCE_W[k] for k in have)
+    score = sum(STANCE_W[k] * v["score"] for k, v in have.items()) / wsum if wsum else None   # 빠진 항목은 나머지로 다시 나눈다
+    grade = None if score is None else next((g for th, g in STANCE_GRADES if score >= th), "비둘기파 강")
+    # 괴리 A: 점도표 경로(오늘 정책금리 → 연말 중간값 선형) 1년 뒤 − 선물 1년 뒤.  + = 시장이 연준보다 인하를 더 기대
+    V = policy.get("view") or {}
+    target = V.get("target") or f"{int(asof[:4]) + 1}-{asof[5:7]}"
+    mid = (policy["upper"] + policy["lower"]) / 2
+    pts = [(asof[:7], mid)] + [(f"{y}-12", v) for y, v in sorted((policy.get("dots") or {}).items())]
+    dot12 = _interp_month(pts, target)
+    fut = V.get("futures")
+    gap_a = None if dot12 is None or fut is None else (dot12 - fut) * 100
+    # 지난달 대비 변화(기조 전환 경고): 월별 기록 파일에 이번 달 값을 남긴다
+    log_ = read_json(STANCE_LOG, {}) or {}
+    ym = asof[:7]
+    prev = next((log_[k] for k in sorted(log_, reverse=True) if k < ym), None)
+    if score is not None:
+        log_[ym] = {"asof": asof, "score": r(score, 2), "grade": grade, "parts": {k: v["score"] for k, v in parts.items()}}
+        write_json(STANCE_LOG, log_)
+    chg = None if prev is None or score is None else score - prev["score"]
+    return {"score": r(score, 2), "grade": grade, "parts": parts, "weights": STANCE_W, "baseline": r(base, 3),
+            "gap_a": r(gap_a, 1), "dots_12m": r(dot12, 3), "futures_12m": fut, "target": target,
+            "distrust": bool(score is not None and score >= 0.3 and gap_a is not None and gap_a >= 25),
+            "prev": prev, "chg": r(chg, 2), "shift_alert": bool(chg is not None and abs(chg) >= 0.5),
+            "sep": None if not sep else {"date": sep["date"], "url": sep["url"]}, "tone_step": TONE_STEP}
+
+
 def macro_block(I, grid, cols, events):
     pol, gro, inf = I["pol_s"], I["gro_s"], I["inf_s"]
     gd, idt, pd = I["gro_d"], I["inf_d"], I["pol_d"]
@@ -859,6 +939,7 @@ def macro_block(I, grid, cols, events):
     policy["sme"] = sme_block(I["extra"].get("sme"), policy, asof)
     policy["tone"] = tone_block(read_json(RAW / "fed_tone.json", {}) or {}, I["extra"].get("fomc") or [], asof)
     policy["view"] = view_block(policy, I["score"], gro, inf, asof)
+    policy["stance"] = stance_block(policy, I["extra"].get("sep"), read_json(RAW / "fed_tone.json", {}) or {}, asof)
     return {"releases": releases, "exp_is_proxy": proxy, "hist": hist, "heat": heat, "policy": policy,
             "infl": {"core_pce_yoy": ic["yoy"], "core_pce_3m": ic["ann3"], "core_pce_6m": ic["ann6"], "pce_ref": ic["pce_ref"],
                      "cpi_3m": ic["cpi"].get("ann3"), "cpi_ref": ic["cpi"]["ref"], "mich": mich[-1] if mich else None}}
