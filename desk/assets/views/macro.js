@@ -80,6 +80,28 @@
       foot: '과거 시점의 선물 가격은 만기가 지나면 구할 수 없어, 비교 선은 한 달 전과 직전 점도표 발표일 두 개만 있습니다.' })
       : UI.card({ id: 'policy', span: 'c7', title: '정책금리 경로', body: UI.empty('선물 가격을 받지 못했습니다', 'Yahoo Finance의 연방기금금리 선물(ZQ) 수집이 실패했습니다.') });
 
+    // 점도표 분포 (SEP 그림 2): 위원별 점, 이번 중간값(파란 선)과 직전 중간값(회색 선)
+    const dotPlot = (DT) => {
+      if (!DT || !DT.dist) return null;
+      const cols = Object.keys(DT.dist), lv = [...new Set(cols.flatMap((c) => Object.keys(DT.dist[c])).map(Number))];
+      const lo = Math.min(...lv) - 0.125, hi = Math.max(...lv) + 0.125, W = 900, H = 300, cw = (W - 60) / cols.length;
+      const Y = (v) => 16 + (hi - v) / (hi - lo) * (H - 46);
+      const kids = [];
+      for (let v = Math.ceil(lo * 4) / 4; v <= hi; v += 0.25) kids.push(UI.s('line', { x1: 50, x2: W, y1: Y(v), y2: Y(v), stroke: 'var(--grid)' }), UI.s('text', { x: 44, y: Y(v) + 4, 'font-size': 11, 'text-anchor': 'end', fill: 'var(--mute)' }, v.toFixed(2)));
+      cols.forEach((c, i) => {
+        const cx = 60 + cw * i + cw / 2;
+        kids.push(UI.s('text', { x: cx, y: H - 8, 'font-size': 12, 'text-anchor': 'middle', fill: 'var(--ink)' }, c === 'LR' ? '장기' : c));
+        for (const [lvl, n] of Object.entries(DT.dist[c])) for (let j = 0; j < n; j++) kids.push(UI.s('circle', { cx: cx + (j - (n - 1) / 2) * 9, cy: Y(Number(lvl)), r: 3.6, fill: 'var(--ink)' }));
+        const m = DT.median && DT.median[c], pm = DT.prev_median && DT.prev_median[c];
+        if (pm != null) kids.push(UI.s('line', { x1: cx - cw * 0.42, x2: cx + cw * 0.42, y1: Y(pm), y2: Y(pm), stroke: 'var(--mute)', 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
+        if (m != null) kids.push(UI.s('line', { x1: cx - cw * 0.42, x2: cx + cw * 0.42, y1: Y(m), y2: Y(m), stroke: 'var(--s1)', 'stroke-width': 2 }));
+      });
+      const chg = cols.filter((c) => DT.median && DT.prev_median && DT.median[c] != null && DT.prev_median[c] != null).map((c) => `${c === 'LR' ? '장기' : c} ${F.bp((DT.median[c] - DT.prev_median[c]) * 100, 0)}`).join(' · ');
+      return h('div', null, h('p', { cls: 'note', style: 'margin:14px 0 4px;color:var(--ink);font-weight:600' }, `점도표 분포 (${DT.date} SEP, 점 하나 = 위원 한 명)`),
+        UI.s('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': '점도표 분포' }, ...kids),
+        h('p', { cls: 'note' }, `파란 선 = 이번 중간값, 회색 점선 = 직전(${DT.prev_label || '직전 SEP'}) 중간값. 중간값 변화: ${chg || '–'}. 표 1의 중간값은 소수 첫째 자리로 반올림된 값입니다.`));
+    };
+
     // FOMC 성명 리뷰: 직전 성명 대비 바뀐 단어(레드라인), 회의별 반대표와 2년 금리 당일 반응 (±5bp 이상 = 서프라이즈)
     const FO = P.fomc;
     let fomcCard = null;
@@ -98,7 +120,11 @@
           UI.table([{ label: '회의', align: 'l', get: (x) => x.date, fmt: (v) => F.kdate(v) }, { label: '표결', get: (x) => (x.vote ? x.vote.join('–') : null) },
             { label: '매파 반대', get: (x) => x.dissent.hawk }, { label: '비둘기 반대', get: (x) => x.dissent.dove },
             { label: '2년 당일', get: (x) => x.d_y2, fmt: (v) => F.bp(v, 0) }, { label: '10년 당일', get: (x) => x.d_y10, fmt: (v) => F.bp(v, 0) },
-            { label: '서프라이즈 (±5bp)', get: (x) => x.surprise || '–' }], { rows: FO.meetings, dense: true })],
+            { label: '2s10s 당일', get: (x) => x.d_2s10s, fmt: (v) => F.bp(v, 0) },
+            { label: '서프라이즈 (±5bp)', get: (x) => x.surprise || '–' }, { label: '우리 기울기', get: (x) => x.tilt, fmt: (v) => F.bp(v, 1) },
+            { label: '○/×', get: (x) => x.ox || '–' }], { rows: FO.meetings, dense: true }),
+          h('p', { cls: 'note' }, `○/× = 회의가 있던 달 적용 중이던 우리 기울기 방향과 회의 당일 2년 금리 방향이 같았나 (기울기 0이면 채점 안 함). 최근 ${FO.meetings.length}회 중 채점 ${FO.ox_n}회, 적중 ${FO.ox_hits}회.`),
+          dotPlot(FO.dots)],
         foot: h('span', null, '성명은 연준 홈페이지에서 자동으로 받습니다. 금리 반응은 재무부 CMT 종가 기준 성명 당일 변화(성명은 오후 2시, 종가에 반영). 반대표는 성명의 "Voting against" 문장을 규칙으로 읽습니다 (인상·완화 편향 반대 = 매파). 원문: ',
           h('a', { href: FO.url, target: '_blank', rel: 'noopener noreferrer' }, '최신 성명'), '.') });
     }
