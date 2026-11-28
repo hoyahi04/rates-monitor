@@ -672,10 +672,10 @@ def _gapb_signal(g):
     if g is None:
         return None
     a, b = GAPB_TH
-    if g >= b: return {"code": -2, "ko": "듀레이션 축소 (강)", "why": "우리가 시장보다 훨씬 매파"}
-    if g >= a: return {"code": -1, "ko": "듀레이션 축소 (약)", "why": "우리가 시장보다 조금 더 매파"}
-    if g <= -b: return {"code": 2, "ko": "듀레이션 확대 (강)", "why": "우리가 시장보다 훨씬 비둘기파"}
-    if g <= -a: return {"code": 1, "ko": "듀레이션 확대 (약)", "why": "우리가 시장보다 조금 더 비둘기파"}
+    if g >= b: return {"code": -2, "ko": "듀레이션 축소 (강)", "why": "하우스 뷰가 시장보다 훨씬 매파"}
+    if g >= a: return {"code": -1, "ko": "듀레이션 축소 (약)", "why": "하우스 뷰가 시장보다 조금 더 매파"}
+    if g <= -b: return {"code": 2, "ko": "듀레이션 확대 (강)", "why": "하우스 뷰가 시장보다 훨씬 비둘기파"}
+    if g <= -a: return {"code": 1, "ko": "듀레이션 확대 (약)", "why": "하우스 뷰가 시장보다 조금 더 비둘기파"}
     return {"code": 0, "ko": "중립 (포지션 없음)", "why": "차이가 인하 한 번(25bp) 미만"}
 
 
@@ -836,7 +836,7 @@ def _last_rows(folder, n=4):
 
 
 def brief_block(policy, sep, score, asof):
-    """연준 기조 브리핑 (확장안 ②): 한 줄 결론, 현재 진단, 매크로 요소 표, 컨센서스 vs 우리, 주의할 점.
+    """연준 기조 브리핑 (확장안 ②): 한 줄 결론, 현재 진단, 매크로 요소 표, 컨센서스 vs 하우스 뷰, 주의할 점.
     모든 칸은 이미 계산된 값(5필라 신호, SEP, 기조 판정표, 우리 기울기)을 같은 틀에 채운다. 손으로 쓰는 칸 없음."""
     ST, V = policy.get("stance"), policy.get("view")
     if not ST or not V or not V.get("current"):
@@ -898,8 +898,8 @@ def brief_block(policy, sep, score, asof):
         flags.append("단기자금시장 경보 (SOFR−IORB 20일)")
     sig = vc["signal"]
     if ST["score"] is not None and ((ST["score"] >= 0.3 and sig["code"] > 0) or (ST["score"] <= -0.3 and sig["code"] < 0)):
-        flags.append("우리 듀레이션 신호가 연준 기조와 반대 방향")
-    head = (f"연준은 {ST['grade']}(기조 {ST['score']:+.2f})이고, 1년 뒤 기준 우리 경로는 선물보다 {vc['gap_b']:+.0f}bp → {sig['ko']}.")
+        flags.append("하우스 뷰 듀레이션 신호가 연준 기조와 반대 방향")
+    head = (f"연준은 {ST['grade']}(기조 {ST['score']:+.2f})이고, 1년 뒤 기준 하우스 뷰는 선물보다 {vc['gap_b']:+.0f}bp → {sig['ko']}.")
     if ST.get("gap_a") is not None:
         head += f" 시장은 점도표보다 {abs(ST['gap_a']):.0f}bp {'높게' if ST['gap_a'] < 0 else '낮게'} 가격 중."
     return {"asof": asof, "headline": head, "diagnosis": diag, "worry": worry, "factors": rows, "flags": flags,
