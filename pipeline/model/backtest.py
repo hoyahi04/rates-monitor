@@ -9,6 +9,7 @@
       Slope     ±0.10년      : 1–3년 구간과 20년+ 구간 안에서 만기를 옮김
       Curvature 불릿 0.10년   : 5–7년 구간 만기를 늘리고 1–3년, 10–20년 구간 만기를 줄임
   - 거래비용 0. 실제 종목이 아니라 모형 채권이므로 종목 선택 효과는 없다.
+  - 최근 영업일의 하루 손익을 캐리·롤다운·만기별 금리 변화·볼록성으로 나눈 것(explain)과 손실 한도(risk.limits)도 함께 내보낸다.
 
 실행:  python3 backtest.py     (표준 라이브러리만)
 """
@@ -25,6 +26,12 @@ BM_W_FALLBACK = [34.69, 22.39, 12.81, 9.32, 9.65, 11.13]
 SLOPE_LEG, BULLET_LEG = 0.10, 0.10
 TE_BUDGET = [50, 100]
 SIG = [("s1_policy", "정책"), ("s2_growth", "성장"), ("s3_inflation", "물가"), ("s4_supply", "수급"), ("s5_liquidity_vol", "변동성")]
+# 일별 손익 설명에 쓰는 만기 키 (desk의 KRD 표와 같은 만기)와 내보낼 영업일 수
+KEYS = [("1Y", 1), ("2Y", 2), ("3Y", 3), ("5Y", 5), ("7Y", 7), ("10Y", 10), ("20Y", 20), ("30Y", 30)]
+EXPLAIN_DAYS = 45
+# 손실 한도: 벤치마크 대비 초과수익(bp). 임시 기준으로 연 한도 = 위험예산 하단, 월 한도 = 그 절반. 한도의 70%를 쓰면 "주의".
+# 화면에 보여 주기만 하고 운용 규칙(포지션)은 바꾸지 않는다.
+LOSS_LIMIT = dict(year_bp=-float(TE_BUDGET[0]), month_bp=-TE_BUDGET[0] / 2, warn=0.7)
 TEN_Y = {"1M": 1 / 12, "3M": .25, "6M": .5, "1Y": 1, "2Y": 2, "3Y": 3, "5Y": 5, "7Y": 7, "10Y": 10, "20Y": 20, "30Y": 30}
 
 
@@ -142,6 +149,58 @@ def value_path(i0, i1, w, mats):
     return out
 
 
+def key_weights(m):
+    """만기 m년의 금리가 만기 키 금리에 얼마씩 달려 있나 (직선 보간의 가중치). 첫 키 앞과 마지막 키 뒤는 그 키에 모두 붙인다."""
+    ks = [k for _, k in KEYS]
+    w = [0.0] * len(ks)
+    if m <= ks[0]:
+        w[0] = 1.0
+    elif m >= ks[-1]:
+        w[-1] = 1.0
+    else:
+        j = max(a for a in range(len(ks) - 1) if ks[a] <= m)
+        f = (m - ks[j]) / (ks[j + 1] - ks[j])
+        w[j], w[j + 1] = 1 - f, f
+    return w
+
+
+def explain_path(i0, i1, w, mats):
+    """i0의 구성을 그대로 들고 간다고 보고 i0+1..i1의 하루 손익을 네 갈래로 나눈다 (값은 전일 가치 대비 bp).
+      c 캐리     : 금리가 어제 그대로일 때 하루치 이자와 가격의 액면 수렴
+      r 롤다운   : 커브가 어제 그대로일 때 만기가 하루 짧아져 금리가 달라지는 효과
+      k 금리 변화: 어제의 만기별 민감도(krd, 년) × 그 만기 금리 변화(dy, bp). 만기 키마다 하나
+      x 볼록성 등: 나머지. 금리 변화의 2차 효과가 대부분이다
+    네 갈래의 합은 그날 수익률과 정확히 같다."""
+    cps = [curve(i0, m) for m in mats]
+    nk, out = len(KEYS), []
+    for t in range(i0 + 1, i1 + 1):
+        e0, e1 = years(DATES[i0], DATES[t - 1]), years(DATES[i0], DATES[t])
+        dy = [(curve(t, ky) - curve(t - 1, ky)) * 100 for _, ky in KEYS]
+        v0 = carry = roll = conv = 0.0
+        keys, krd = [0.0] * nk, [0.0] * nk
+        for wb, c, m in zip(w, cps, mats):
+            n, f = 2 * m, 2 * e1
+            ya = curve(t - 1, m - e0)
+            a = price(c, ya, n, 2 * e0)                       # 어제 값
+            a1 = price(c, ya, n, f)                           # 시간만 흐름 (금리 그대로)
+            yb = curve(t - 1, m - e1)
+            b = price(c, yb, n, f)                            # 어제 커브에서 만기만 짧아짐
+            d = (price(c, yb - 0.01, n, f) - price(c, yb + 0.01, n, f)) / 2    # 1bp당 가격 변화
+            kw = key_weights(m - e1)
+            first = 0.0
+            for j in range(nk):
+                krd[j] += wb * d * kw[j]
+                keys[j] -= wb * d * kw[j] * dy[j]
+                first -= wb * d * kw[j] * dy[j]
+            v0 += wb * a
+            carry += wb * (a1 - a)
+            roll += wb * (b - a1)
+            conv += wb * (price(c, curve(t, m - e1), n, f) - b) - first
+        sc = 1e4 / v0
+        out.append(dict(c=carry * sc, r=roll * sc, k=[x * sc for x in keys], x=conv * sc, krd=[x * sc for x in krd], dy=dy))
+    return out
+
+
 def contrib(w, mats, i0):
     ys = [curve(i0, m) for m in mats]
     return [wb * mod_dur(m, y) for wb, m, y in zip(w, mats, ys)], ys
@@ -167,6 +226,7 @@ nav = {k: [NAV0] for k in ("bm", "dur", "slope", "all")}
 nav_alt, alt_months = [NAV0], []
 ser_dates = [DATES[starts[0]]]
 months, log, prev_pos, prev_w = [], [], None, None
+explain_rows, ex_from = [], len(DATES) - 1 - EXPLAIN_DAYS
 for i, r in enumerate(rows):
     i0, i1 = starts[i], ends[i]
     dur, slope, curv = float(r["duration_active_yr"]), r["slope_position"], r["curvature_position"]
@@ -178,6 +238,9 @@ for i, r in enumerate(rows):
             ser_dates.append(DATES[i0 + 1 + j])
             for k in nav:
                 nav[k].append(base[k] * paths[k][j])
+    if i1 > ex_from:                      # 최근 날짜가 든 달만 손익을 나눠 본다
+        ep, eb = explain_path(i0, i1, *pos["all"]), explain_path(i0, i1, *pos["bm"])
+        explain_rows += [(DATES[i0 + 1 + j], ep[j], eb[j]) for j in range(i1 - i0) if i0 + 1 + j > ex_from]
     ret = {k: (paths[k][-1] - 1) if paths[k] else 0.0 for k in nav}
     a_dur, a_trend = alt_duration(i0, r)
     a_path = value_path(i0, i1, *build_position(i0, a_dur, slope, curv)["all"])
@@ -295,6 +358,27 @@ for m in months:
 years_tbl = [dict(year=y, ret_p=(e["p"] - 1) * 100, ret_b=(e["b"] - 1) * 100, excess_bp=(e["p"] - e["b"]) * 1e4, partial=e["n"] < 12)
              for y, e in sorted(by_year.items())]
 
+# 일별 손익 설명: 네 갈래의 합이 NAV 변화와 맞는지 확인하고 내보낸다
+SER_IDX = {d: t for t, d in enumerate(ser_dates)}
+explain_days = []
+for d, ep, eb in explain_rows:
+    t = SER_IDX[d]
+    for e, navs in ((ep, P), (eb, Bn)):
+        tot = e["c"] + e["r"] + sum(e["k"]) + e["x"]
+        assert abs(tot / 1e4 * navs[t - 1] - (navs[t] - navs[t - 1])) < 0.01, f"손익 설명의 합이 NAV 변화와 다름: {d}"
+    side = lambda e: dict(c=round(e["c"], 4), r=round(e["r"], 4), k=[round(x, 4) for x in e["k"]], x=round(e["x"], 4),
+                          krd=[round(x, 4) for x in e["krd"]])
+    explain_days.append(dict(date=d, nav_p=round(P[t - 1], 2), nav_b=round(Bn[t - 1], 2), dy=[round(x, 2) for x in ep["dy"]],
+                             p=side(ep), b=side(eb)))
+
+# 손실 한도와 과거에 한도를 넘은 달·해
+worst_y = min(years_tbl, key=lambda y: y["excess_bp"])
+limits = dict(month_bp=LOSS_LIMIT["month_bp"], year_bp=LOSS_LIMIT["year_bp"], warn=LOSS_LIMIT["warn"], budget_bp=TE_BUDGET[0],
+              n_months=len(full), n_years=len(years_tbl),
+              hit_months=[dict(month=m["month"], excess_bp=round(m["excess_bp"], 1)) for m in full if m["excess_bp"] <= LOSS_LIMIT["month_bp"]],
+              hit_years=[dict(year=y["year"], excess_bp=round(y["excess_bp"], 1)) for y in years_tbl if y["excess_bp"] <= LOSS_LIMIT["year_bp"]],
+              worst_year=dict(year=worst_y["year"], excess_bp=round(worst_y["excess_bp"], 1)))
+
 # 지금 구성
 st = last_state
 w_p, m_p = st["pos"]["all"]
@@ -373,7 +457,8 @@ out = dict(
                 bm_yield=round(sum(w * y for w, y in zip(BM_W, st["yb"])), 3)),
     alt=alt,
     risk=dict(te_exante_bp=round(te_ex, 2), te_max_bp=round(te_max, 2), budget=TE_BUDGET, scenarios=[dict(label=s["label"], bp=round(s["bp"], 2)) for s in scen],
-              vol_bp=[round(math.sqrt(cov[b][b]), 1) for b in range(NB)]),
+              vol_bp=[round(math.sqrt(cov[b][b]), 1) for b in range(NB)], limits=limits),
+    explain=dict(keys=[k for k, _ in KEYS], days=explain_days),
 )
 (HERE / "portfolio.js").write_text("window.PORTFOLIO = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n", encoding="utf-8")
 
@@ -386,4 +471,8 @@ if __name__ == "__main__":
     print(f"전략별 누적 bp: Duration {s['c_dur']:+.1f} Slope {s['c_slope']:+.1f} Curvature {s['c_curv']:+.1f} · 적중 {s['hit']}")
     print(f"지금 듀레이션 {out['now']['dur_p']:.2f} 대 {out['now']['dur_b']:.2f} (액티브 {out['now']['active']:+.3f})")
     print(f"개선안 누적 {alt['excess_cum_bp']:+.1f}bp IR {alt['ir']:.2f} · 수립 {alt['train']} · 검증 {alt['test']} · 지금 {alt['now']}")
+    if explain_days:
+        e = explain_days[-1]; q = e["p"]
+        print(f"손익 설명 {e['date']}: 캐리 {q['c']:+.2f} 롤다운 {q['r']:+.2f} 금리 {sum(q['k']):+.2f} 볼록성 등 {q['x']:+.3f} bp · {len(explain_days)}일")
+    print(f"손실 한도 월 {limits['month_bp']:.0f}bp (넘은 달 {len(limits['hit_months'])}/{limits['n_months']}) · 연 {limits['year_bp']:.0f}bp (넘은 해 {len(limits['hit_years'])}/{limits['n_years']})")
     print("portfolio.js", (HERE / 'portfolio.js').stat().st_size // 1024, "KB")

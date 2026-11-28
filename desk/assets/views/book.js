@@ -1,4 +1,4 @@
-/* 6. 포트폴리오·리스크 — 내 포트폴리오는 어떤가: 구성, 보유 종목·거래 내역, 익스포저, 성과 분해, 리스크·시나리오 */
+/* 6. 포트폴리오·리스크 — 내 포트폴리오는 어떤가: 일별 손익 설명, 손실 한도, KRD, 구성, 보유 종목·거래 내역, 익스포저, 성과 분해, 리스크·시나리오 */
 (function () {
   'use strict';
   const { h, F, ok } = UI;
@@ -12,6 +12,7 @@
 
   window.DeskViews.book = function (ctx) {
     const D = ctx.D, B = D.book, S = B.stats, R = B.risk, st = ctx.st;
+    const V = R.var;
     const kv = (items) => h('dl', { cls: 'kv' }, items.map(([k, v, u, cls]) => h('div', null, h('dt', null, k), h('dd', { cls: cls || null }, v, u ? h('small', null, u) : null))));
 
     // ── 요약 타일 ──
@@ -25,6 +26,82 @@
       UI.tile({ lab: '듀레이션 / BM', val: F.n(B.dur_p, 2), unit: `/ ${F.n(B.dur_b, 2)}년`, note: `액티브 듀레이션 ${F.s(B.active_dur, 2)}년` }),
       UI.tile({ lab: '액티브 DV01', val: F.usdS(B.dv01 - B.dv01_b), unit: '/ bp', note: `포트폴리오 ${F.usd(B.dv01)} · 벤치마크 ${F.usd(B.dv01_b)}`,
         title: '금리가 1bp 내릴 때 포트폴리오가 벤치마크보다 더 버는 금액 (달러)' }));
+
+    // ── 일별 손익 설명: 전일 포지션을 그대로 들고 하루를 보냈을 때 손익이 어디서 났나 (캐리, 롤다운, 만기별 금리 변화, 볼록성) ──
+    const E = B.explain && B.explain.days.length ? B.explain : null;
+    let pnlCard = null;
+    if (E) {
+      const eAll = E.days, eLast = eAll[eAll.length - 1];
+      const WIN = { d: 1, w: Math.min(5, eAll.length), m: eAll.filter((d) => d.date.slice(0, 7) === eLast.date.slice(0, 7)).length };
+      let eWin = 'd', eMode = 'p';
+      const pnlConcl = UI.concl('', ' '), pnlChart = h('div', { cls: 'inset' }), pnlTable = h('div');
+      const drawPnl = () => {
+        const n = WIN[eWin], days = eAll.slice(-n);
+        const acc = (f) => days.reduce((t, d) => t + f(d), 0);
+        // 줄마다 포트폴리오 손익(달러), 포트폴리오·벤치마크 수익률 기여(bp). 만기 줄에는 금리 변화(bp)와 키레이트 DV01(달러 / bp, 기간 평균)도
+        const row = (g, name, pick, more) => Object.assign({ g, name, usd: acc((d) => pick(d.p) * d.nav_p / 1e4), p: acc((d) => pick(d.p)), b: acc((d) => pick(d.b)) }, more);
+        const keyRows = E.keys.map((k, j) => row('금리가 움직여서', k, (q) => q.k[j], { dy: acc((d) => d.dy[j]), dv01: acc((d) => d.p.krd[j] * d.nav_p / 1e4) / n }));
+        const rows = [row('시간이 흘러서', '캐리', (q) => q.c), row('시간이 흘러서', '롤다운', (q) => q.r)].concat(keyRows, [row('금리가 움직여서', '볼록성 등', (q) => q.x)]);
+        const sum = (k) => rows.reduce((t, r) => t + r[k], 0);
+        const total = { g: '합계', name: '손익 합계', usd: sum('usd'), p: sum('p'), b: sum('b') };
+        const rate = keyRows.reduce((t, r) => t + r.usd, 0), conv = rows[rows.length - 1].usd, cr = rows[0].usd + rows[1].usd;
+        const top = keyRows.slice().sort((a, b) => Math.abs(b.usd) - Math.abs(a.usd))[0];
+        const when = eWin === 'd' ? F.kdate(eLast.date) : eWin === 'w' ? `최근 ${n}영업일(${F.md(days[0].date)}~${F.md(eLast.date)})` : `${F.mon(eLast.date)} 들어 ${n}영업일`;
+        const why = Math.abs(rate + conv) >= Math.abs(cr) ? `대부분 금리가 ${rate > 0 ? '내려서 번' : '올라서 잃은'} 것입니다` : '금리 변화보다 캐리가 더 컸습니다';
+        const usdMax = Math.max(1, ...rows.map((r) => Math.abs(r.usd))), actMax = Math.max(0.1, ...rows.map((r) => Math.abs(r.p - r.b)));
+        pnlConcl.firstChild.textContent = `${when} 손익은 ${F.usdS(total.usd)}이고, ${why}`;
+        pnlConcl.lastChild.textContent = `금리 변화 ${F.usdS(rate)} (가장 큰 만기는 ${top.name}: ${F.bp(top.dy)} 움직여 ${F.usdS(top.usd)}) · 캐리 ${F.usdS(rows[0].usd)} · 롤다운 ${F.usdS(rows[1].usd)} · 볼록성 등 ${F.usdS(conv)}. 벤치마크 대비로는 ${F.bp(total.p - total.b, 1)}입니다 (포트폴리오 ${F.bp(total.p, 1)}, 벤치마크 ${F.bp(total.b, 1)}).`;
+        pnlChart.replaceChildren(UI.bars({ cats: rows.map((r) => r.name), h: 200, sign: true, unit: '', xEvery: 1, aria: '손익을 캐리, 롤다운, 만기별 금리 변화, 볼록성으로 나눈 막대',
+            tipFmt: eMode === 'p' ? (v) => F.usdS(v) : (v) => F.bp(v, 2),
+            series: [{ name: eMode === 'p' ? '포트폴리오 손익' : '벤치마크 대비', color: 'var(--s1)', values: rows.map((r) => (eMode === 'p' ? r.usd : r.p - r.b)) }] }), h('div', { style: 'height:12px' }));
+        pnlTable.replaceChildren(UI.table([{ label: '항목', align: 'l', get: (r) => r.name },
+            { label: '금리 변화', title: '그 만기 재무부 par 금리의 변화 (bp)', get: (r) => r.dy, fmt: (v) => (ok(v) ? F.bp(v) : '') },
+            { label: '키레이트 DV01', title: '그 만기 금리만 1bp 내릴 때 포트폴리오가 버는 금액. 전일 기준이고, 여러 날이면 평균', get: (r) => r.dv01, fmt: (v) => (ok(v) ? F.usd(v) : '') },
+            { label: '손익', get: (r) => r.usd, fmt: (v) => F.usdS(v), heat: (v, r) => (r.g === '합계' ? '' : UI.heat(v, usdMax)) },
+            { label: '수익률', title: '전일 NAV 대비 bp', get: (r) => r.p, fmt: (v) => F.s(v, 2) },
+            { label: '벤치마크 대비', title: '포트폴리오 수익률 − 벤치마크 수익률 (bp)', get: (r) => r.p - r.b, fmt: (v) => F.s(v, 2), heat: (v, r) => (r.g === '합계' ? '' : UI.heat(v, actMax)) }],
+            { rows: rows.concat([total]), dense: true, group: (r) => r.g }));
+      };
+      drawPnl();
+      const seg = (items, cur, pick) => h('span', { style: 'display:inline-flex;gap:4px;white-space:nowrap' }, items.map(([key, text]) => {
+        const b = h('button', { cls: 'mini', type: 'button', 'aria-pressed': String(cur === key) }, text);
+        b.dataset.k = key;
+        b.addEventListener('click', () => { pick(key); b.parentNode.querySelectorAll('[data-k]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.k === key))); drawPnl(); });
+        return b;
+      }));
+      pnlCard = UI.card({ id: 'pnl', span: 'c8', title: '일별 손익 설명', cap: '어디서 벌고 잃었나 · 손익은 달러, 나머지는 bp', flush: true,
+        tools: [seg([['d', '1일'], ['w', '1주'], ['m', '이번 달']], eWin, (k) => { eWin = k; }), seg([['p', '포트폴리오'], ['a', '벤치마크 대비']], eMode, (k) => { eMode = k; })],
+        body: [pnlConcl, pnlChart, pnlTable],
+        foot: '전일 종가의 포지션을 그대로 들고 하루를 보냈다고 보고 나눈 값입니다. 캐리는 금리가 그대로일 때 하루치 이자와 가격이 액면으로 돌아가는 몫, 롤다운은 커브가 그대로일 때 만기가 하루 짧아져 금리가 달라지는 몫입니다. 금리 변화는 전일 키레이트 DV01 × 그 만기 금리 변화이고, 볼록성 등은 나머지(금리 변화의 2차 효과)입니다. 네 갈래의 합은 NAV 변화와 같습니다. 모형은 종목을 그 만기의 금리 하나로 값을 매기므로 키레이트 DV01을 좌우 두 만기에 나눠 붙였고, 그래서 현금흐름마다 할인율을 움직이는 아래 KRD 표와 만기별 값이 조금 다릅니다. 여러 날을 고르면 하루 값들을 더하므로, 손익이 금리 변화 × 평균 키레이트 DV01과 조금 다를 수 있습니다.' });
+    }
+
+    // ── 손실 한도: 벤치마크 대비 이번 달·올해 초과수익이 한도를 얼마나 썼나 ──
+    const L = R.limits;
+    let limitCard = null;
+    if (L) {
+      const used = (cur, lim) => Math.max(0, -cur) / Math.abs(lim);
+      const level = (u) => (u >= 1 ? ['bad', '한도 초과', 'var(--crit)'] : u >= L.warn ? ['mid', '주의', 'var(--warn)'] : ['good', '정상', 'var(--good)']);
+      const gauge = (label, cur, lim) => {
+        const u = used(cur, lim), [cls, word, col] = level(u), room = Math.max(0, Math.abs(lim) - Math.max(0, -cur));
+        return h('div', { cls: 'limit' },
+          h('div', { cls: 'limit-h' }, label, h('span', { cls: 'verdict ' + cls }, h('i'), word)),
+          h('div', { cls: 'limit-v' }, F.bp(cur, 1), h('small', null, `한도 ${F.bp(lim)}`)),
+          h('span', { cls: 'bar', role: 'img', 'aria-label': `${label} 한도 사용률 ${F.n(u * 100, 0)}%` }, h('i', { style: `width:${Math.min(100, u * 100).toFixed(1)}%;background:${col}` })),
+          h('small', null, `한도의 ${F.n(u * 100, 0)}% 사용 · 남은 여유 ${F.n(room, 1)}bp (${F.usd(room / 1e4 * B.nav)})`));
+      };
+      const uM = used(ex('mtd'), L.month_bp), uY = used(ex('ytd'), L.year_bp), uTop = Math.max(uM, uY), which = uM >= uY ? '이번 달' : '올해';
+      const roomM = Math.max(0, Math.abs(L.month_bp) - Math.max(0, -ex('mtd')));
+      const head = uTop >= 1 ? `${which} 손실이 한도를 넘었습니다` : uTop >= L.warn ? `${which} 손실이 한도의 ${F.n(uTop * 100, 0)}%까지 찼습니다`
+        : uTop > 0 ? '이번 달과 올해 모두 손실 한도에 여유가 있습니다' : '이번 달과 올해 모두 벤치마크를 앞서고 있어 손실 한도를 쓰지 않았습니다';
+      const hitM = L.hit_months.map((m) => `${m.month} (${F.bp(m.excess_bp)})`).join(', ');
+      limitCard = UI.card({ id: 'limit', span: 'c4', title: '손실 한도', cap: '벤치마크 대비 초과수익',
+        body: [UI.concl(head, `이번 달 여유 ${F.n(roomM, 1)}bp는 하루 상대 VaR(95%) ${F.n(V.rel_95_bp, 1)}bp의 ${F.n(roomM / V.rel_95_bp, 0)}일치입니다.`),
+          gauge(`${F.mon(B.asof)} (이번 달)`, ex('mtd'), L.month_bp), gauge(`${B.asof.slice(0, 4)}년 (올해)`, ex('ytd'), L.year_bp),
+          h('dl', { cls: 'kv two' }, [['월 한도를 넘은 달', `${L.hit_months.length}번`, `/ ${L.n_months}개월`], ['연 한도를 넘은 해', `${L.hit_years.length}번`, `/ ${L.n_years}년`]]
+            .map(([k, v, u]) => h('div', null, h('dt', null, k), h('dd', null, v, h('small', null, u))))),
+          h('p', { cls: 'note' }, `${B.start.slice(0, 4)}년 말 이후 기록입니다.${hitM ? ` 월 한도를 넘은 달은 ${hitM}입니다.` : ''} 가장 나빴던 해는 ${L.worst_year.year}년 (${F.bp(L.worst_year.excess_bp)})으로 연 한도의 ${F.n(used(L.worst_year.excess_bp, L.year_bp) * 100, 0)}%였습니다.`)],
+        foot: `임시 기준입니다. 연 한도는 위험예산 하단(${L.budget_bp}bp)만큼, 월 한도는 그 절반으로 두었고, 한도의 ${F.n(L.warn * 100, 0)}%를 쓰면 주의로 표시합니다. 모형 포트폴리오는 한도를 넘어도 규칙대로 운용을 계속하므로, 이 카드는 표시만 합니다.` });
+    }
 
     // ── 구성 (도넛): 만기 구간별 비중. 평가금액 기준과 DV01 기준을 바꿔 볼 수 있다 ──
     const BK = B.positions, bcol = (i) => `var(--b${i + 1})`;
@@ -198,7 +275,7 @@
       foot: `${S.months}개월 가운데 포지션이 있던 ${S.months_active}개월 중 ${S.months_win}개월을 앞섰습니다. 가장 좋았던 달 ${S.best.month} (${F.s(S.best.excess_bp, 0)}bp), 가장 나빴던 달 ${S.worst.month} (${F.s(S.worst.excess_bp, 0)}bp).` });
 
     // ── 리스크 ──
-    const te = R.te_exante_bp, bud = R.budget, V = R.var;
+    const te = R.te_exante_bp, bud = R.budget;
     const riskCard = UI.card({ id: 'risk', span: 'c5', title: '리스크', cap: '추적오차(TE)와 VaR',
       body: [kv([['사전 추적오차', F.n(te, 0), 'bp / 년'], ['위험예산 (TE)', `${bud[0]}~${bud[1]}`, 'bp'], ['위험예산 소진율', F.n(te / bud[0] * 100, 0), '% (하단 기준)'],
                  ['사후 추적오차 1년', F.n(S.te_1y_bp, 0), 'bp'], ['사후 추적오차 3년', F.n(S.te_3y_bp, 0), 'bp'], ['사후 추적오차 전체', F.n(S.te_all_bp, 0), 'bp'],
@@ -232,7 +309,7 @@
     const title = `포트폴리오는 ${posWord}, ${perfWord}`;
     return { title, lead, usOnly: true,
       sub: `근거: 사전 추적오차 ${F.n(te, 0)}bp는 위험예산 하단 ${bud[0]}bp의 ${F.n(use * 100, 0)}% (60% 미만이면 소폭으로 봄). 정보비율 ${F.n(S.ir, 2)} × √${F.n(S.years, 1)}년 = t ${F.n(tStat, 2)} (절댓값이 2에 못 미치면 우연과 구분되지 않는다고 봄). 가상 USD 10M을 미국 국채에 규칙대로 운용한 모형 포트폴리오이고, 벤치마크는 공개 자료로 만든 미국 국채 대용 지수입니다.`,
-      tabs: [['krd', 'KRD'], ['adjust', '조정'], ['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
-      body: [tiles, krdCard, adjustCard, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard] };
+      tabs: [...(pnlCard ? [['pnl', '손익 설명']] : []), ...(limitCard ? [['limit', '손실 한도']] : []), ['krd', 'KRD'], ['adjust', '조정'], ['compose', '구성'], ['perf', '성과'], ['blotter', '보유 종목'], ['trades', '거래 내역'], ['exposure', '익스포저'], ['attribution', '성과 분해'], ['months', '월별 초과수익'], ['risk', '리스크·시나리오'], ['stress', '스트레스 테스트']],
+      body: [tiles, pnlCard, limitCard, krdCard, adjustCard, composeCard, perfCard, posCard, rbCard, expCard, attrCard, yearCard, monCard, riskCard, scenCard, stressCard] };
   };
 })();
